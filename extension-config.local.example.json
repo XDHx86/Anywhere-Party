@@ -1,0 +1,18 @@
+{
+  "SIGNALING_SERVER": "ws://localhost:8080",
+  "SIGNALING_WS_PATH": "",
+  "LOCAL_DEV_MODE": true,
+  "TELEMETRY_ENABLED": false,
+  "FEATURE_FLAGS": {
+    "VOICE_CHAT": true,
+    "ANNOTATIONS": true,
+    "SUBTITLES": true,
+    "PLAYLISTS": false,
+    "SCHEDULING": false,
+    "ADVANCED_ANNOTATIONS": false,
+    "E2E_ENCRYPTION": false
+  },
+  "SYNC_TOLERANCE_MS": 300,
+  "HEARTBEAT_INTERVAL_MS": 2000,
+  "RECONNECT_INTERVAL_MS": 5000
+}

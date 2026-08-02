@@ -1,0 +1,48 @@
+{
+  "SIGNALING_SERVER": "ws://localhost:8080",
+  "SIGNALING_WS_PATH": "",
+  "STUN_SERVERS": [
+    "stun:stun.l.google.com:19302",
+    "stun:stun1.l.google.com:19302"
+  ],
+  "TURN_SERVERS": [
+    {
+      "urls": "turn:turn.example.com:3478",
+      "username": "",
+      "credential": ""
+    }
+  ],
+  "OPENSUBTITLES_KEY": "",
+  "DEFAULT_SUBTITLE_LANGS": ["en", "es", "fr", "de"],
+  "ROOM_DEFAULT_PASSWORD": "",
+  "FEATURE_FLAGS": {
+    "VOICE_CHAT": true,
+    "ANNOTATIONS": true,
+    "SUBTITLES": true,
+    "PLAYLISTS": false,
+    "SCHEDULING": false,
+    "ADVANCED_ANNOTATIONS": false,
+    "E2E_ENCRYPTION": false
+  },
+  "TELEMETRY_ENABLED": false,
+  "SYNC_TOLERANCE_MS": 300,
+  "SYNC_TIMEOUT_MS": 5000,
+  "HEARTBEAT_INTERVAL_MS": 2000,
+  "ANNOTATION_RENDER_INTERVAL_MS": 16,
+  "RECONNECT_INTERVAL_MS": 5000,
+  "ROOM_STATE_TTL_MS": 300000,
+  "VIDEO_DETECT_POLL_MS": null,
+  "LOCAL_DEV_MODE": true,
+  "OAUTH_ENABLED": false,
+  "OAUTH_PROVIDERS": {},
+  "ALLOW_ANONYMOUS_USERS": true,
+  "E2E_ENCRYPTION_ENABLED": false,
+  "ENCRYPTION_KEY_SIZE": 2048,
+  "DATA_RETENTION_ENABLED": true,
+  "CHAT_RETENTION_DAYS": 30,
+  "ROOM_HISTORY_RETENTION_DAYS": 90,
+  "AUTO_DELETE_EXPIRED_DATA": true,
+  "RECORDING_CONSENT_REQUIRED": true,
+  "RECORDING_RETENTION_DAYS": 30,
+  "ANONYMIZE_USER_DATA": true
+}

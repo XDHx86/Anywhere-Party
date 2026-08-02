@@ -1,0 +1,38 @@
+/* Primary gradient backgrounds for UI elements */
+.gradient-primary {
+  background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+}
+
+.gradient-primary-light {
+  background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%);
+}
+
+.gradient-primary-dark {
+  background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+}
+
+/* Secondary gradient for accents */
+.gradient-secondary {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+}
+
+/* Subtle background gradients */
+.gradient-subtle-light {
+  background: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);
+}
+
+.gradient-subtle-dark {
+  background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+}
+
+/* Button gradients */
+.gradient-button {
+  background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+  transition: all 0.2s ease;
+}
+
+.gradient-button:hover {
+  background: linear-gradient(135deg, #5B21B6 0%, #7C3AED 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}

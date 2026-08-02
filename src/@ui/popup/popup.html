@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Watch Party</title>
+  <link rel="stylesheet" href="../../@core/accessibility/accessibility-styles.css">
+  <link rel="stylesheet" href="popup-modern.css">
+  <style>
+    /* Minimal fallback styles for browsers that don't support CSS custom properties */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <!-- Skip links for keyboard navigation -->
+  <div class="skip-links">
+    <a href="#mainMenu" class="skip-link">Skip to main menu</a>
+    <a href="#roomView" class="skip-link">Skip to room view</a>
+    <a href="#chatContainer" class="skip-link">Skip to chat</a>
+  </div>
+
+  <div class="popup-container">
+    <!-- Header -->
+    <div class="popup-header">
+      <h1>Watch Party</h1>
+      <div class="header-actions">
+        <!-- Future: Add theme toggle, settings icon, etc. -->
+      </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="popup-content">
+      <!-- Connection Status -->
+      <div id="status" class="status-card disconnected" role="status" aria-live="polite">
+        <div class="status-indicator"></div>
+        <div class="status-text">
+          <span class="sr-only">Connection status: </span>
+          Not connected
+        </div>
+      </div>
+  
+      <!-- Main Menu (shown when not in room) -->
+      <div id="mainMenu" class="card" role="main" aria-labelledby="main-menu-title">
+        <div class="card-header">
+          <h2 id="main-menu-title" class="card-title">Room Actions</h2>
+        </div>
+        <div class="card-content">
+          <div class="flex flex-col gap-3">
+            <button id="createRoom" class="btn btn-primary btn-full" aria-describedby="create-room-desc">
+              <span>Create Room</span>
+            </button>
+            <div id="create-room-desc" class="sr-only">Create a new watch party room</div>
+            
+            <button id="joinRoom" class="btn btn-primary btn-full" aria-describedby="join-room-desc">
+              <span>Join Room</span>
+            </button>
+            <div id="join-room-desc" class="sr-only">Join an existing watch party room</div>
+            
+            <button id="openOptions" class="btn btn-secondary btn-full" aria-describedby="settings-desc">
+              <span>Settings</span>
+            </button>
+            <div id="settings-desc" class="sr-only">Open extension settings and preferences</div>
+          </div>
+        </div>
+      </div>
+  
+      <!-- Create Room Form -->
+      <div id="createRoomForm" class="card hidden" role="form" aria-labelledby="create-form-title">
+        <div class="card-header">
+          <h2 id="create-form-title" class="card-title">Create New Room</h2>
+        </div>
+        <div class="card-content">
+          <div class="flex flex-col gap-4">
+            <div class="form-group">
+              <label for="roomName" class="form-label">Room Name (optional)</label>
+              <input type="text" id="roomName" class="form-input" placeholder="My Watch Party" aria-describedby="room-name-help">
+              <div id="room-name-help" class="sr-only">Enter a name for your watch party room. This is optional.</div>
+            </div>
+            
+            <div class="form-checkbox">
+              <input type="checkbox" id="isPublic" aria-describedby="public-help">
+              <label for="isPublic">Make room public (discoverable)</label>
+              <div id="public-help" class="sr-only">Public rooms can be discovered by other users</div>
+            </div>
+            
+            <div class="form-group">
+              <label for="roomPassword" class="form-label">Password (optional)</label>
+              <input type="password" id="roomPassword" class="form-input" placeholder="Leave empty for no password" aria-describedby="password-help">
+              <div id="password-help" class="sr-only">Set a password to restrict access to your room</div>
+            </div>
+            
+            <div class="form-group">
+              <label for="maxParticipants" class="form-label">Max Participants</label>
+              <input type="number" id="maxParticipants" class="form-input" value="10" min="2" max="50" aria-describedby="max-participants-help">
+              <div id="max-participants-help" class="sr-only">Maximum number of people who can join this room</div>
+            </div>
+          </div>
+        </div>
+        <div class="card-actions">
+          <button id="cancelCreateRoom" class="btn btn-secondary" aria-describedby="cancel-create-desc">Cancel</button>
+          <div id="cancel-create-desc" class="sr-only">Cancel room creation and return to main menu</div>
+          
+          <button id="confirmCreateRoom" class="btn btn-primary" aria-describedby="confirm-create-desc">Create Room</button>
+          <div id="confirm-create-desc" class="sr-only">Create the room with the specified settings</div>
+        </div>
+      </div>
+  
+      <!-- Join Room Form -->
+      <div id="joinRoomForm" class="card hidden" role="form" aria-labelledby="join-form-title">
+        <div class="card-header">
+          <h2 id="join-form-title" class="card-title">Join Room</h2>
+        </div>
+        <div class="card-content">
+          <div class="flex flex-col gap-4">
+            <div class="form-group">
+              <label for="joinRoomId" class="form-label">Room ID or Invitation Link</label>
+              <input type="text" id="joinRoomId" class="form-input" placeholder="Enter room ID or paste invitation link" 
+                     aria-describedby="join-id-help" required aria-required="true">
+              <div id="join-id-help" class="sr-only">Enter the room ID or paste the invitation link you received</div>
+            </div>
+            
+            <div class="form-group">
+              <label for="joinPassword" class="form-label">Password (if required)</label>
+              <input type="password" id="joinPassword" class="form-input" placeholder="Enter room password" 
+                     aria-describedby="join-password-help">
+              <div id="join-password-help" class="sr-only">Enter the room password if the room is password protected</div>
+            </div>
+          </div>
+        </div>
+        <div class="card-actions">
+          <button id="cancelJoinRoom" class="btn btn-secondary" aria-describedby="cancel-join-desc">Cancel</button>
+          <div id="cancel-join-desc" class="sr-only">Cancel joining and return to main menu</div>
+          
+          <button id="confirmJoinRoom" class="btn btn-primary" aria-describedby="confirm-join-desc">Join Room</button>
+          <div id="confirm-join-desc" class="sr-only">Join the specified room</div>
+        </div>
+      </div>
+  
+      <!-- Room View (shown when in room) -->
+      <div id="roomView" class="hidden">
+        <!-- Room Information -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Room Information</h2>
+          </div>
+          <div class="card-content">
+            <div class="list">
+              <div class="list-item">
+                <div class="list-item-content">
+                  <div class="list-item-title">Room ID</div>
+                </div>
+                <div class="badge badge-primary">
+                  <span id="currentRoomId">-</span>
+                </div>
+              </div>
+              <div class="list-item">
+                <div class="list-item-content">
+                  <div class="list-item-title">Your Role</div>
+                </div>
+                <div class="badge badge-success">
+                  <span id="currentRole">-</span>
+                </div>
+              </div>
+              <div class="list-item">
+                <div class="list-item-content">
+                  <div class="list-item-title">Participants</div>
+                </div>
+                <div class="badge badge-primary">
+                  <span id="participantCount">0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Invitation Link -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Invite Others</h3>
+          </div>
+          <div class="card-content">
+            <div class="form-group">
+              <label class="form-label">Invitation Link</label>
+              <div class="flex gap-2">
+                <input type="text" id="invitationLink" class="form-input" readonly style="flex: 1;">
+                <button id="copyInviteLink" class="btn btn-secondary btn-sm">Copy</button>
+              </div>
+            </div>
+          </div>
+        </div>
+    
+        <!-- Video Detection Controls -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Video Sync</h3>
+          </div>
+          <div class="card-content">
+            <div class="flex flex-col gap-3">
+              <button id="startRoom" class="btn btn-primary btn-full" aria-describedby="start-room-desc">
+                <span>Start Room</span>
+              </button>
+              <div id="start-room-desc" class="sr-only">Start video detection and synchronization for this room</div>
+              
+              <button id="stopRoom" class="btn btn-secondary btn-full hidden" aria-describedby="stop-room-desc">
+                <span>Stop Room</span>
+              </button>
+              <div id="stop-room-desc" class="sr-only">Stop video synchronization</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Host Controls (only shown for hosts) -->
+        <div id="hostControls" class="card hidden">
+          <div class="card-header">
+            <h3 class="card-title">Host Controls</h3>
+          </div>
+          <div class="card-content">
+            <div class="flex flex-col gap-3">
+              <div class="flex gap-2">
+                <button id="playButton" class="btn btn-primary" style="flex: 1;">Play</button>
+                <button id="pauseButton" class="btn btn-primary" style="flex: 1;">Pause</button>
+              </div>
+              
+              <div class="flex gap-2">
+                <button id="transferHostButton" class="btn btn-secondary" style="flex: 1;">Transfer Host</button>
+                <button id="lockRoomButton" class="btn btn-secondary" style="flex: 1;">Lock Room</button>
+              </div>
+            </div>
+          </div>
+        </div>
+    
+        <!-- Participants List -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Participants</h3>
+          </div>
+          <div class="card-content">
+            <div id="participantsList" class="list" style="max-height: 120px; overflow-y: auto;">
+              <!-- Participants will be populated here -->
+            </div>
+          </div>
+        </div>
+    
+        <!-- Subtitle Section -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Subtitles</h3>
+          </div>
+          <div id="subtitleContainer">
+            <div class="card-content">
+              <div class="flex flex-col gap-2">
+                <input type="file" id="subtitleFileInput" accept=".srt,.vtt" style="display: none;">
+                <button id="loadSubtitleFile" class="btn btn-secondary btn-sm btn-full">Load Subtitle File</button>
+                <button id="searchOpenSubtitles" class="btn btn-secondary btn-sm btn-full">Search OpenSubtitles</button>
+                <button id="advancedSubtitleSettings" class="btn btn-ghost btn-sm btn-full">Advanced Settings</button>
+              </div>
+            </div>
+            
+            <div id="subtitleTracks" class="list" style="max-height: 120px; overflow-y: auto; border-top: 1px solid var(--color-outline-variant);">
+              <!-- Subtitle tracks will be populated here -->
+            </div>
+          </div>
+        </div>
+      
+      <!-- OpenSubtitles Search Modal -->
+      <div id="openSubtitlesModal" class="modal hidden">
+        <div class="modal-content">
+          <div class="modal-header">
+            <span class="modal-title">Search OpenSubtitles</span>
+            <button id="closeOpenSubtitlesModal" class="modal-close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="input-group">
+              <label for="subtitleSearchQuery">Search Query</label>
+              <input type="text" id="subtitleSearchQuery" placeholder="Movie or TV show name">
+            </div>
+            <div class="input-group">
+              <label for="subtitleLanguage">Language</label>
+              <select id="subtitleLanguage">
+                <option value="">Any Language</option>
+                <option value="en">English</option>
+                <option value="es">Spanish</option>
+                <option value="fr">French</option>
+                <option value="de">German</option>
+                <option value="it">Italian</option>
+                <option value="pt">Portuguese</option>
+                <option value="ru">Russian</option>
+                <option value="ja">Japanese</option>
+                <option value="ko">Korean</option>
+                <option value="zh">Chinese</option>
+              </select>
+            </div>
+            <button id="performSubtitleSearch">Search</button>
+            
+            <div id="subtitleSearchResults" class="search-results hidden">
+              <!-- Search results will be populated here -->
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Advanced Subtitle Manager Container -->
+      <div id="advancedSubtitleManager" style="display: none;"></div>
+    </div>
+
+        <!-- Annotation Section -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Annotations</h3>
+          </div>
+          <div class="card-content">
+            <div id="annotationContainer">
+              <!-- Annotation toolbar will be populated here -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Room Actions -->
+        <div class="card">
+          <div class="card-content">
+            <button id="leaveRoom" class="btn btn-danger btn-full">Leave Room</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="index.js"></script>
+</body>
+</html>

@@ -1,0 +1,329 @@
+/**
+ * UX Enhancement System Styles
+ */
+
+.ux-enhancement-container {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  font-family:
+    'Roboto',
+    'Inter',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+}
+
+.ux-enhancement-container--sm {
+  font-size: 14px;
+}
+
+.ux-enhancement-container--md {
+  font-size: 16px;
+}
+
+.ux-enhancement-container--lg {
+  font-size: 16px;
+}
+
+/* Feedback Container */
+.ux-feedback-container {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  max-width: 400px;
+  pointer-events: none;
+}
+
+.ux-feedback-container > * {
+  pointer-events: auto;
+}
+
+/* Global Loading Overlay */
+.ux-global-loading {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ux-loading-content {
+  background: var(--md-sys-color-surface, #ffffff);
+  border-radius: 16px;
+  padding: 32px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  min-width: 200px;
+}
+
+.ux-loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--md-sys-color-outline-variant, #cac4d0);
+  border-top: 3px solid var(--md-sys-color-primary, #6750a4);
+  border-radius: 50%;
+  animation: ux-spin 1s linear infinite;
+  margin: 0 auto 16px;
+}
+
+.ux-loading-content span {
+  display: block;
+  margin-bottom: 16px;
+  color: var(--md-sys-color-on-surface, #1c1b1f);
+  font-weight: 500;
+}
+
+.ux-loading-progress {
+  width: 100%;
+  height: 4px;
+  background-color: var(--md-sys-color-outline-variant, #cac4d0);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.ux-loading-progress-bar {
+  height: 100%;
+  background-color: var(--md-sys-color-primary, #6750a4);
+  border-radius: 2px;
+  transition: width 300ms ease;
+}
+
+@keyframes ux-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Enhanced Card Styles */
+.enhanced-card {
+  background: var(--md-sys-color-surface, #ffffff);
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin: 16px 0;
+  overflow: hidden;
+  transition: box-shadow 200ms ease;
+}
+
+.enhanced-card:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+}
+
+.enhanced-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant, #cac4d0);
+}
+
+.enhanced-card__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface, #1c1b1f);
+}
+
+.enhanced-card__toggle {
+  min-width: auto !important;
+  padding: 8px !important;
+}
+
+.enhanced-card__content {
+  padding: 20px;
+}
+
+/* Performance Monitor */
+.performance-monitor {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  z-index: 1000;
+}
+
+.performance-details {
+  background: var(--md-sys-color-surface, #ffffff);
+  border: 1px solid var(--md-sys-color-outline-variant, #cac4d0);
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.performance-details > div {
+  margin-bottom: 4px;
+}
+
+.performance-details > div:last-child {
+  margin-bottom: 0;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 479px) {
+  .ux-feedback-container {
+    top: 8px;
+    right: 8px;
+    left: 8px;
+    max-width: none;
+  }
+
+  .ux-loading-content {
+    margin: 0 16px;
+    padding: 24px;
+    min-width: auto;
+  }
+
+  .enhanced-card {
+    margin: 12px 0;
+    border-radius: 12px;
+  }
+
+  .enhanced-card__header {
+    padding: 12px 16px;
+  }
+
+  .enhanced-card__content {
+    padding: 16px;
+  }
+
+  .performance-monitor {
+    bottom: 8px;
+    left: 8px;
+  }
+}
+
+@media (min-width: 768px) {
+  .ux-feedback-container {
+    top: 24px;
+    right: 24px;
+  }
+
+  .enhanced-card {
+    margin: 20px 0;
+  }
+
+  .enhanced-card__header {
+    padding: 20px 24px;
+  }
+
+  .enhanced-card__content {
+    padding: 24px;
+  }
+
+  .performance-monitor {
+    bottom: 24px;
+    left: 24px;
+  }
+}
+
+/* Accessibility Enhancements */
+@media (prefers-reduced-motion: reduce) {
+  .ux-loading-spinner {
+    animation: none;
+  }
+
+  .ux-loading-progress-bar {
+    transition: none;
+  }
+
+  .enhanced-card {
+    transition: none;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .ux-loading-content {
+    background: var(--md-sys-color-surface-dark, #121212);
+    color: var(--md-sys-color-on-surface-dark, #e6e1e5);
+  }
+
+  .enhanced-card {
+    background: var(--md-sys-color-surface-dark, #121212);
+  }
+
+  .enhanced-card__title {
+    color: var(--md-sys-color-on-surface-dark, #e6e1e5);
+  }
+
+  .performance-details {
+    background: var(--md-sys-color-surface-dark, #121212);
+    color: var(--md-sys-color-on-surface-dark, #e6e1e5);
+    border-color: var(--md-sys-color-outline-variant-dark, #49454f);
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .enhanced-card {
+    border: 2px solid var(--md-sys-color-outline, #79747e);
+  }
+
+  .ux-loading-content {
+    border: 2px solid var(--md-sys-color-outline, #79747e);
+  }
+
+  .performance-details {
+    border-width: 2px;
+  }
+
+  .enhanced-card__toggle {
+    border: 1px solid currentColor;
+  }
+}
+
+/* Reduced data mode */
+@media (prefers-reduced-data: reduce) {
+  .ux-loading-spinner {
+    animation: none;
+    border-top-color: transparent;
+  }
+}
+
+/* Focus management improvements */
+.enhanced-card:focus-within {
+  outline: 2px solid var(--md-sys-color-primary, #6750a4);
+  outline-offset: 2px;
+}
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Focus management */
+.enhanced-card:focus-within {
+  outline: 2px solid var(--md-sys-color-primary, #6750a4);
+  outline-offset: 2px;
+}
+
+/* Smooth scrolling for better UX */
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

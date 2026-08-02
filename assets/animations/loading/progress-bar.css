@@ -1,0 +1,74 @@
+/* Progress bar animations */
+.progress-bar {
+  width: 100%;
+  height: 4px;
+  background-color: rgba(99, 102, 241, 0.2);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366F1, #8B5CF6);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* Indeterminate progress bar */
+.progress-bar-indeterminate {
+  position: relative;
+  background-color: rgba(99, 102, 241, 0.2);
+  overflow: hidden;
+}
+
+.progress-bar-indeterminate::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, #6366F1, transparent);
+  animation: progressSlide 1.5s infinite;
+}
+
+@keyframes progressSlide {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+/* Circular progress */
+.circular-progress {
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(99, 102, 241, 0.2);
+  border-top: 2px solid #6366F1;
+  border-radius: 50%;
+  animation: circularSpin 1s linear infinite;
+}
+
+@keyframes circularSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Success animation */
+.progress-success {
+  animation: progressSuccess 0.5s ease-out;
+}
+
+@keyframes progressSuccess {
+  0% { 
+    background-color: #6366F1;
+    transform: scale(1);
+  }
+  50% { 
+    background-color: #10B981;
+    transform: scale(1.05);
+  }
+  100% { 
+    background-color: #10B981;
+    transform: scale(1);
+  }
+}

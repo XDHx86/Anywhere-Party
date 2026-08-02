@@ -1,0 +1,80 @@
+{
+  "avatarOverlay": {
+    "enabled": true,
+    "updateRate": 30,
+    "lerpFactor": 0.15,
+    "avatarSize": 48,
+    "chatBubbleDuration": 4000,
+    "animationDuration": 2000,
+    "collisionAvoidance": true,
+    "voiceActivityGlow": true,
+    "maxAvatars": 20,
+    "defaultAvatars": {
+      "male": "/assets/avatars/male-default.png",
+      "female": "/assets/avatars/female-default.png",
+      "neutral": "/assets/avatars/neutral-default.png"
+    },
+    "animations": {
+      "heart": "/assets/animations/heart.gif",
+      "laugh": "/assets/animations/laugh.gif",
+      "thumbs_up": "/assets/animations/thumbs-up.gif",
+      "clap": "/assets/animations/clap.gif",
+      "wave": "/assets/animations/wave.gif",
+      "dance": "/assets/animations/dance.gif",
+      "surprised": "/assets/animations/surprised.gif",
+      "thinking": "/assets/animations/thinking.gif"
+    },
+    "movement": {
+      "keyboardSpeed": 0.002,
+      "mouseEnabled": true,
+      "touchEnabled": true,
+      "boundaryPadding": 0.05
+    },
+    "chatBubbles": {
+      "maxWidth": 200,
+      "offsetY": -60,
+      "borderRadius": 8,
+      "backgroundColor": "rgba(0, 0, 0, 0.8)",
+      "textColor": "#ffffff",
+      "fontSize": 14,
+      "fontFamily": "Arial, sans-serif"
+    },
+    "voiceActivity": {
+      "glowColor": "#00ff00",
+      "glowRadius": 8,
+      "glowOpacity": 0.6,
+      "muteIndicatorColor": "#ff0000",
+      "muteIndicatorSize": 8
+    },
+    "collision": {
+      "enabled": true,
+      "radius": 0.05,
+      "pushForce": 0.5
+    }
+  },
+  "features": {
+    "avatarOverlay": true,
+    "voiceIntegration": true,
+    "chatIntegration": true,
+    "animationEffects": true,
+    "collisionDetection": true
+  },
+  "performance": {
+    "maxRenderFPS": 60,
+    "enableGPUAcceleration": true,
+    "lowPowerMode": false,
+    "adaptiveQuality": true
+  },
+  "privacy": {
+    "shareAvatarImages": true,
+    "shareDisplayNames": true,
+    "shareVoiceActivity": true,
+    "allowCustomAvatars": true
+  },
+  "accessibility": {
+    "highContrastMode": false,
+    "largeAvatars": false,
+    "reducedMotion": false,
+    "screenReaderSupport": true
+  }
+}

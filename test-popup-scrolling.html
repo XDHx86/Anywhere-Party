@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Watch Party Popup Scrolling Test</title>
+  <link rel="stylesheet" href="src/@ui/popup/popup-modern.css">
+  <link rel="stylesheet" href="src/@ui/styles/popup-material.css">
+  <style>
+    /* Test-specific styles */
+    .test-container {
+      margin: 20px;
+      padding: 20px;
+      border: 2px solid #6200EE;
+      border-radius: 12px;
+      background-color: #f5f5f5;
+    }
+    
+    .test-info {
+      background-color: #e3f2fd;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-family: 'Roboto', sans-serif;
+    }
+    
+    .test-info h2 {
+      margin: 0 0 8px 0;
+      color: #1976d2;
+    }
+    
+    .test-info p {
+      margin: 4px 0;
+      color: #424242;
+    }
+    
+    .test-controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    
+    .test-btn {
+      padding: 8px 16px;
+      background-color: #6200EE;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.2s;
+    }
+    
+    .test-btn:hover {
+      background-color: #5500CC;
+    }
+    
+    .test-btn:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+    
+    .popup-simulator {
+      width: 380px;
+      min-height: 240px;
+      max-height: 600px;
+      border: 2px solid #333;
+      border-radius: 12px;
+      overflow: hidden;
+      background-color: white;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      margin: 0 auto;
+    }
+    
+    .status-indicator {
+      padding: 8px 16px;
+      background-color: #4caf50;
+      color: white;
+      font-size: 12px;
+      text-align: center;
+    }
+    
+    .test-card {
+      margin: 16px;
+      padding: 16px;
+      background-color: #f9f9f9;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+    
+    .test-card h3 {
+      margin: 0 0 8px 0;
+      color: #333;
+    }
+    
+    .test-card p {
+      margin: 0;
+      color: #666;
+      line-height: 1.4;
+    }
+    
+    .keyboard-help {
+      background-color: #fff3e0;
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 16px;
+      font-size: 12px;
+    }
+    
+    .keyboard-help h4 {
+      margin: 0 0 8px 0;
+      color: #f57c00;
+    }
+    
+    .keyboard-help ul {
+      margin: 0;
+      padding-left: 16px;
+    }
+    
+    .keyboard-help li {
+      margin: 2px 0;
+      color: #bf360c;
+    }
+    
+    .scroll-info {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background-color: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 12px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 12px;
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+  <div class="test-container">
+    <div class="test-info">
+      <h2>Watch Party Popup Scrolling Test</h2>
+      <p><strong>Requirements Testing:</strong> 31.1, 31.2, 31.3, 31.4, 31.5</p>
+      <p><strong>Purpose:</strong> Manual validation of popup scrolling behavior</p>
+      <p><strong>Instructions:</strong> Use the controls below to test different scrolling scenarios</p>
+    </div>
+    
+    <div class="test-controls">
+      <button class="test-btn" onclick="addContent()">Add Tall Content</button>
+      <button class="test-btn" onclick="clearContent()">Clear Content</button>
+      <button class="test-btn" onclick="scrollToTop()">Scroll to Top</button>
+      <button class="test-btn" onclick="scrollToMiddle()">Scroll to Middle</button>
+      <button class="test-btn" onclick="scrollToBottom()">Scroll to Bottom</button>
+      <button class="test-btn" onclick="testKeyboardNav()">Test Keyboard Nav</button>
+      <button class="test-btn" onclick="addFocusableElements()">Add Focusable Elements</button>
+      <button class="test-btn" onclick="measurePerformance()">Measure Performance</button>
+    </div>
+    
+    <div class="popup-simulator">
+      <div class="popup-header">
+        <h1>Watch Party</h1>
+      </div>
+      
+      <div class="status-indicator">
+        Connected - Popup Dimensions: 380px × 600px (max)
+      </div>
+      
+      <div class="popup-content" id="popupContent" role="main" aria-label="Main popup content" tabindex="0">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Room Actions</h2>
+          </div>
+          <div class="card-content">
+            <button class="btn btn-primary btn-full">Create Room</button>
+            <button class="btn btn-primary btn-full">Join Room</button>
+            <button class="btn btn-secondary btn-full">Settings</button>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Connection Status</h3>
+          </div>
+          <div class="card-content">
+            <div class="status-card connected">
+              <div class="status-indicator"></div>
+              <div class="status-text">Connected to server</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="keyboard-help">
+      <h4>Keyboard Navigation Test Instructions:</h4>
+      <ul>
+        <li><strong>Ctrl + ↓/↑:</strong> Scroll by small increments (50px)</li>
+        <li><strong>Page Down/Up:</strong> Scroll by large increments (80% of container height)</li>
+        <li><strong>Ctrl + Home:</strong> Scroll to top</li>
+        <li><strong>Ctrl + End:</strong> Scroll to bottom</li>
+        <li><strong>Tab:</strong> Navigate through focusable elements</li>
+        <li><strong>Focus any element:</strong> Should scroll into view automatically</li>
+      </ul>
+    </div>
+  </div>
+  
+  <div class="scroll-info" id="scrollInfo">
+    Scroll Position: 0px<br>
+    Content Height: 0px<br>
+    Container Height: 0px<br>
+    Scrollable: No
+  </div>
+
+  <script>
+    // Test functionality
+    let testCardCount = 0;
+    let performanceResults = [];
+    
+    const popupContent = document.getElementById('popupContent');
+    const scrollInfo = document.getElementById('scrollInfo');
+    
+    // Update scroll info display
+    function updateScrollInfo() {
+      const scrollTop = popupContent.scrollTop;
+      const scrollHeight = popupContent.scrollHeight;
+      const clientHeight = popupContent.clientHeight;
+      const isScrollable = scrollHeight > clientHeight;
+      
+      scrollInfo.innerHTML = `
+        Scroll Position: ${scrollTop}px<br>
+        Content Height: ${scrollHeight}px<br>
+        Container Height: ${clientHeight}px<br>
+        Scrollable: ${isScrollable ? 'Yes' : 'No'}<br>
+        Max Scroll: ${Math.max(0, scrollHeight - clientHeight)}px
+      `;
+    }
+    
+    // Add scroll event listener
+    popupContent.addEventListener('scroll', updateScrollInfo);
+    
+    // Add keyboard navigation
+    popupContent.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown' && e.ctrlKey) {
+        e.preventDefault();
+        popupContent.scrollBy({ top: 50, behavior: 'smooth' });
+      } else if (e.key === 'ArrowUp' && e.ctrlKey) {
+        e.preventDefault();
+        popupContent.scrollBy({ top: -50, behavior: 'smooth' });
+      } else if (e.key === 'PageDown') {
+        e.preventDefault();
+        popupContent.scrollBy({ top: popupContent.clientHeight * 0.8, behavior: 'smooth' });
+      } else if (e.key === 'PageUp') {
+        e.preventDefault();
+        popupContent.scrollBy({ top: -popupContent.clientHeight * 0.8, behavior: 'smooth' });
+      } else if (e.key === 'Home' && e.ctrlKey) {
+        e.preventDefault();
+        popupContent.scrollTo({ top: 0, behavior: 'smooth' });
+      } else if (e.key === 'End' && e.ctrlKey) {
+        e.preventDefault();
+        popupContent.scrollTo({ top: popupContent.scrollHeight, behavior: 'smooth' });
+      }
+    });
+    
+    // Test functions
+    function addContent() {
+      for (let i = 0; i < 8; i++) {
+        const card = document.createElement('div');
+        card.className = 'test-card';
+        card.innerHTML = `
+          <h3>Test Card ${++testCardCount}</h3>
+          <p>This is test content to create a scrollable popup. The content should overflow the container and enable vertical scrolling with smooth behavior.</p>
+          <p>Card height: ~80px. Multiple cards will create a tall content area that exceeds the popup's maximum height of 600px.</p>
+        `;
+        popupContent.appendChild(card);
+      }
+      updateScrollInfo();
+    }
+    
+    function clearContent() {
+      const testCards = popupContent.querySelectorAll('.test-card, .test-button');
+      testCards.forEach(card => card.remove());
+      testCardCount = 0;
+      updateScrollInfo();
+    }
+    
+    function scrollToTop() {
+      popupContent.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    
+    function scrollToMiddle() {
+      const maxScroll = popupContent.scrollHeight - popupContent.clientHeight;
+      popupContent.scrollTo({ top: maxScroll / 2, behavior: 'smooth' });
+    }
+    
+    function scrollToBottom() {
+      popupContent.scrollTo({ top: popupContent.scrollHeight, behavior: 'smooth' });
+    }
+    
+    function testKeyboardNav() {
+      alert('Click on the popup content area and use keyboard shortcuts:\\n\\n' +
+            'Ctrl + ↓/↑: Small scroll\\n' +
+            'Page Down/Up: Large scroll\\n' +
+            'Ctrl + Home/End: Scroll to top/bottom\\n\\n' +
+            'Focus will be set to the popup content for testing.');
+      popupContent.focus();
+    }
+    
+    function addFocusableElements() {
+      for (let i = 0; i < 12; i++) {
+        const button = document.createElement('button');
+        button.className = 'test-button btn btn-secondary';
+        button.style.display = 'block';
+        button.style.margin = '8px 16px';
+        button.style.width = 'calc(100% - 32px)';
+        button.textContent = `Focusable Button ${i + 1}`;
+        button.id = `test-button-${i}`;
+        
+        // Add focus event to test scroll-into-view
+        button.addEventListener('focus', () => {
+          console.log(`Button ${i + 1} focused - should be visible in viewport`);
+        });
+        
+        popupContent.appendChild(button);
+      }
+      updateScrollInfo();
+      
+      // Focus the first button to demonstrate scroll-into-view
+      setTimeout(() => {
+        document.getElementById('test-button-0')?.focus();
+      }, 100);
+    }
+    
+    function measurePerformance() {
+      if (!popupContent.scrollHeight || popupContent.scrollHeight <= popupContent.clientHeight) {
+        alert('Add tall content first to test scrolling performance');
+        return;
+      }
+      
+      const startTime = performance.now();
+      let scrollCount = 0;
+      const maxScrolls = 20;
+      
+      function performScroll() {
+        if (scrollCount < maxScrolls) {
+          popupContent.scrollBy({ top: 30, behavior: 'smooth' });
+          scrollCount++;
+          setTimeout(performScroll, 50);
+        } else {
+          const endTime = performance.now();
+          const duration = endTime - startTime;
+          const result = `Performance Test Results:\\n` +
+                        `Total time: ${duration.toFixed(2)}ms\\n` +
+                        `Scrolls performed: ${maxScrolls}\\n` +
+                        `Average per scroll: ${(duration / maxScrolls).toFixed(2)}ms\\n` +
+                        `Performance: ${duration < 2000 ? 'GOOD' : 'NEEDS IMPROVEMENT'}`;
+          
+          alert(result);
+          console.log('Performance test results:', { duration, scrollCount, averagePerScroll: duration / maxScrolls });
+          
+          // Reset scroll position
+          popupContent.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }
+      
+      performScroll();
+    }
+    
+    // Initialize
+    updateScrollInfo();
+    
+    // Add resize observer to track dimension changes
+    if (window.ResizeObserver) {
+      const resizeObserver = new ResizeObserver(entries => {
+        for (let entry of entries) {
+          const { width, height } = entry.contentRect;
+          console.log(`Popup content dimensions changed: ${width}px × ${height}px`);
+          updateScrollInfo();
+        }
+      });
+      
+      resizeObserver.observe(popupContent);
+    }
+    
+    // Test smooth scrolling detection
+    function detectSmoothScrolling() {
+      const computedStyle = window.getComputedStyle(popupContent);
+      const scrollBehavior = computedStyle.scrollBehavior;
+      console.log('Scroll behavior:', scrollBehavior);
+      
+      if (scrollBehavior === 'smooth') {
+        console.log('✅ Smooth scrolling is enabled');
+      } else {
+        console.log('⚠️ Smooth scrolling may not be enabled');
+      }
+    }
+    
+    // Test overflow detection
+    function detectOverflow() {
+      const computedStyle = window.getComputedStyle(popupContent);
+      const overflowY = computedStyle.overflowY;
+      console.log('Overflow-Y:', overflowY);
+      
+      if (overflowY === 'auto') {
+        console.log('✅ Overflow-Y: auto is properly set');
+      } else {
+        console.log('⚠️ Overflow-Y is not set to auto:', overflowY);
+      }
+    }
+    
+    // Run initial tests
+    setTimeout(() => {
+      detectSmoothScrolling();
+      detectOverflow();
+    }, 100);
+    
+    // Add browser detection
+    function detectBrowser() {
+      const userAgent = navigator.userAgent;
+      let browser = 'Unknown';
+      
+      if (userAgent.includes('Firefox')) {
+        browser = 'Firefox';
+      } else if (userAgent.includes('Chrome')) {
+        browser = 'Chrome';
+      } else if (userAgent.includes('Safari')) {
+        browser = 'Safari';
+      } else if (userAgent.includes('Edge')) {
+        browser = 'Edge';
+      }
+      
+      console.log('Browser detected:', browser);
+      console.log('User agent:', userAgent);
+      
+      // Test browser-specific features
+      if (browser === 'Firefox') {
+        console.log('Testing Firefox-specific scrollbar properties...');
+        const style = window.getComputedStyle(popupContent);
+        console.log('scrollbar-width:', style.scrollbarWidth);
+        console.log('scrollbar-color:', style.scrollbarColor);
+      }
+    }
+    
+    detectBrowser();
+  </script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+{
+  "name": "watch-party-extension",
+  "version": "1.0.0",
+  "description": "Cross-browser watch party extension for synchronized video viewing",
+  "main": "dist/background.js",
+  "scripts": {
+    "build": "npm run build:chrome && npm run build:firefox",
+    "build:chrome": "webpack --mode=production --env browser=chrome",
+    "build:firefox": "webpack --mode=production --env browser=firefox",
+    "build:dev": "npm run build:dev:chrome && npm run build:dev:firefox",
+    "build:dev:chrome": "webpack --mode=development --env browser=chrome",
+    "build:dev:firefox": "webpack --mode=development --env browser=firefox",
+    "watch": "webpack --mode=development --watch --env browser=chrome",
+    "watch:firefox": "webpack --mode=development --watch --env browser=firefox",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest --run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest --run --coverage",
+    "test:mutation": "stryker run",
+    "test:runtime-fixes": "node scripts/test-runtime-fixes.js",
+    "format": "prettier --write src/**/*.{ts,tsx,json,css}",
+    "format:check": "prettier --check src/**/*.{ts,tsx,json,css}",
+    "prepare": "husky install",
+    "server:install": "cd server && npm install",
+    "server:start": "cd server && npm start",
+    "server:dev": "cd server && npm run dev",
+    "server:test": "cd server && npm test",
+    "dev:full": "concurrently \"npm run server:dev\" \"npm run watch\"",
+    "dev:setup": "npm install && npm run server:install"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^17.0.0",
+    "@commitlint/config-conventional": "^17.0.0",
+    "@stryker-mutator/core": "^7.0.0",
+    "@stryker-mutator/typescript-checker": "^7.0.0",
+    "@stryker-mutator/vitest-runner": "^7.0.0",
+    "@tailwindcss/postcss": "^4.1.16",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/chrome": "^0.0.246",
+    "@types/webextension-polyfill": "^0.10.7",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "@vitest/coverage-v8": "^1.0.0",
+    "autoprefixer": "^10.4.21",
+    "concurrently": "^8.2.2",
+    "copy-webpack-plugin": "^11.0.0",
+    "css-loader": "^7.1.2",
+    "eslint": "^8.45.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "husky": "^8.0.3",
+    "jsdom": "^23.0.0",
+    "lint-staged": "^14.0.0",
+    "postcss": "^8.5.6",
+    "postcss-loader": "^8.2.0",
+    "prettier": "^3.0.0",
+    "style-loader": "^4.0.0",
+    "tailwindcss": "^4.1.16",
+    "ts-loader": "^9.4.4",
+    "typescript": "^5.1.6",
+    "vitest": "^1.0.0",
+    "webextension-polyfill": "^0.10.0",
+    "webpack": "^5.88.2",
+    "webpack-cli": "^5.1.4"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^7.3.4",
+    "@mui/material": "^7.3.4",
+    "@tailwindcss/forms": "^0.5.10",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "webextension-polyfill": "^0.10.0"
+  },
+  "lint-staged": {
+    "src/**/*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "src/**/*.{json,md,css}": [
+      "prettier --write"
+    ]
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  }
+}

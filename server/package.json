@@ -1,0 +1,36 @@
+{
+  "name": "watch-party-local-relay",
+  "version": "1.0.0",
+  "description": "Local WebSocket relay server for Watch Party Extension development",
+  "main": "local-relay.js",
+  "scripts": {
+    "start": "node local-relay.js",
+    "dev": "nodemon local-relay.js",
+    "test": "node test-relay.js",
+    "test:feature-flags": "node test-feature-flags.js",
+    "test:all": "npm run test && npm run test:feature-flags",
+    "feature-flags": "node feature-flags-server.js",
+    "feature-flags:dev": "nodemon feature-flags-server.js",
+    "start:all": "concurrently \"npm run start\" \"npm run feature-flags\"",
+    "dev:all": "concurrently \"npm run dev\" \"npm run feature-flags:dev\""
+  },
+  "dependencies": {
+    "ws": "^8.14.2",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1",
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "keywords": [
+    "websocket",
+    "watch-party",
+    "development",
+    "relay"
+  ],
+  "author": "Watch Party Extension",
+  "license": "MIT"
+}

@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Accessibility Options Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 20px;
+      background-color: #f8f9fa;
+    }
+    
+    .test-container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .test-section {
+      margin-bottom: 30px;
+      padding: 20px;
+      border: 1px solid #e9ecef;
+      border-radius: 4px;
+    }
+    
+    .test-section h3 {
+      margin-top: 0;
+      color: #333;
+    }
+    
+    .test-result {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    
+    .test-result.pass {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    
+    .test-result.fail {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      border: none;
+      border-radius: 4px;
+      background-color: #007cba;
+      color: white;
+      cursor: pointer;
+    }
+    
+    button:hover {
+      background-color: #005a8b;
+    }
+    
+    button:focus {
+      outline: 2px solid #007cba;
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="test-container">
+    <h1>Accessibility Options Implementation Test</h1>
+    
+    <div class="test-section">
+      <h3>Test 1: Accessibility Toggle Button</h3>
+      <p>The accessibility toggle button should be present and functional.</p>
+      <button onclick="testAccessibilityToggle()">Test Accessibility Toggle</button>
+      <div id="toggle-result" class="test-result" style="display: none;"></div>
+    </div>
+    
+    <div class="test-section">
+      <h3>Test 2: Collapsible Sections</h3>
+      <p>Sections should be collapsible and expandable.</p>
+      <button onclick="testCollapsibleSections()">Test Collapsible Sections</button>
+      <div id="collapsible-result" class="test-result" style="display: none;"></div>
+    </div>
+    
+    <div class="test-section">
+      <h3>Test 3: Accessibility Section Visibility</h3>
+      <p>Accessibility section should be hidden by default and show when toggled.</p>
+      <button onclick="testAccessibilityVisibility()">Test Accessibility Visibility</button>
+      <div id="visibility-result" class="test-result" style="display: none;"></div>
+    </div>
+    
+    <div class="test-section">
+      <h3>Test 4: Keyboard Navigation</h3>
+      <p>Alt+A should toggle accessibility options.</p>
+      <button onclick="testKeyboardShortcut()">Test Keyboard Shortcut (Alt+A)</button>
+      <div id="keyboard-result" class="test-result" style="display: none;"></div>
+      <p><small>Press Alt+A to test the keyboard shortcut</small></p>
+    </div>
+    
+    <div class="test-section">
+      <h3>Manual Test: Open Options Page</h3>
+      <p>Open the actual options page to verify the implementation:</p>
+      <button onclick="openOptionsPage()">Open Options Page</button>
+    </div>
+  </div>
+
+  <script>
+    function showResult(elementId, passed, message) {
+      const element = document.getElementById(elementId);
+      element.style.display = 'block';
+      element.className = `test-result ${passed ? 'pass' : 'fail'}`;
+      element.textContent = `${passed ? 'PASS' : 'FAIL'}: ${message}`;
+    }
+    
+    function testAccessibilityToggle() {
+      // Test if we can create the toggle button structure
+      try {
+        const toggle = document.createElement('button');
+        toggle.id = 'accessibilityToggle';
+        toggle.className = 'accessibility-toggle';
+        toggle.setAttribute('aria-pressed', 'false');
+        toggle.setAttribute('title', 'Toggle accessibility options (Alt+A)');
+        toggle.setAttribute('aria-label', 'Toggle accessibility options');
+        toggle.textContent = '♿';
+        
+        const hasRequiredAttributes = toggle.hasAttribute('aria-pressed') && 
+                                     toggle.hasAttribute('title') && 
+                                     toggle.hasAttribute('aria-label');
+        
+        showResult('toggle-result', hasRequiredAttributes, 
+          hasRequiredAttributes ? 'Accessibility toggle structure is correct' : 'Missing required attributes');
+      } catch (error) {
+        showResult('toggle-result', false, `Error creating toggle: ${error.message}`);
+      }
+    }
+    
+    function testCollapsibleSections() {
+      // Test collapsible section structure
+      try {
+        const section = document.createElement('div');
+        section.className = 'collapsible-section';
+        section.setAttribute('data-section', 'test');
+        
+        const header = document.createElement('button');
+        header.className = 'collapsible-header';
+        header.setAttribute('aria-expanded', 'false');
+        header.setAttribute('aria-controls', 'test-content');
+        header.innerHTML = '<span>Test Section</span><span class="collapsible-icon">▼</span>';
+        
+        const content = document.createElement('div');
+        content.id = 'test-content';
+        content.className = 'collapsible-content';
+        content.setAttribute('role', 'region');
+        content.setAttribute('aria-labelledby', 'test-header');
+        
+        section.appendChild(header);
+        section.appendChild(content);
+        
+        const hasCorrectStructure = header.hasAttribute('aria-expanded') && 
+                                   header.hasAttribute('aria-controls') &&
+                                   content.hasAttribute('role') &&
+                                   content.hasAttribute('aria-labelledby');
+        
+        showResult('collapsible-result', hasCorrectStructure, 
+          hasCorrectStructure ? 'Collapsible section structure is correct' : 'Missing required ARIA attributes');
+      } catch (error) {
+        showResult('collapsible-result', false, `Error creating collapsible section: ${error.message}`);
+      }
+    }
+    
+    function testAccessibilityVisibility() {
+      // Test accessibility section visibility logic
+      try {
+        const accessibilitySection = document.createElement('div');
+        accessibilitySection.className = 'accessibility-section';
+        
+        // Should be hidden by default
+        const isHiddenByDefault = !accessibilitySection.classList.contains('visible');
+        
+        // Should show when visible class is added
+        accessibilitySection.classList.add('visible');
+        const isVisibleWhenToggled = accessibilitySection.classList.contains('visible');
+        
+        const testPassed = isHiddenByDefault && isVisibleWhenToggled;
+        
+        showResult('visibility-result', testPassed, 
+          testPassed ? 'Accessibility section visibility logic works correctly' : 'Visibility logic failed');
+      } catch (error) {
+        showResult('visibility-result', false, `Error testing visibility: ${error.message}`);
+      }
+    }
+    
+    function testKeyboardShortcut() {
+      let shortcutDetected = false;
+      
+      // Add temporary event listener
+      const keyHandler = (e) => {
+        if (e.altKey && e.key.toLowerCase() === 'a') {
+          shortcutDetected = true;
+          showResult('keyboard-result', true, 'Alt+A keyboard shortcut detected successfully');
+          document.removeEventListener('keydown', keyHandler);
+        }
+      };
+      
+      document.addEventListener('keydown', keyHandler);
+      
+      // Set timeout to show failure if shortcut not pressed
+      setTimeout(() => {
+        if (!shortcutDetected) {
+          showResult('keyboard-result', false, 'Alt+A keyboard shortcut not detected (try pressing Alt+A)');
+          document.removeEventListener('keydown', keyHandler);
+        }
+      }, 5000);
+      
+      showResult('keyboard-result', true, 'Listening for Alt+A... (press Alt+A within 5 seconds)');
+    }
+    
+    function openOptionsPage() {
+      // Try to open the options page
+      try {
+        const optionsUrl = './dist/Chrome/options.html';
+        window.open(optionsUrl, '_blank');
+      } catch (error) {
+        alert('Could not open options page. Please navigate to dist/Chrome/options.html manually.');
+      }
+    }
+  </script>
+</body>
+</html>

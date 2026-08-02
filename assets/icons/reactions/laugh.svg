@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#F59E0B">
+  <!-- Material Symbols Sentiment Very Satisfied - Apache 2.0 License -->
+  <circle cx="12" cy="12" r="10"/>
+  <path d="M8 14s1.5 2 4 2 4-2 4-2" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <circle cx="9" cy="9" r="1" fill="white"/>
+  <circle cx="15" cy="9" r="1" fill="white"/>
+  <style>
+    circle:first-child {
+      fill: #F59E0B;
+    }
+    @media (prefers-color-scheme: dark) {
+      circle:first-child {
+        fill: #FBBF24;
+      }
+    }
+    @media (prefers-color-scheme: light) {
+      circle:first-child {
+        fill: #D97706;
+      }
+    }
+  </style>
+</svg>

@@ -1,0 +1,83 @@
+/* Fade transition animations */
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.fade-out {
+  animation: fadeOut 0.3s ease-in;
+}
+
+@keyframes fadeOut {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.fade-in-scale {
+  animation: fadeInScale 0.3s ease-out;
+}
+
+@keyframes fadeInScale {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.fade-out-scale {
+  animation: fadeOutScale 0.3s ease-in;
+}
+
+@keyframes fadeOutScale {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+/* Fade with blur effect */
+.fade-in-blur {
+  animation: fadeInBlur 0.4s ease-out;
+}
+
+@keyframes fadeInBlur {
+  0% {
+    opacity: 0;
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+/* Cross-fade transition */
+.cross-fade-enter {
+  animation: crossFadeEnter 0.3s ease-out;
+}
+
+.cross-fade-exit {
+  animation: crossFadeExit 0.3s ease-out;
+}
+
+@keyframes crossFadeEnter {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes crossFadeExit {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}

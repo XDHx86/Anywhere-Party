@@ -1,0 +1,19 @@
+{
+  "packageManager": "npm",
+  "reporters": ["html", "clear-text", "progress"],
+  "testRunner": "vitest",
+  "coverageAnalysis": "perTest",
+  "mutate": [
+    "src/@core/**/*.ts",
+    "!src/@core/**/*.d.ts",
+    "!src/@core/**/*.test.ts",
+    "!src/@core/**/*.spec.ts"
+  ],
+  "thresholds": {
+    "high": 80,
+    "low": 60,
+    "break": 50
+  },
+  "timeoutMS": 60000,
+  "concurrency": 4
+}

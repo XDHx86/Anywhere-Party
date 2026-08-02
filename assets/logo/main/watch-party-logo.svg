@@ -1,0 +1,13 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Main circle background -->
+  <circle cx="24" cy="24" r="22" fill="#6366F1" stroke="#4F46E5" stroke-width="2"/>
+  
+  <!-- Play button triangle -->
+  <path d="M19 16L19 32L33 24L19 16Z" fill="white"/>
+  
+  <!-- Small circles representing multiple users -->
+  <circle cx="38" cy="14" r="4" fill="#10B981" stroke="white" stroke-width="1"/>
+  <circle cx="10" cy="14" r="4" fill="#F59E0B" stroke="white" stroke-width="1"/>
+  <circle cx="38" cy="34" r="4" fill="#EF4444" stroke="white" stroke-width="1"/>
+  <circle cx="10" cy="34" r="4" fill="#8B5CF6" stroke="white" stroke-width="1"/>
+</svg>

@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Watch Party Settings</title>
+  <link rel="stylesheet" href="../../@core/accessibility/accessibility-styles.css">
+  <style>
+    body {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      background-color: #f8f9fa;
+    }
+
+    .header {
+      background: white;
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      border-bottom: 1px solid #eee;
+    }
+
+    .header h1 {
+      margin: 0 0 8px 0;
+      color: #333;
+    }
+
+    .header p {
+      margin: 0;
+      color: #666;
+    }
+
+    .section {
+      background: white;
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .section h3 {
+      margin: 0 0 16px 0;
+      color: #333;
+      font-size: 18px;
+      border-bottom: 1px solid #e9ecef;
+      padding-bottom: 8px;
+    }
+
+    .subsection {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid #e9ecef;
+    }
+
+    .subsection h4 {
+      margin: 0 0 12px 0;
+      color: #495057;
+      font-size: 16px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 4px;
+      font-weight: 500;
+      color: #495057;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      box-sizing: border-box;
+      transition: border-color 0.2s;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: #007cba;
+      box-shadow: 0 0 0 2px rgba(0, 124, 186, 0.1);
+    }
+
+    textarea {
+      height: 120px;
+      resize: vertical;
+      font-family: 'Courier New', monospace;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+      width: auto;
+      margin-top: 2px;
+    }
+
+    .checkbox-group label {
+      margin-bottom: 0;
+      flex: 1;
+    }
+
+    .help-text {
+      display: block;
+      font-size: 12px;
+      color: #6c757d;
+      margin-top: 4px;
+    }
+
+    .server-item, .language-item, .turn-server-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      padding: 8px;
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 4px;
+    }
+
+    .turn-server-item {
+      flex-direction: column;
+      align-items: stretch;
+      padding: 16px;
+    }
+
+    .turn-server-item .form-group {
+      margin-bottom: 12px;
+    }
+
+    .actions {
+      background: white;
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .import-export-actions {
+      display: flex;
+      gap: 24px;
+      margin: 16px 0;
+      flex-wrap: wrap;
+    }
+
+    .action-group {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .action-group h4 {
+      margin: 0 0 8px 0;
+      font-size: 14px;
+      color: #495057;
+    }
+
+    .action-group button {
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background-color: #007cba;
+      color: white;
+    }
+
+    .btn-secondary {
+      background-color: #6c757d;
+      color: white;
+    }
+
+    .btn-danger {
+      background-color: #dc3545;
+      color: white;
+    }
+
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+
+    button:hover:not(:disabled) {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .status {
+      padding: 12px 16px;
+      border-radius: 4px;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    .status.success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .status.error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .status.warning {
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeaa7;
+    }
+
+    .format-example {
+      margin-top: 16px;
+      padding: 16px;
+      background-color: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 4px;
+    }
+
+    .format-example h4 {
+      margin: 0 0 8px 0;
+      font-size: 14px;
+      color: #495057;
+    }
+
+    .format-example pre {
+      margin: 0;
+      padding: 8px;
+      background-color: #ffffff;
+      border: 1px solid #e9ecef;
+      border-radius: 3px;
+      font-size: 12px;
+      overflow-x: auto;
+    }
+
+    #fileImport {
+      display: none;
+    }
+
+    /* Collapsible sections */
+    .collapsible-section {
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+
+    .collapsible-header {
+      background: #f8f9fa;
+      padding: 16px 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: none;
+      width: 100%;
+      text-align: left;
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
+      transition: background-color 0.2s;
+    }
+
+    .collapsible-header:hover {
+      background: #e9ecef;
+    }
+
+    .collapsible-header:focus {
+      outline: 2px solid #007cba;
+      outline-offset: -2px;
+    }
+
+    .collapsible-icon {
+      transition: transform 0.2s;
+      font-size: 18px;
+      color: #666;
+    }
+
+    .collapsible-section.expanded .collapsible-icon {
+      transform: rotate(180deg);
+    }
+
+    .collapsible-content {
+      padding: 0 20px;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease, padding 0.3s ease;
+    }
+
+    .collapsible-section.expanded .collapsible-content {
+      max-height: 2000px;
+      padding: 20px;
+    }
+
+    /* Accessibility toggle */
+    .accessibility-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+      background: #007cba;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 56px;
+      height: 56px;
+      font-size: 20px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 124, 186, 0.3);
+      transition: all 0.2s;
+    }
+
+    .accessibility-toggle:hover {
+      background: #005a8b;
+      transform: scale(1.05);
+    }
+
+    .accessibility-toggle:focus {
+      outline: 3px solid #ffff00;
+      outline-offset: 2px;
+    }
+
+    .accessibility-toggle[aria-pressed="true"] {
+      background: #28a745;
+    }
+
+    /* Hidden accessibility section */
+    .accessibility-section {
+      display: none;
+    }
+
+    .accessibility-section.visible {
+      display: block;
+    }
+
+    .accessibility-notice {
+      background: #e7f3ff;
+      border: 1px solid #b3d9ff;
+      border-radius: 4px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      color: #0c5460;
+    }
+
+    .accessibility-notice .icon {
+      margin-right: 8px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Skip links for keyboard navigation -->
+  <div class="skip-links">
+    <a href="#configForm" class="skip-link">Skip to settings form</a>
+    <a href="#actions" class="skip-link">Skip to actions</a>
+  </div>
+
+  <!-- Accessibility Toggle Button -->
+  <button 
+    id="accessibilityToggle" 
+    class="accessibility-toggle" 
+    aria-pressed="false"
+    title="Toggle accessibility options (Alt+A)"
+    aria-label="Toggle accessibility options">
+    ♿
+  </button>
+
+  <div class="header">
+    <h1>Watch Party Settings</h1>
+    <p>Configure your watch party extension preferences</p>
+  </div>
+
+  <div id="status" class="status" role="status" aria-live="polite"></div>
+
+  <form id="configForm">
+    <!-- Server Configuration -->
+    <div class="collapsible-section expanded" data-section="server">
+      <button type="button" class="collapsible-header" aria-expanded="true" aria-controls="server-content">
+        <span>Server Configuration</span>
+        <span class="collapsible-icon">▼</span>
+      </button>
+      <div id="server-content" class="collapsible-content" role="region" aria-labelledby="server-header">
+      
+      <div class="form-group">
+        <label for="signalingServer">Signaling Server URL</label>
+        <input type="url" id="signalingServer" name="SIGNALING_SERVER" placeholder="wss://api.watchparty.example.com">
+        <small class="help-text">WebSocket URL for the signaling server. Use ws:// for local development, wss:// for production.</small>
+      </div>
+      
+      <div class="form-group">
+        <label for="signalingWsPath">WebSocket Path</label>
+        <input type="text" id="signalingWsPath" name="SIGNALING_WS_PATH" placeholder="/ws">
+        <small class="help-text">Optional path to append to the signaling server URL.</small>
+      </div>
+      
+      <div class="checkbox-group">
+        <input type="checkbox" id="localDevMode" name="LOCAL_DEV_MODE">
+        <label for="localDevMode">Local Development Mode</label>
+        <small class="help-text">Use lightweight local relay server instead of full signaling server.</small>
+      </div>
+
+      <div class="form-group">
+        <label for="roomDefaultPassword">Default Room Password</label>
+        <input type="password" id="roomDefaultPassword" name="ROOM_DEFAULT_PASSWORD" placeholder="Leave empty for no default password">
+        <small class="help-text">Default password for new rooms (optional).</small>
+      </div>
+      </div>
+    </div>
+
+    <!-- Synchronization Settings -->
+    <div class="collapsible-section" data-section="sync">
+      <button type="button" class="collapsible-header" aria-expanded="false" aria-controls="sync-content">
+        <span>Synchronization Settings</span>
+        <span class="collapsible-icon">▼</span>
+      </button>
+      <div id="sync-content" class="collapsible-content" role="region" aria-labelledby="sync-header">
+      
+      <div class="form-group">
+        <label for="syncTolerance">Sync Tolerance (ms)</label>
+        <input type="number" id="syncTolerance" name="SYNC_TOLERANCE_MS" min="50" max="2000" step="50">
+        <small class="help-text">Maximum allowed drift before triggering sync correction (50-2000ms).</small>
+      </div>
+      
+      <div class="form-group">
+        <label for="syncTimeout">Sync Timeout (ms)</label>
+        <input type="number" id="syncTimeout" name="SYNC_TIMEOUT_MS" min="1000" max="30000" step="1000">
+        <small class="help-text">Maximum time to wait for sync convergence (1000-30000ms).</small>
+      </div>
+      
+      <div class="form-group">
+        <label for="heartbeatInterval">Heartbeat Interval (ms)</label>
+        <input type="number" id="heartbeatInterval" name="HEARTBEAT_INTERVAL_MS" min="500" max="10000" step="500">
+        <small class="help-text">Frequency of sync heartbeat messages (500-10000ms).</small>
+      </div>
+
+      <div class="form-group">
+        <label for="annotationRenderInterval">Annotation Render Interval (ms)</label>
+        <input type="number" id="annotationRenderInterval" name="ANNOTATION_RENDER_INTERVAL_MS" min="8" max="100" step="1">
+        <small class="help-text">Frequency of annotation rendering updates (8-100ms). Lower values = smoother but more CPU intensive.</small>
+      </div>
+
+      <div class="form-group">
+        <label for="reconnectInterval">Reconnect Interval (ms)</label>
+        <input type="number" id="reconnectInterval" name="RECONNECT_INTERVAL_MS" min="1000" max="30000" step="1000">
+        <small class="help-text">Time between reconnection attempts (1000-30000ms).</small>
+      </div>
+
+      <div class="form-group">
+        <label for="roomStateTtl">Room State TTL (ms)</label>
+        <input type="number" id="roomStateTtl" name="ROOM_STATE_TTL_MS" min="60000" max="3600000" step="60000">
+        <small class="help-text">How long to keep room state after disconnection (60000-3600000ms).</small>
+      </div>
+
+      <div class="form-group">
+        <label for="videoDetectPoll">Video Detection Polling (ms)</label>
+        <input type="number" id="videoDetectPoll" name="VIDEO_DETECT_POLL_MS" min="100" max="5000" step="100" placeholder="Disabled (uses MutationObserver only)">
+        <small class="help-text">Optional fallback polling for video detection. Leave empty to disable.</small>
+      </div>
+      </div>
+    </div>
+
+    <!-- Feature Flags -->
+    <div class="collapsible-section" data-section="features">
+      <button type="button" class="collapsible-header" aria-expanded="false" aria-controls="features-content">
+        <span>Feature Flags</span>
+        <span class="collapsible-icon">▼</span>
+      </button>
+      <div id="features-content" class="collapsible-content" role="region" aria-labelledby="features-header">
+      
+      <div class="checkbox-group">
+        <input type="checkbox" id="voicechat" name="VOICE_CHAT">
+        <label for="voicechat">Voice Chat</label>
+        <small class="help-text">Enable WebRTC voice communication between participants.</small>
+      </div>
+      
+      <div class="checkbox-group">
+        <input type="checkbox" id="annotations" name="ANNOTATIONS">
+        <label for="annotations">Basic Annotations</label>
+        <small class="help-text">Enable basic drawing and markup tools on video.</small>
+      </div>
+
+      <div class="checkbox-group">
+        <input type="checkbox" id="advancedannotations" name="ADVANCED_ANNOTATIONS">
+        <label for="advancedannotations">Advanced Annotations</label>
+        <small class="help-text">Enable advanced annotation features like layers and collaborative editing.</small>
+      </div>
+      
+      <div class="checkbox-group">
+        <input type="checkbox" id="subtitles" name="SUBTITLES">
+        <label for="subtitles">Subtitles</label>
+        <small class="help-text">Enable subtitle loading and OpenSubtitles integration.</small>
+      </div>
+
+      <div class="checkbox-group">
+        <input type="checkbox" id="playlists" name="PLAYLISTS">
+        <label for="playlists">Playlists</label>
+        <small class="help-text">Enable shared video queues and playlist management.</small>
+      </div>
+
+      <div class="checkbox-group">
+        <input type="checkbox" id="scheduling" name="SCHEDULING">
+        <label for="scheduling">Scheduling</label>
+        <small class="help-text">Enable scheduled watch parties and calendar integration.</small>
+      </div>
+
+      <div class="checkbox-group">
+        <input type="checkbox" id="e2eencryption" name="E2E_ENCRYPTION">
+        <label for="e2eencryption">End-to-End Encryption</label>
+        <small class="help-text">Enable end-to-end encryption for chat messages (experimental).</small>
+      </div>
+      
+      <div class="checkbox-group">
+        <input type="checkbox" id="telemetry" name="TELEMETRY_ENABLED">
+        <label for="telemetry">Enable Telemetry</label>
+        <small class="help-text">Send anonymous usage data to help improve the extension.</small>
+      </div>
+      </div>
+    </div>
+
+    <!-- WebRTC Configuration -->
+    <div class="collapsible-section" data-section="webrtc">
+      <button type="button" class="collapsible-header" aria-expanded="false" aria-controls="webrtc-content">
+        <span>WebRTC Configuration</span>
+        <span class="collapsible-icon">▼</span>
+      </button>
+      <div id="webrtc-content" class="collapsible-content" role="region" aria-labelledby="webrtc-header">
+      
+      <div class="subsection">
+        <h4>STUN Servers</h4>
+        <small class="help-text">STUN servers help establish peer-to-peer connections. At least one is recommended.</small>
+        <div id="stunServersContainer"></div>
+        <button type="button" id="addStunServer" class="btn-secondary btn-small">Add STUN Server</button>
+      </div>
+
+      <div class="subsection">
+        <h4>TURN Servers</h4>
+        <small class="help-text">TURN servers provide relay functionality for restrictive networks. Optional but recommended for production.</small>
+        <div id="turnServersContainer"></div>
+        <button type="button" id="addTurnServer" class="btn-secondary btn-small">Add TURN Server</button>
+      </div>
+      </div>
+    </div>
+
+    <!-- Subtitle Configuration -->
+    <div class="collapsible-section" data-section="subtitles">
+      <button type="button" class="collapsible-header" aria-expanded="false" aria-controls="subtitles-content">
+        <span>Subtitle Configuration</span>
+        <span class="collapsible-icon">▼</span>
+      </button>
+      <div id="subtitles-content" class="collapsible-content" role="region" aria-labelledby="subtitles-header">
+      
+      <div class="form-group">
+        <label for="opensubtitlesKey">OpenSubtitles API Key</label>
+        <input type="password" id="opensubtitlesKey" name="OPENSUBTITLES_KEY" placeholder="Enter your OpenSubtitles API key">
+        <small class="help-text">Optional API key for OpenSubtitles integration. Get one at <a href="https://www.opensubtitles.com/api" target="_blank" rel="noopener noreferrer">opensubtitles.com/api</a></small>
+      </div>
+
+      <div class="subsection">
+        <h4>Default Subtitle Languages</h4>
+        <small class="help-text">Preferred languages for subtitle search and selection (ISO 639-1 codes).</small>
+        <div id="subtitleLanguagesContainer"></div>
+        <button type="button" id="addSubtitleLanguage" class="btn-secondary btn-small">Add Language</button>
+      </div>
+      </div>
+    </div>
+
+    <!-- Accessibility Settings (Hidden by default) -->
+    <div class="accessibility-section collapsible-section" data-section="accessibility">
+      <button type="button" class="collapsible-header" aria-expanded="false" aria-controls="accessibility-content">
+        <span>Accessibility Settings</span>
+        <span class="collapsible-icon">▼</span>
+      </button>
+      <div id="accessibility-content" class="collapsible-content" role="region" aria-labelledby="accessibility-header">
+        
+        <div class="accessibility-notice">
+          <span class="icon">ℹ️</span>
+          These settings enhance the extension for users with disabilities. Features include keyboard navigation, screen reader support, high contrast mode, and customizable styling.
+        </div>
+
+        <div class="subsection">
+          <h4>Navigation & Interaction</h4>
+          
+          <div class="checkbox-group">
+            <input type="checkbox" id="keyboardNavigation" name="KEYBOARD_NAVIGATION_ENABLED" checked>
+            <label for="keyboardNavigation">Enhanced Keyboard Navigation</label>
+            <small class="help-text">Enable advanced keyboard shortcuts and navigation features.</small>
+          </div>
+
+          <div class="checkbox-group">
+            <input type="checkbox" id="screenReaderSupport" name="SCREEN_READER_ENABLED">
+            <label for="screenReaderSupport">Screen Reader Support</label>
+            <small class="help-text">Enable enhanced announcements and ARIA labels for screen readers.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="focusIndicatorStyle">Focus Indicator Style</label>
+            <select id="focusIndicatorStyle" name="FOCUS_INDICATOR_STYLE">
+              <option value="default">Default</option>
+              <option value="high-contrast">High Contrast</option>
+              <option value="custom">Custom</option>
+            </select>
+            <small class="help-text">Choose how focused elements are highlighted.</small>
+          </div>
+        </div>
+
+        <div class="subsection">
+          <h4>Visual Accessibility</h4>
+          
+          <div class="checkbox-group">
+            <input type="checkbox" id="highContrastMode" name="HIGH_CONTRAST_MODE">
+            <label for="highContrastMode">High Contrast Mode</label>
+            <small class="help-text">Enable high contrast colors for better visibility.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="fontSize">Font Size</label>
+            <select id="fontSize" name="FONT_SIZE">
+              <option value="small">Small</option>
+              <option value="medium" selected>Medium</option>
+              <option value="large">Large</option>
+              <option value="extra-large">Extra Large</option>
+            </select>
+            <small class="help-text">Adjust text size throughout the interface.</small>
+          </div>
+
+          <div class="checkbox-group">
+            <input type="checkbox" id="reducedMotion" name="REDUCED_MOTION">
+            <label for="reducedMotion">Reduce Motion</label>
+            <small class="help-text">Minimize animations and transitions.</small>
+          </div>
+        </div>
+
+        <div class="subsection">
+          <h4>Custom Colors</h4>
+          
+          <div class="form-group">
+            <label for="customBackground">Background Color</label>
+            <input type="color" id="customBackground" name="CUSTOM_BG_COLOR" value="#ffffff">
+            <small class="help-text">Choose a custom background color.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="customForeground">Text Color</label>
+            <input type="color" id="customForeground" name="CUSTOM_FG_COLOR" value="#000000">
+            <small class="help-text">Choose a custom text color.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="customAccent">Accent Color</label>
+            <input type="color" id="customAccent" name="CUSTOM_ACCENT_COLOR" value="#007cba">
+            <small class="help-text">Choose a custom accent color for buttons and links.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="customBorder">Border Color</label>
+            <input type="color" id="customBorder" name="CUSTOM_BORDER_COLOR" value="#cccccc">
+            <small class="help-text">Choose a custom border color.</small>
+          </div>
+        </div>
+
+        <div class="subsection">
+          <h4>Caption & Subtitle Styling</h4>
+          
+          <div class="form-group">
+            <label for="captionFontSize">Caption Font Size</label>
+            <select id="captionFontSize" name="CAPTION_FONT_SIZE">
+              <option value="small">Small</option>
+              <option value="medium" selected>Medium</option>
+              <option value="large">Large</option>
+              <option value="extra-large">Extra Large</option>
+            </select>
+            <small class="help-text">Adjust subtitle and caption text size.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="captionBackground">Caption Background</label>
+            <input type="color" id="captionBackground" name="CAPTION_BG_COLOR" value="#000000">
+            <small class="help-text">Background color for subtitle text.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="captionTextColor">Caption Text Color</label>
+            <input type="color" id="captionTextColor" name="CAPTION_TEXT_COLOR" value="#ffffff">
+            <small class="help-text">Text color for subtitles and captions.</small>
+          </div>
+
+          <div class="checkbox-group">
+            <input type="checkbox" id="captionOutline" name="CAPTION_OUTLINE">
+            <label for="captionOutline">Caption Text Outline</label>
+            <small class="help-text">Add outline to caption text for better readability.</small>
+          </div>
+        </div>
+
+        <div class="subsection">
+          <h4>Audio Descriptions</h4>
+          
+          <div class="checkbox-group">
+            <input type="checkbox" id="audioDescriptions" name="AUDIO_DESCRIPTIONS">
+            <label for="audioDescriptions">Enable Audio Descriptions</label>
+            <small class="help-text">Enable audio descriptions for visual content when available.</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Import/Export Configuration -->
+    <div class="collapsible-section" data-section="import-export">
+      <button type="button" class="collapsible-header" aria-expanded="false" aria-controls="import-export-content">
+        <span>Import/Export Configuration</span>
+        <span class="collapsible-icon">▼</span>
+      </button>
+      <div id="import-export-content" class="collapsible-content" role="region" aria-labelledby="import-export-header">
+      
+      <div class="form-group">
+        <label for="configFormat">Format</label>
+        <select id="configFormat">
+          <option value="json">JSON</option>
+          <option value="env">Environment Variables</option>
+          <option value="ini">INI File</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label for="configData">Configuration Data</label>
+        <textarea id="configData" placeholder="Paste configuration here to import or export will appear here..."></textarea>
+      </div>
+
+      <div class="import-export-actions">
+        <div class="action-group">
+          <h4>Import</h4>
+          <button type="button" id="importBtn" class="btn-secondary">Import Config</button>
+          <button type="button" id="importFromFile" class="btn-secondary">Import from File</button>
+          <input type="file" id="fileImport" accept=".json,.env,.ini,.txt">
+        </div>
+
+        <div class="action-group">
+          <h4>Export</h4>
+          <button type="button" id="exportBtn" class="btn-secondary">Export Config</button>
+          <button type="button" id="downloadExport" class="btn-secondary">Download File</button>
+        </div>
+      </div>
+      </div>
+    </div>
+  </form>
+
+  <div class="actions">
+    <button type="submit" form="configForm" class="btn-primary" disabled>Save Settings</button>
+    <button type="button" id="resetBtn" class="btn-danger">Reset to Defaults</button>
+  </div>
+
+  <script src="index.js"></script>
+</body>
+</html>

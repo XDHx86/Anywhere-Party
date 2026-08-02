@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Watch Party - Modern Design Test</title>
+  <link rel="stylesheet" href="src/@core/accessibility/accessibility-styles.css">
+  <link rel="stylesheet" href="src/@ui/popup/popup-modern.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <div class="popup-header">
+      <h1>Watch Party</h1>
+      <div class="header-actions">
+        <!-- Future: Add theme toggle, settings icon, etc. -->
+      </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="popup-content">
+      <!-- Connection Status -->
+      <div class="status-card connected">
+        <div class="status-indicator"></div>
+        <div class="status-text">
+          Connected - Room ABC123
+        </div>
+      </div>
+
+      <!-- Main Menu Demo -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Room Actions</h2>
+        </div>
+        <div class="card-content">
+          <div class="flex flex-col gap-3">
+            <button class="btn btn-primary btn-full">
+              <span>Create Room</span>
+            </button>
+            <button class="btn btn-primary btn-full">
+              <span>Join Room</span>
+            </button>
+            <button class="btn btn-secondary btn-full">
+              <span>Settings</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Room Information Demo -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Room Information</h2>
+        </div>
+        <div class="card-content">
+          <div class="list">
+            <div class="list-item">
+              <div class="list-item-content">
+                <div class="list-item-title">Room ID</div>
+              </div>
+              <div class="badge badge-primary">
+                <span>ABC123</span>
+              </div>
+            </div>
+            <div class="list-item">
+              <div class="list-item-content">
+                <div class="list-item-title">Your Role</div>
+              </div>
+              <div class="badge badge-success">
+                <span>Host</span>
+              </div>
+            </div>
+            <div class="list-item">
+              <div class="list-item-content">
+                <div class="list-item-title">Participants</div>
+              </div>
+              <div class="badge badge-primary">
+                <span>3</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Participants List Demo -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Participants</h3>
+        </div>
+        <div class="card-content">
+          <div class="list">
+            <div class="list-item">
+              <div class="list-item-content">
+                <div class="list-item-title">Alice Johnson</div>
+                <div class="list-item-subtitle">HOST</div>
+              </div>
+            </div>
+            <div class="list-item">
+              <div class="list-item-content">
+                <div class="list-item-title">Bob Smith</div>
+                <div class="list-item-subtitle">PARTICIPANT</div>
+              </div>
+              <div class="list-item-actions">
+                <button class="btn btn-secondary btn-sm">Promote</button>
+                <button class="btn btn-danger btn-sm">Kick</button>
+              </div>
+            </div>
+            <div class="list-item">
+              <div class="list-item-content">
+                <div class="list-item-title">Carol Davis</div>
+                <div class="list-item-subtitle">CO-HOST</div>
+              </div>
+              <div class="list-item-actions">
+                <button class="btn btn-danger btn-sm">Kick</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat Demo -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Chat</h3>
+        </div>
+        <div class="chat-container">
+          <div class="chat-messages">
+            <div class="chat-message">
+              <div class="chat-message-header">
+                <div class="chat-message-author">Alice</div>
+                <div class="chat-message-time">2:34 PM</div>
+              </div>
+              <div class="chat-message-text">Hey everyone! Ready to start the movie?</div>
+            </div>
+            <div class="chat-message">
+              <div class="chat-message-header">
+                <div class="chat-message-author">Bob</div>
+                <div class="chat-message-time">2:35 PM</div>
+              </div>
+              <div class="chat-message-text">Yes! I've got my popcorn ready 🍿</div>
+            </div>
+            <div class="chat-message system">
+              <div class="chat-message-text">Carol joined the room</div>
+            </div>
+          </div>
+          <div class="chat-input-container">
+            <input type="text" class="chat-input" placeholder="Type a message...">
+            <button class="btn btn-primary btn-sm">Send</button>
+          </div>
+          <div class="reaction-buttons">
+            <button class="reaction-btn">👍</button>
+            <button class="reaction-btn">❤️</button>
+            <button class="reaction-btn">😂</button>
+            <button class="reaction-btn">👏</button>
+            <button class="reaction-btn">🔥</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Button States Demo -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Button States Demo</h3>
+        </div>
+        <div class="card-content">
+          <div class="flex flex-col gap-3">
+            <button class="btn btn-primary btn-full">Normal Button</button>
+            <button class="btn btn-primary btn-full btn-loading">Loading Button</button>
+            <button class="btn btn-success btn-full">Success Button</button>
+            <button class="btn btn-error btn-full">Error Button</button>
+            <button class="btn btn-secondary btn-full" disabled>Disabled Button</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notifications Demo -->
+      <div class="notification success">
+        <div class="notification-content">Room created successfully!</div>
+      </div>
+      <div class="notification error">
+        <div class="notification-content">Failed to connect to server</div>
+      </div>
+      <div class="notification warning">
+        <div class="notification-content">Connection unstable</div>
+      </div>
+      <div class="notification info">
+        <div class="notification-content">New participant joined</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Demo script to show button state changes
+    document.addEventListener('DOMContentLoaded', () => {
+      const buttons = document.querySelectorAll('.btn:not(.btn-loading):not([disabled])');
+      buttons.forEach(button => {
+        button.addEventListener('click', () => {
+          // Show loading state
+          button.classList.add('btn-loading');
+          button.disabled = true;
+          
+          // Simulate async operation
+          setTimeout(() => {
+            button.classList.remove('btn-loading');
+            button.classList.add('btn-success');
+            button.disabled = false;
+            
+            // Reset after showing success
+            setTimeout(() => {
+              button.classList.remove('btn-success');
+            }, 1000);
+          }, 1500);
+        });
+      });
+    });
+  </script>
+</body>
+</html>

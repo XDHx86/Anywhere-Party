@@ -1,0 +1,72 @@
+{
+  "manifest_version": 2,
+  "name": "Watch Party Extension",
+  "version": "1.0.0",
+  "description": "Synchronized video viewing with friends across any website",
+  
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs",
+    "<all_urls>"
+  ],
+  
+  "optional_permissions": [
+    "webNavigation"
+  ],
+  
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": false
+  },
+  
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content-script.js"],
+      "all_frames": true,
+      "run_at": "document_idle"
+    }
+  ],
+  
+  "browser_action": {
+    "default_popup": "popup.html",
+    "default_title": "Watch Party",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  
+  "web_accessible_resources": [
+    "extension-config.json",
+    "assets/fonts/fontawesome/css/all.min.css",
+    "assets/fonts/fontawesome/webfonts/*",
+    "assets/icons/sprite.svg",
+    "assets/icons/*",
+    "assets/fonts/*"
+  ],
+  
+  "content_security_policy": "script-src 'self'; object-src 'self';",
+  
+  "applications": {
+    "gecko": {
+      "id": "watch-party@example.com",
+      "strict_min_version": "109.0"
+    }
+  }
+}

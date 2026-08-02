@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Watch Party</title>
+  <link rel="stylesheet" href="../styles/popup-material.css">
+  <style>
+    /* Reset and base styles */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 380px;
+      min-height: 550px;
+      max-height: 650px;
+      font-family: 'Roboto', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      /* Fixed: Remove overflow from body to prevent double scrollbars */
+      overflow: hidden;
+      background-color: #ffffff;
+    }
+
+    #root {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Loading state */
+    .loading-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 550px;
+      background-color: #ffffff;
+    }
+
+    .loading-spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid #e0e0e0;
+      border-top: 3px solid #6200EE;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Error state */
+    .error-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 550px;
+      padding: 24px;
+      text-align: center;
+      background-color: #ffffff;
+    }
+
+    .error-icon {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 16px;
+      color: #f44336;
+    }
+
+    .error-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1c1b1f;
+      margin-bottom: 8px;
+    }
+
+    .error-message {
+      font-size: 14px;
+      color: #49454f;
+      margin-bottom: 16px;
+    }
+
+    .error-button {
+      padding: 8px 16px;
+      background-color: #6200EE;
+      color: white;
+      border: none;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .error-button:hover {
+      background-color: #5500CC;
+    }
+
+    /* Dark mode support */
+    @media (prefers-color-scheme: dark) {
+      html, body {
+        background-color: #121212;
+        color: #e6e1e5;
+      }
+
+      .loading-container,
+      .error-container {
+        background-color: #121212;
+      }
+
+      .loading-spinner {
+        border-color: #49454f;
+        border-top-color: #d0bcff;
+      }
+
+      .error-title {
+        color: #e6e1e5;
+      }
+
+      .error-message {
+        color: #cac4d0;
+      }
+
+      .error-button {
+        background-color: #d0bcff;
+        color: #381e72;
+      }
+
+      .error-button:hover {
+        background-color: #eaddff;
+      }
+    }
+
+    /* High contrast mode support */
+    @media (prefers-contrast: high) {
+      .loading-spinner {
+        border-width: 4px;
+      }
+
+      .error-button {
+        border: 2px solid currentColor;
+      }
+    }
+
+    /* Reduced motion support */
+    @media (prefers-reduced-motion: reduce) {
+      .loading-spinner {
+        animation: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Skip links for accessibility -->
+  <div class="skip-links" style="position: absolute; top: -40px; left: 0; background: white; padding: 8px; z-index: 1000;">
+    <a href="#main-content" style="color: #6200EE; text-decoration: none;">Skip to main content</a>
+  </div>
+
+  <!-- React root element -->
+  <div id="root">
+    <!-- Loading state (shown while React loads) -->
+    <div class="loading-container" id="loading-fallback">
+      <div class="loading-spinner" role="status" aria-label="Loading Watch Party extension"></div>
+    </div>
+
+    <!-- Error fallback (shown if React fails to load) -->
+    <div class="error-container" id="error-fallback" style="display: none;">
+      <svg class="error-icon" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+      </svg>
+      <div class="error-title">Failed to Load</div>
+      <div class="error-message">The Watch Party extension failed to initialize. Please try refreshing or check your connection.</div>
+      <button class="error-button" id="retry-button">Retry</button>
+    </div>
+  </div>
+
+  <!-- Fallback integration script (loads first) -->
+  <script src="popup-fallback.js"></script>
+  
+  <!-- React application script -->
+  <script src="popup-react.js"></script>
+  
+  <!-- Retry button functionality -->
+  <script>
+    document.getElementById('retry-button')?.addEventListener('click', function() {
+      window.location.reload();
+    });
+  </script>
+</body>
+</html>

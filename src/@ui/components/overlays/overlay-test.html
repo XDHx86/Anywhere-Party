@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Material Design 3 Overlay System Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Roboto', 'Inter', system-ui, sans-serif;
+            background-color: #f5f5f5;
+        }
+        
+        #root {
+            width: 100%;
+            min-height: 100vh;
+        }
+        
+        /* Material Design 3 CSS Variables */
+        :root {
+            --md-sys-color-primary: #6200EE;
+            --md-sys-color-secondary: #03DAC6;
+            --md-sys-color-surface: #FFFFFF;
+            --md-sys-color-on-surface: #1c1b1f;
+            --md-sys-color-outline: #79747e;
+            --md-sys-color-surface-variant: #e7e0ec;
+            --md-sys-color-on-surface-variant: #49454f;
+            
+            --md-sys-shape-corner-xs: 4px;
+            --md-sys-shape-corner-sm: 8px;
+            --md-sys-shape-corner-md: 12px;
+            --md-sys-shape-corner-lg: 16px;
+            
+            --md-sys-elevation-level0: none;
+            --md-sys-elevation-level1: 0px 1px 2px rgba(0, 0, 0, 0.3), 0px 1px 3px 1px rgba(0, 0, 0, 0.15);
+            --md-sys-elevation-level3: 0px 1px 3px rgba(0, 0, 0, 0.3), 0px 4px 8px 3px rgba(0, 0, 0, 0.15);
+            --md-sys-elevation-level5: 0px 4px 4px rgba(0, 0, 0, 0.3), 0px 8px 12px 6px rgba(0, 0, 0, 0.15);
+        }
+        
+        /* Dark theme */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --md-sys-color-primary: #d0bcff;
+                --md-sys-color-secondary: #03DAC6;
+                --md-sys-color-surface: #121212;
+                --md-sys-color-on-surface: #e6e1e5;
+                --md-sys-color-outline: #938f99;
+                --md-sys-color-surface-variant: #49454f;
+                --md-sys-color-on-surface-variant: #cac4d0;
+            }
+            
+            body {
+                background-color: #100e13;
+                color: #e6e1e5;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <!-- React and ReactDOM from CDN for testing -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel for JSX transformation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Test Script -->
+    <script type="text/babel">
+        const { useState, useEffect, useRef, createContext, useContext } = React;
+        
+        // Simple theme context for testing
+        const ThemeContext = createContext({
+            theme: {
+                palette: {
+                    primary: { main: '#6200EE', contrastText: '#ffffff' },
+                    secondary: { main: '#03DAC6', contrastText: '#000000' },
+                    surface: { main: '#FFFFFF', contrastText: '#1c1b1f' },
+                    error: { main: '#B00020', contrastText: '#ffffff' },
+                    onSurface: '#1c1b1f',
+                    outline: '#79747e',
+                    surfaceVariant: '#e7e0ec',
+                    onSurfaceVariant: '#49454f',
+                    text: { primary: '#1c1b1f', secondary: '#49454f' },
+                    grey: { 100: '#f5f5f5', 400: '#bdbdbd', 800: '#424242' },
+                },
+                spacing: {
+                    xs: '4px', sm: '8px', md: '16px', lg: '24px', xl: '32px', xxl: '48px'
+                },
+                shape: {
+                    borderRadius: {
+                        xs: '4px', sm: '8px', md: '12px', lg: '16px', xl: '20px', xxl: '24px'
+                    }
+                },
+                elevation: {
+                    none: 'none',
+                    low: '0px 1px 2px rgba(0, 0, 0, 0.3), 0px 1px 3px 1px rgba(0, 0, 0, 0.15)',
+                    medium: '0px 1px 3px rgba(0, 0, 0, 0.3), 0px 4px 8px 3px rgba(0, 0, 0, 0.15)',
+                    high: '0px 4px 4px rgba(0, 0, 0, 0.3), 0px 8px 12px 6px rgba(0, 0, 0, 0.15)',
+                },
+                typography: {
+                    fontSize: {
+                        headlineSmall: '24px',
+                        bodyLarge: '16px',
+                        bodySmall: '12px',
+                    },
+                    fontWeight: { medium: 500 },
+                }
+            }
+        });
+        
+        // Simple overlay test component
+        const OverlayTest = () => {
+            const { theme } = useContext(ThemeContext);
+            const containerRef = useRef(null);
+            const [showOverlays, setShowOverlays] = useState(false);
+            
+            const containerStyle = {
+                position: 'relative',
+                width: '100%',
+                height: '400px',
+                backgroundColor: theme.palette.grey[100],
+                border: `2px dashed ${theme.palette.outline}`,
+                borderRadius: theme.shape.borderRadius.md,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+                margin: theme.spacing.lg,
+            };
+            
+            const buttonStyle = {
+                padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                backgroundColor: theme.palette.primary.main,
+                color: theme.palette.primary.contrastText,
+                border: 'none',
+                borderRadius: theme.shape.borderRadius.md,
+                cursor: 'pointer',
+                fontSize: theme.typography.fontSize.bodyLarge,
+                fontWeight: theme.typography.fontWeight.medium,
+                margin: theme.spacing.sm,
+            };
+            
+            // Simple floating surface test
+            const FloatingSurfaceTest = ({ visible }) => {
+                const surfaceStyle = {
+                    position: 'absolute',
+                    top: '50px',
+                    left: '50px',
+                    width: '120px',
+                    height: '80px',
+                    backgroundColor: `${theme.palette.surface.main}F0`, // 94% opacity
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    boxShadow: theme.elevation.medium,
+                    borderRadius: theme.shape.borderRadius.md,
+                    padding: theme.spacing.md,
+                    border: `1px solid ${theme.palette.outline}40`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: theme.palette.onSurface,
+                    fontSize: theme.typography.fontSize.bodySmall,
+                    opacity: visible ? 1 : 0,
+                    transform: visible ? 'scale(1)' : 'scale(0.9)',
+                    transition: 'all 300ms cubic-bezier(0.2, 0.0, 0, 1.0)',
+                };
+                
+                return (
+                    <div style={surfaceStyle}>
+                        Floating Surface
+                    </div>
+                );
+            };
+            
+            // Simple avatar test
+            const AvatarTest = ({ visible, delay = 0 }) => {
+                const [isVisible, setIsVisible] = useState(false);
+                
+                useEffect(() => {
+                    if (visible) {
+                        const timer = setTimeout(() => setIsVisible(true), delay);
+                        return () => clearTimeout(timer);
+                    } else {
+                        setIsVisible(false);
+                    }
+                }, [visible, delay]);
+                
+                const avatarStyle = {
+                    position: 'absolute',
+                    top: '150px',
+                    left: `${150 + delay / 10}px`,
+                    width: '48px',
+                    height: '48px',
+                    backgroundColor: '#6200EE',
+                    borderRadius: theme.shape.borderRadius.lg,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    fontSize: '16px',
+                    fontWeight: theme.typography.fontWeight.medium,
+                    border: '2px solid #03DAC6',
+                    boxShadow: theme.elevation.medium,
+                    opacity: isVisible ? 1 : 0,
+                    transform: isVisible ? 'scale(1)' : 'scale(0.5)',
+                    transition: 'all 350ms cubic-bezier(0.2, 0.0, 0, 1.0)',
+                    cursor: 'pointer',
+                };
+                
+                return (
+                    <div style={avatarStyle} onClick={() => alert('Avatar clicked!')}>
+                        AJ
+                    </div>
+                );
+            };
+            
+            // Simple reaction test
+            const ReactionTest = ({ visible }) => {
+                const [position, setPosition] = useState({ x: 250, y: 200 });
+                
+                useEffect(() => {
+                    if (visible) {
+                        const interval = setInterval(() => {
+                            setPosition(prev => ({
+                                x: prev.x + (Math.random() - 0.5) * 2,
+                                y: prev.y - 1,
+                            }));
+                        }, 100);
+                        
+                        return () => clearInterval(interval);
+                    }
+                }, [visible]);
+                
+                const reactionStyle = {
+                    position: 'absolute',
+                    top: `${position.y}px`,
+                    left: `${position.x}px`,
+                    width: '32px',
+                    height: '32px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '20px',
+                    backgroundColor: `${theme.palette.surface.main}E6`,
+                    backdropFilter: 'blur(4px)',
+                    WebkitBackdropFilter: 'blur(4px)',
+                    borderRadius: theme.shape.borderRadius.lg,
+                    border: `1px solid ${theme.palette.outline}60`,
+                    boxShadow: theme.elevation.medium,
+                    opacity: visible ? 1 : 0,
+                    transform: visible ? 'scale(1)' : 'scale(0.5)',
+                    transition: 'all 300ms cubic-bezier(0.2, 0.0, 0, 1.0)',
+                    pointerEvents: 'none',
+                };
+                
+                return (
+                    <div style={reactionStyle}>
+                        ❤️
+                    </div>
+                );
+            };
+            
+            return (
+                <div style={{ padding: theme.spacing.lg }}>
+                    <h1 style={{ 
+                        color: theme.palette.onSurface,
+                        fontSize: theme.typography.fontSize.headlineSmall,
+                        fontWeight: theme.typography.fontWeight.medium,
+                        textAlign: 'center',
+                        margin: `0 0 ${theme.spacing.lg} 0`,
+                    }}>
+                        Material Design 3 Overlay System Test
+                    </h1>
+                    
+                    <div style={{ textAlign: 'center' }}>
+                        <button 
+                            style={buttonStyle}
+                            onClick={() => setShowOverlays(!showOverlays)}
+                        >
+                            {showOverlays ? 'Hide Overlays' : 'Show Overlays'}
+                        </button>
+                    </div>
+                    
+                    <div ref={containerRef} style={containerStyle}>
+                        {!showOverlays && (
+                            <div style={{
+                                textAlign: 'center',
+                                color: theme.palette.text.secondary,
+                                fontSize: theme.typography.fontSize.bodyLarge,
+                            }}>
+                                Click "Show Overlays" to test the overlay system
+                            </div>
+                        )}
+                        
+                        {showOverlays && (
+                            <>
+                                <FloatingSurfaceTest visible={showOverlays} />
+                                <AvatarTest visible={showOverlays} delay={0} />
+                                <AvatarTest visible={showOverlays} delay={100} />
+                                <AvatarTest visible={showOverlays} delay={200} />
+                                <ReactionTest visible={showOverlays} />
+                            </>
+                        )}
+                    </div>
+                    
+                    <div style={{
+                        textAlign: 'center',
+                        marginTop: theme.spacing.lg,
+                        padding: theme.spacing.md,
+                        backgroundColor: theme.palette.surfaceVariant,
+                        borderRadius: theme.shape.borderRadius.sm,
+                        fontSize: theme.typography.fontSize.bodySmall,
+                        color: theme.palette.onSurfaceVariant,
+                    }}>
+                        This is a simplified test of the Material Design 3 overlay system components.
+                        <br />
+                        The full implementation includes responsive positioning, z-index management, and advanced animations.
+                    </div>
+                </div>
+            );
+        };
+        
+        // Render the test
+        const App = () => (
+            <ThemeContext.Provider value={{ theme: ThemeContext._currentValue.theme }}>
+                <OverlayTest />
+            </ThemeContext.Provider>
+        );
+        
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>

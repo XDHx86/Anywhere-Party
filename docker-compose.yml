@@ -1,0 +1,164 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:14-alpine
+    container_name: watchparty-postgres
+    environment:
+      POSTGRES_DB: watchparty
+      POSTGRES_USER: watchparty
+      POSTGRES_PASSWORD: watchparty_dev
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./server/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./server/database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    networks:
+      - watchparty-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U watchparty -d watchparty"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: watchparty-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - watchparty-network
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Signaling Server
+  signaling-server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: watchparty-signaling
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://watchparty:watchparty_dev@postgres:5432/watchparty
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: dev-jwt-secret-key-change-in-production
+      ENCRYPTION_KEY: dev-encryption-key-32-chars-long
+      PORT: 3001
+      LOG_LEVEL: debug
+      TELEMETRY_ENABLED: false
+      # TURN Server Configuration (optional for development)
+      # TURN_SERVER_URL: turn:your-turn-server.com:3478
+      # TURN_USERNAME: your-turn-username
+      # TURN_CREDENTIAL: your-turn-password
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+    networks:
+      - watchparty-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Feature Flags Service
+  feature-flags:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.feature-flags
+    container_name: watchparty-feature-flags
+    environment:
+      NODE_ENV: development
+      REDIS_URL: redis://redis:6379
+      PORT: 3002
+      LOG_LEVEL: debug
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+    networks:
+      - watchparty-network
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # TURN Server (Coturn) - Optional for development
+  coturn:
+    image: coturn/coturn:4.6.2-alpine
+    container_name: watchparty-turn
+    ports:
+      - "3478:3478/udp"
+      - "3478:3478/tcp"
+      - "49152-65535:49152-65535/udp"
+    environment:
+      TURN_USERNAME: watchparty
+      TURN_PASSWORD: dev-turn-password
+    command: |
+      -n
+      --log-file=stdout
+      --min-port=49152
+      --max-port=65535
+      --fingerprint
+      --lt-cred-mech
+      --user=watchparty:dev-turn-password
+      --realm=localhost
+      --server-name=localhost
+      --listening-ip=0.0.0.0
+      --external-ip=$$(detect-external-ip)
+    networks:
+      - watchparty-network
+    profiles:
+      - turn-server
+
+  # Development Tools
+  adminer:
+    image: adminer:4.8.1
+    container_name: watchparty-adminer
+    ports:
+      - "8080:8080"
+    networks:
+      - watchparty-network
+    profiles:
+      - dev-tools
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: watchparty-redis-commander
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    networks:
+      - watchparty-network
+    profiles:
+      - dev-tools
+
+networks:
+  watchparty-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local

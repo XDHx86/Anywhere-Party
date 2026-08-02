@@ -1,0 +1,592 @@
+/**
+ * Accessibility Styles
+ * 
+ * CSS for accessibility features including high contrast mode,
+ * focus indicators, font sizes, and reduced motion
+ */
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Skip links */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: var(--a11y-accent-color, #007cba);
+  color: white;
+  padding: 8px;
+  text-decoration: none;
+  border-radius: 4px;
+  z-index: 10000;
+  transition: top 0.3s;
+}
+
+.skip-link:focus {
+  top: 6px;
+}
+
+/* Font size variations */
+.font-small {
+  font-size: 12px;
+}
+
+.font-medium {
+  font-size: 14px;
+}
+
+.font-large {
+  font-size: 16px;
+}
+
+.font-extra-large {
+  font-size: 18px;
+}
+
+.font-small * {
+  font-size: inherit;
+}
+
+.font-large * {
+  font-size: inherit;
+}
+
+.font-extra-large * {
+  font-size: inherit;
+}
+
+/* Focus indicator styles */
+.focus-default *:focus {
+  outline: 2px solid var(--a11y-accent-color, #007cba);
+  outline-offset: 2px;
+}
+
+.focus-high-contrast *:focus {
+  outline: 3px solid #ffff00;
+  outline-offset: 2px;
+  background-color: #000000;
+  color: #ffffff;
+}
+
+.focus-custom *:focus {
+  outline: 2px solid var(--a11y-accent-color, #007cba);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(0, 124, 186, 0.3);
+}
+
+/* High contrast mode */
+.high-contrast {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.high-contrast * {
+  background-color: inherit !important;
+  color: inherit !important;
+  border-color: #ffffff !important;
+}
+
+.high-contrast button,
+.high-contrast input,
+.high-contrast select,
+.high-contrast textarea {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border: 2px solid #ffffff !important;
+}
+
+.high-contrast button:hover,
+.high-contrast button:focus {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+.high-contrast a {
+  color: #ffff00 !important;
+  text-decoration: underline !important;
+}
+
+.high-contrast a:visited {
+  color: #ff00ff !important;
+}
+
+.high-contrast .btn-primary {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 2px solid #ffffff !important;
+}
+
+.high-contrast .btn-secondary {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border: 2px solid #ffffff !important;
+}
+
+.high-contrast .btn-danger {
+  background-color: #ff0000 !important;
+  color: #ffffff !important;
+  border: 2px solid #ff0000 !important;
+}
+
+.high-contrast .status.connected {
+  background-color: #00ff00 !important;
+  color: #000000 !important;
+  border: 2px solid #00ff00 !important;
+}
+
+.high-contrast .status.disconnected {
+  background-color: #ff0000 !important;
+  color: #ffffff !important;
+  border: 2px solid #ff0000 !important;
+}
+
+.high-contrast .status.connecting {
+  background-color: #ffff00 !important;
+  color: #000000 !important;
+  border: 2px solid #ffff00 !important;
+}
+
+/* Reduced motion */
+.reduced-motion *,
+.reduced-motion *::before,
+.reduced-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Custom color scheme support */
+:root {
+  --a11y-bg-color: #ffffff;
+  --a11y-fg-color: #000000;
+  --a11y-accent-color: #007cba;
+  --a11y-border-color: #cccccc;
+}
+
+.custom-colors {
+  background-color: var(--a11y-bg-color) !important;
+  color: var(--a11y-fg-color) !important;
+}
+
+.custom-colors * {
+  border-color: var(--a11y-border-color) !important;
+}
+
+.custom-colors button,
+.custom-colors .btn-primary {
+  background-color: var(--a11y-accent-color) !important;
+  color: var(--a11y-bg-color) !important;
+  border-color: var(--a11y-accent-color) !important;
+}
+
+.custom-colors button:hover,
+.custom-colors .btn-primary:hover {
+  opacity: 0.8;
+}
+
+/* Keyboard help modal */
+.keyboard-help-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.8);
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.keyboard-help-content {
+  background: var(--a11y-bg-color, white);
+  color: var(--a11y-fg-color, black);
+  border-radius: 8px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.keyboard-help-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--a11y-border-color, #e9ecef);
+}
+
+.keyboard-help-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.keyboard-help-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.keyboard-help-close:hover,
+.keyboard-help-close:focus {
+  background-color: var(--a11y-border-color, #e9ecef);
+}
+
+.keyboard-help-body {
+  padding: 20px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.keyboard-help-body table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.keyboard-help-body th,
+.keyboard-help-body td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--a11y-border-color, #e9ecef);
+}
+
+.keyboard-help-body th {
+  font-weight: 600;
+  background-color: var(--a11y-border-color, #f8f9fa);
+}
+
+.keyboard-help-body kbd {
+  background-color: var(--a11y-border-color, #e9ecef);
+  border: 1px solid var(--a11y-border-color, #ccc);
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+/* Accessible form controls */
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--a11y-border-color, #ddd);
+  border-radius: 4px;
+  font-size: inherit;
+  box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: 2px solid var(--a11y-accent-color, #007cba);
+  outline-offset: 2px;
+  border-color: var(--a11y-accent-color, #007cba);
+}
+
+.form-group .help-text {
+  display: block;
+  font-size: 0.875em;
+  color: #666;
+  margin-top: 4px;
+}
+
+.form-group.error input,
+.form-group.error select,
+.form-group.error textarea {
+  border-color: #dc3545;
+}
+
+.form-group.error .help-text {
+  color: #dc3545;
+}
+
+/* Accessible buttons */
+button,
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: inherit;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 44px; /* Minimum touch target size */
+  min-width: 44px;
+}
+
+button:disabled,
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+button:focus,
+.btn:focus {
+  outline: 2px solid var(--a11y-accent-color, #007cba);
+  outline-offset: 2px;
+}
+
+/* Accessible tables */
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th,
+td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--a11y-border-color, #e9ecef);
+}
+
+th {
+  font-weight: 600;
+  background-color: var(--a11y-border-color, #f8f9fa);
+}
+
+/* Accessible modals */
+[role='dialog'] {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--a11y-bg-color, white);
+  color: var(--a11y-fg-color, black);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  z-index: 10000;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: auto;
+}
+
+/* Accessible status indicators */
+.status {
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status.connected::before {
+  background-color: #28a745;
+}
+
+.status.disconnected::before {
+  background-color: #dc3545;
+}
+
+.status.connecting::before {
+  background-color: #ffc107;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Accessible tooltips */
+[title] {
+  position: relative;
+}
+
+[title]:hover::after,
+[title]:focus::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #333;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 1000;
+  margin-bottom: 4px;
+}
+
+/* Accessible progress indicators */
+[role='progressbar'] {
+  background-color: var(--a11y-border-color, #e9ecef);
+  border-radius: 4px;
+  overflow: hidden;
+  height: 8px;
+}
+
+[role='progressbar']::before {
+  content: '';
+  display: block;
+  height: 100%;
+  background-color: var(--a11y-accent-color, #007cba);
+  width: var(--progress, 0%);
+  transition: width 0.3s ease;
+}
+
+/* Accessible tabs */
+[role='tablist'] {
+  display: flex;
+  border-bottom: 1px solid var(--a11y-border-color, #e9ecef);
+}
+
+[role='tab'] {
+  padding: 12px 16px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+[role='tab']:hover {
+  background-color: var(--a11y-border-color, #f8f9fa);
+}
+
+[role='tab'][aria-selected='true'] {
+  border-bottom-color: var(--a11y-accent-color, #007cba);
+  color: var(--a11y-accent-color, #007cba);
+}
+
+[role='tabpanel'] {
+  padding: 16px 0;
+}
+
+[role='tabpanel']:focus {
+  outline: 2px solid var(--a11y-accent-color, #007cba);
+  outline-offset: 2px;
+}
+
+/* Accessible alerts */
+[role='alert'] {
+  padding: 12px 16px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  border-left: 4px solid;
+}
+
+[role='alert'].success {
+  background-color: #d4edda;
+  color: #155724;
+  border-left-color: #28a745;
+}
+
+[role='alert'].error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border-left-color: #dc3545;
+}
+
+[role='alert'].warning {
+  background-color: #fff3cd;
+  color: #856404;
+  border-left-color: #ffc107;
+}
+
+[role='alert'].info {
+  background-color: #d1ecf1;
+  color: #0c5460;
+  border-left-color: #17a2b8;
+}
+
+/* Media queries for system preferences */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (prefers-contrast: high) {
+  :root {
+    --a11y-bg-color: #000000;
+    --a11y-fg-color: #ffffff;
+    --a11y-accent-color: #ffff00;
+    --a11y-border-color: #ffffff;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --a11y-bg-color: #1a1a1a;
+    --a11y-fg-color: #ffffff;
+    --a11y-accent-color: #4da6ff;
+    --a11y-border-color: #444444;
+  }
+}
+
+/* Print styles for accessibility */
+@media print {
+  .skip-link,
+  .keyboard-help-modal,
+  [aria-hidden='true'] {
+    display: none !important;
+  }
+
+  * {
+    background: white !important;
+    color: black !important;
+  }
+
+  a {
+    text-decoration: underline !important;
+  }
+
+  a[href^='http']:after {
+    content: ' (' attr(href) ')';
+    font-size: 0.8em;
+  }
+}

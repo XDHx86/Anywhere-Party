@@ -1,0 +1,290 @@
+{
+  "version": "1.0.0",
+  "description": "Watch Party Extension Asset Manifest",
+  "license": "MIT",
+  "assets": {
+    "logos": {
+      "main": {
+        "path": "logo/main/watch-party-logo.svg",
+        "size": "48x48",
+        "usage": "Primary extension logo"
+      },
+      "light-theme": {
+        "path": "logo/light-theme/watch-party-logo-light.svg",
+        "size": "48x48",
+        "usage": "Logo optimized for light themes"
+      },
+      "dark-theme": {
+        "path": "logo/dark-theme/watch-party-logo-dark.svg",
+        "size": "48x48",
+        "usage": "Logo optimized for dark themes"
+      }
+    },
+    "toolbar-icons": {
+      "icon-16": {
+        "path": "icons/toolbar/icon-16.svg",
+        "size": "16x16",
+        "usage": "Extension toolbar icon (small)"
+      },
+      "icon-32": {
+        "path": "icons/toolbar/icon-32.svg",
+        "size": "32x32",
+        "usage": "Extension toolbar icon (medium)"
+      },
+      "icon-48": {
+        "path": "icons/toolbar/icon-48.svg",
+        "size": "48x48",
+        "usage": "Extension toolbar icon (large)"
+      }
+    },
+    "popup-icons": {
+      "play": {
+        "path": "icons/popup/play.svg",
+        "size": "24x24",
+        "usage": "Play button in popup UI"
+      },
+      "pause": {
+        "path": "icons/popup/pause.svg",
+        "size": "24x24",
+        "usage": "Pause button in popup UI"
+      },
+      "chat": {
+        "path": "icons/popup/chat.svg",
+        "size": "24x24",
+        "usage": "Chat toggle button"
+      },
+      "mic": {
+        "path": "icons/popup/mic.svg",
+        "size": "24x24",
+        "usage": "Microphone on button"
+      },
+      "mic-off": {
+        "path": "icons/popup/mic-off.svg",
+        "size": "24x24",
+        "usage": "Microphone muted button"
+      },
+      "room": {
+        "path": "icons/popup/room.svg",
+        "size": "24x24",
+        "usage": "Room/participants indicator"
+      },
+      "settings": {
+        "path": "icons/popup/settings.svg",
+        "size": "24x24",
+        "usage": "Settings/options button"
+      },
+      "watch": {
+        "path": "icons/popup/watch.svg",
+        "size": "24x24",
+        "usage": "Watch party/video indicator"
+      }
+    },
+    "reaction-icons": {
+      "heart": {
+        "path": "icons/reactions/heart.svg",
+        "size": "24x24",
+        "usage": "Love/heart reaction",
+        "color": "#EF4444"
+      },
+      "laugh": {
+        "path": "icons/reactions/laugh.svg",
+        "size": "24x24",
+        "usage": "Laugh/funny reaction",
+        "color": "#F59E0B"
+      },
+      "surprise": {
+        "path": "icons/reactions/surprise.svg",
+        "size": "24x24",
+        "usage": "Surprise/wow reaction",
+        "color": "#F59E0B"
+      },
+      "sad": {
+        "path": "icons/reactions/sad.svg",
+        "size": "24x24",
+        "usage": "Sad/crying reaction",
+        "color": "#6B7280"
+      },
+      "thumbs-up": {
+        "path": "icons/reactions/thumbs-up.svg",
+        "size": "24x24",
+        "usage": "Like/approve reaction",
+        "color": "#10B981"
+      },
+      "thumbs-down": {
+        "path": "icons/reactions/thumbs-down.svg",
+        "size": "24x24",
+        "usage": "Dislike/disapprove reaction",
+        "color": "#EF4444"
+      }
+    },
+    "ui-icons": {
+      "close": {
+        "path": "icons/ui/close.svg",
+        "size": "24x24",
+        "usage": "Close/dismiss button"
+      },
+      "expand": {
+        "path": "icons/ui/expand.svg",
+        "size": "24x24",
+        "usage": "Expand/fullscreen button"
+      },
+      "minimize": {
+        "path": "icons/ui/minimize.svg",
+        "size": "24x24",
+        "usage": "Minimize/collapse button"
+      },
+      "menu": {
+        "path": "icons/ui/menu.svg",
+        "size": "24x24",
+        "usage": "Menu/hamburger button"
+      }
+    },
+    "avatar-placeholders": {
+      "blue": {
+        "path": "avatars/placeholders/avatar-blue.svg",
+        "size": "40x40",
+        "usage": "User avatar placeholder",
+        "color": "#3B82F6"
+      },
+      "green": {
+        "path": "avatars/placeholders/avatar-green.svg",
+        "size": "40x40",
+        "usage": "User avatar placeholder",
+        "color": "#10B981"
+      },
+      "purple": {
+        "path": "avatars/placeholders/avatar-purple.svg",
+        "size": "40x40",
+        "usage": "User avatar placeholder",
+        "color": "#8B5CF6"
+      },
+      "red": {
+        "path": "avatars/placeholders/avatar-red.svg",
+        "size": "40x40",
+        "usage": "User avatar placeholder",
+        "color": "#EF4444"
+      },
+      "yellow": {
+        "path": "avatars/placeholders/avatar-yellow.svg",
+        "size": "40x40",
+        "usage": "User avatar placeholder",
+        "color": "#F59E0B"
+      },
+      "pink": {
+        "path": "avatars/placeholders/avatar-pink.svg",
+        "size": "40x40",
+        "usage": "User avatar placeholder",
+        "color": "#EC4899"
+      },
+      "indigo": {
+        "path": "avatars/placeholders/avatar-indigo.svg",
+        "size": "40x40",
+        "usage": "User avatar placeholder",
+        "color": "#6366F1"
+      },
+      "teal": {
+        "path": "avatars/placeholders/avatar-teal.svg",
+        "size": "40x40",
+        "usage": "User avatar placeholder",
+        "color": "#14B8A6"
+      }
+    },
+    "animations": {
+      "loading": {
+        "spinner": {
+          "path": "animations/loading/spinner.svg",
+          "size": "24x24",
+          "usage": "Loading spinner animation",
+          "type": "animated-svg"
+        },
+        "dots-loader": {
+          "path": "animations/loading/dots-loader.css",
+          "usage": "Three dots loading animation",
+          "type": "css"
+        },
+        "progress-bar": {
+          "path": "animations/loading/progress-bar.css",
+          "usage": "Progress bar animations",
+          "type": "css"
+        }
+      },
+      "avatars": {
+        "wave": {
+          "path": "avatars/animations/wave-animation.css",
+          "usage": "Wave gesture animation for avatars",
+          "type": "css"
+        },
+        "laugh": {
+          "path": "avatars/animations/laugh-animation.css",
+          "usage": "Laugh reaction animation for avatars",
+          "type": "css"
+        },
+        "idle": {
+          "path": "avatars/animations/idle-animation.css",
+          "usage": "Idle breathing animation for avatars",
+          "type": "css"
+        }
+      },
+      "transitions": {
+        "slide": {
+          "path": "animations/transitions/slide-transitions.css",
+          "usage": "Slide in/out transition effects",
+          "type": "css"
+        },
+        "fade": {
+          "path": "animations/transitions/fade-transitions.css",
+          "usage": "Fade in/out transition effects",
+          "type": "css"
+        },
+        "buttons": {
+          "path": "animations/transitions/button-effects.css",
+          "usage": "Button interaction animations",
+          "type": "css"
+        }
+      }
+    },
+    "backgrounds": {
+      "blur-overlays": {
+        "modal-backdrop": {
+          "path": "backgrounds/blur-overlays/modal-backdrop.css",
+          "usage": "Modal backdrop with blur effect",
+          "type": "css"
+        },
+        "enhanced-backdrop": {
+          "path": "backgrounds/blur-overlays/enhanced-backdrop.css",
+          "usage": "Enhanced backdrop effects with animations",
+          "type": "css"
+        }
+      },
+      "gradients": {
+        "primary": {
+          "path": "backgrounds/gradients/primary-gradient.css",
+          "usage": "Primary gradient backgrounds",
+          "type": "css"
+        }
+      }
+    }
+  },
+  "design-tokens": {
+    "colors": {
+      "primary": "#6366F1",
+      "primary-dark": "#4F46E5",
+      "secondary": "#10B981",
+      "success": "#10B981",
+      "warning": "#F59E0B",
+      "error": "#EF4444",
+      "info": "#3B82F6"
+    },
+    "border-radius": {
+      "small": "8px",
+      "medium": "12px",
+      "large": "16px",
+      "full": "50%"
+    },
+    "shadows": {
+      "small": "0 1px 3px rgba(0, 0, 0, 0.1)",
+      "medium": "0 4px 6px rgba(0, 0, 0, 0.1)",
+      "large": "0 10px 15px rgba(0, 0, 0, 0.1)"
+    }
+  }
+}

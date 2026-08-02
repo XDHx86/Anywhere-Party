@@ -1,0 +1,222 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:14-alpine
+    container_name: watchparty-postgres-prod
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-watchparty}
+      POSTGRES_USER: ${POSTGRES_USER:-watchparty}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./server/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    networks:
+      - watchparty-network
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-watchparty} -d ${POSTGRES_DB:-watchparty}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: watchparty-redis-prod
+    volumes:
+      - redis_data:/data
+      - ./server/config/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      - watchparty-network
+    command: redis-server /usr/local/etc/redis/redis.conf
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Signaling Server
+  signaling-server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.prod
+      args:
+        NODE_ENV: production
+    container_name: watchparty-signaling-prod
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      PORT: 3001
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      TELEMETRY_ENABLED: ${TELEMETRY_ENABLED:-false}
+      TURN_SERVER_URL: ${TURN_SERVER_URL}
+      TURN_USERNAME: ${TURN_USERNAME}
+      TURN_CREDENTIAL: ${TURN_CREDENTIAL}
+      OPENSUBTITLES_API_KEY: ${OPENSUBTITLES_API_KEY}
+      FEATURE_FLAGS_ENDPOINT: http://feature-flags:3002/flags
+    expose:
+      - "3001"
+    networks:
+      - watchparty-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Feature Flags Service
+  feature-flags:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.feature-flags.prod
+      args:
+        NODE_ENV: production
+    container_name: watchparty-feature-flags-prod
+    environment:
+      NODE_ENV: production
+      REDIS_URL: ${REDIS_URL}
+      PORT: 3002
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      ADMIN_API_KEY: ${ADMIN_API_KEY}
+    expose:
+      - "3002"
+    networks:
+      - watchparty-network
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:1.24-alpine
+    container_name: watchparty-nginx-prod
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
+    networks:
+      - watchparty-network
+    depends_on:
+      - signaling-server
+      - feature-flags
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Monitoring - Prometheus
+  prometheus:
+    image: prom/prometheus:v2.40.0
+    container_name: watchparty-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    expose:
+      - "9090"
+    networks:
+      - watchparty-network
+    restart: always
+    profiles:
+      - monitoring
+
+  # Monitoring - Grafana
+  grafana:
+    image: grafana/grafana:9.3.0
+    container_name: watchparty-grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    expose:
+      - "3000"
+    networks:
+      - watchparty-network
+    depends_on:
+      - prometheus
+    restart: always
+    profiles:
+      - monitoring
+
+  # Log Aggregation - Loki
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: watchparty-loki
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./monitoring/loki.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    expose:
+      - "3100"
+    networks:
+      - watchparty-network
+    restart: always
+    profiles:
+      - monitoring
+
+networks:
+  watchparty-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  nginx_logs:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  loki_data:
+    driver: local
