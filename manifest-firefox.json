@@ -8,7 +8,9 @@
     "storage",
     "activeTab",
     "tabs",
-    "<all_urls>"
+    "<all_urls>",
+    "alarms",
+    "notifications"
   ],
   
   "optional_permissions": [

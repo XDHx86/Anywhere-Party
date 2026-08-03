@@ -12,6 +12,7 @@ import { HeaderCard } from '../components/cards/HeaderCard';
 import { MainCard } from '../components/cards/MainCard';
 import { SecondaryCard } from '../components/cards/SecondaryCard';
 import { FooterCard } from '../components/cards/FooterCard';
+import { PlaylistCard } from './PlaylistCard';
 import { MaterialLoadingIndicator } from '../components/cards/MaterialLoadingIndicator';
 import { PopupAccessibility } from '../accessibility/PopupAccessibility';
 import { browserAPI } from '../utils/browser-api';
@@ -626,6 +627,24 @@ export const PopupApp: React.FC = () => {
                 data-testid="popup-main-card"
               />
             </ErrorBoundary>
+
+            {/* Playlist Card — visible when in a room and PLAYLISTS flag is on */}
+            {state.currentView === 'room' && state.connectionStatus === 'connected' && (
+              <ErrorBoundary
+                componentName="PlaylistCard"
+                onError={handleComponentError}
+                maxRetries={2}
+                enableDiagnostics={false}
+                enableErrorReporting={true}
+              >
+                <PlaylistCard
+                  isHost={state.roomInfo?.role === 'host'}
+                  onAction={(type, payload) => {
+                    chrome.runtime.sendMessage({ type, ...payload });
+                  }}
+                />
+              </ErrorBoundary>
+            )}
 
             {/* Secondary Card (Settings & Preferences) - Hide on very small screens */}
             {(!responsive.isMobile || responsive.width > 360) && (

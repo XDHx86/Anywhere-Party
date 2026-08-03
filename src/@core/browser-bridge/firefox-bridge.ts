@@ -1,5 +1,13 @@
 import browser from 'webextension-polyfill';
-import { BrowserBridge, StorageArea, RuntimeAPI, TabsAPI, PermissionsAPI } from './types';
+import {
+  BrowserBridge,
+  StorageArea,
+  RuntimeAPI,
+  TabsAPI,
+  PermissionsAPI,
+  AlarmsAPI,
+  NotificationsAPI,
+} from './types';
 
 // Type aliases for better compatibility
 type BrowserTabs = typeof browser.tabs;
@@ -108,6 +116,67 @@ class FirefoxPermissionsAPI implements PermissionsAPI {
   }
 }
 
+class FirefoxAlarmsAPI implements AlarmsAPI {
+  create(
+    name: string,
+    alarmInfo: { when?: number; delayInMinutes?: number; periodInMinutes?: number }
+  ): void {
+    browser.alarms.create(name, alarmInfo);
+  }
+
+  async clear(name: string): Promise<boolean> {
+    return browser.alarms.clear(name);
+  }
+
+  async clearAll(): Promise<boolean> {
+    return browser.alarms.clearAll();
+  }
+
+  onAlarm = {
+    addListener: (
+      callback: (alarm: { name: string; scheduledTime: number; periodInMinutes?: number }) => void
+    ) => {
+      browser.alarms.onAlarm.addListener(callback as any);
+    },
+    removeListener: (callback: Function) => {
+      browser.alarms.onAlarm.removeListener(callback as any);
+    },
+  };
+}
+
+class FirefoxNotificationsAPI implements NotificationsAPI {
+  async create(
+    id: string,
+    options: {
+      type?: string;
+      title?: string;
+      message?: string;
+      iconUrl?: string;
+      priority?: number;
+      buttons?: Array<{ title: string; iconUrl?: string }>;
+    }
+  ): Promise<string> {
+    return browser.notifications.create(id, options as any);
+  }
+
+  async clear(id: string): Promise<boolean> {
+    return browser.notifications.clear(id);
+  }
+
+  async clearAll(): Promise<boolean> {
+    return browser.notifications.clearAll();
+  }
+
+  onClicked = {
+    addListener: (callback: (notificationId: string) => void) => {
+      browser.notifications.onClicked.addListener(callback);
+    },
+    removeListener: (callback: Function) => {
+      browser.notifications.onClicked.removeListener(callback as any);
+    },
+  };
+}
+
 export function createFirefoxBridge(): BrowserBridge {
   const manifest = browser.runtime.getManifest();
   const manifestVersion = manifest.manifest_version || 2;
@@ -120,6 +189,8 @@ export function createFirefoxBridge(): BrowserBridge {
     runtime: new FirefoxRuntimeAPI(),
     tabs: new FirefoxTabsAPI(),
     permissions: new FirefoxPermissionsAPI(),
+    alarms: new FirefoxAlarmsAPI(),
+    notifications: new FirefoxNotificationsAPI(),
     isChrome: false,
     isFirefox: true,
     manifestVersion,

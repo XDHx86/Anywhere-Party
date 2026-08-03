@@ -24,7 +24,9 @@
       "Bash(NODE_OPTIONS=\"--max-old-space-size=4096\" npm run test)",
       "Bash(NODE_OPTIONS=\"--max-old-space-size=4096\" npx vitest run src/@core/sync-engine/)",
       "Bash(git add *)",
-      "Bash(git commit -m 'chore: initial commit of watch party extension source *)"
+      "Bash(git commit -m 'chore: initial commit of watch party extension source *)",
+      "Bash(git commit -m 'docs: update plan and deployment checklist for completed milestones *)",
+      "Bash(git commit *)"
     ]
   }
 }

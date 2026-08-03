@@ -217,6 +217,112 @@ export interface PongMessage extends BaseMessage {
   originalTimestamp?: number;
 }
 
+// ─── Playlist Messages ────────────────────────────────────
+
+export interface PlaylistAddMessage extends BaseMessage {
+  type: 'PLAYLIST_ADD';
+  userId: string;
+  items: Array<{
+    id: string;
+    url: string;
+    title?: string;
+    duration?: number;
+    addedBy: string;
+    thumbnailUrl?: string;
+  }>;
+}
+
+export interface PlaylistRemoveMessage extends BaseMessage {
+  type: 'PLAYLIST_REMOVE';
+  userId: string;
+  itemIds: string[];
+}
+
+export interface PlaylistReorderMessage extends BaseMessage {
+  type: 'PLAYLIST_REORDER';
+  userId: string;
+  itemIds: string[];
+  newIndex: number;
+}
+
+export interface PlaylistSkipVoteMessage extends BaseMessage {
+  type: 'PLAYLIST_SKIP_VOTE';
+  userId: string;
+  itemId: string;
+}
+
+export interface PlaylistStateMessage extends BaseMessage {
+  type: 'PLAYLIST_STATE';
+  playlist: {
+    items: Array<{
+      id: string;
+      url: string;
+      title?: string;
+      duration?: number;
+      addedBy: string;
+      thumbnailUrl?: string;
+    }>;
+    currentIndex: number;
+    isPlaying: boolean;
+    playHistory: string[];
+  };
+}
+
+export interface PlaylistSkipResultMessage extends BaseMessage {
+  type: 'PLAYLIST_SKIP_RESULT';
+  itemId: string;
+  skipVotes: number;
+  totalParticipants: number;
+  skipped: boolean;
+}
+
+export interface PlaylistAdvanceMessage extends BaseMessage {
+  type: 'PLAYLIST_ADVANCE';
+  nextIndex: number;
+  item: {
+    id: string;
+    url: string;
+    title?: string;
+    duration?: number;
+    addedBy: string;
+    thumbnailUrl?: string;
+  };
+}
+
+// ─── Scheduling Messages ──────────────────────────────────
+
+export interface ScheduleSessionMessage extends BaseMessage {
+  type: 'SCHEDULE_SESSION';
+  userId: string;
+  session: {
+    id: string;
+    title: string;
+    scheduledTime: number;
+    videoUrl?: string;
+    description?: string;
+    reminders: Array<{ minutesBefore: number }>;
+    recurrence?: { frequency: string; interval: number };
+  };
+}
+
+export interface CancelSessionMessage extends BaseMessage {
+  type: 'CANCEL_SESSION';
+  userId: string;
+  sessionId: string;
+}
+
+export interface ScheduledSessionsMessage extends BaseMessage {
+  type: 'SCHEDULED_SESSIONS';
+  sessions: Array<{
+    id: string;
+    title: string;
+    scheduledTime: number;
+    videoUrl?: string;
+    hostId: string;
+    reminders: Array<{ minutesBefore: number }>;
+  }>;
+}
+
 // Union types for type safety
 export type ClientMessage =
   | CreateRoomMessage
@@ -233,7 +339,13 @@ export type ClientMessage =
   | HostTransferMessage
   | KickParticipantMessage
   | PingMessage
-  | PongMessage;
+  | PongMessage
+  | PlaylistAddMessage
+  | PlaylistRemoveMessage
+  | PlaylistReorderMessage
+  | PlaylistSkipVoteMessage
+  | ScheduleSessionMessage
+  | CancelSessionMessage;
 
 export type ServerMessage =
   | WelcomeMessage
@@ -254,7 +366,11 @@ export type ServerMessage =
   | ServerShutdownMessage
   | HeartbeatAckMessage
   | PingMessage
-  | PongMessage;
+  | PongMessage
+  | PlaylistStateMessage
+  | PlaylistSkipResultMessage
+  | PlaylistAdvanceMessage
+  | ScheduledSessionsMessage;
 
 export type SignalingMessage = ClientMessage | ServerMessage;
 
@@ -377,6 +493,12 @@ export function isClientMessage(message: any): message is ClientMessage {
     'KICK_PARTICIPANT',
     'PING',
     'PONG',
+    'PLAYLIST_ADD',
+    'PLAYLIST_REMOVE',
+    'PLAYLIST_REORDER',
+    'PLAYLIST_SKIP_VOTE',
+    'SCHEDULE_SESSION',
+    'CANCEL_SESSION',
   ].includes(message.type);
 }
 
@@ -405,6 +527,10 @@ export function isServerMessage(message: any): message is ServerMessage {
     'HEARTBEAT_ACK',
     'PING',
     'PONG',
+    'PLAYLIST_STATE',
+    'PLAYLIST_SKIP_RESULT',
+    'PLAYLIST_ADVANCE',
+    'SCHEDULED_SESSIONS',
   ].includes(message.type);
 }
 
@@ -475,6 +601,49 @@ export function validateMessage(message: any): { valid: boolean; error?: string 
         return { valid: false, error: `${message.type} requires userId` };
       }
       break;
+
+    case 'PLAYLIST_ADD':
+      if (!message.userId || !Array.isArray(message.items)) {
+        return { valid: false, error: 'PLAYLIST_ADD requires userId and items array' };
+      }
+      break;
+
+    case 'PLAYLIST_REMOVE':
+      if (!message.userId || !Array.isArray(message.itemIds)) {
+        return { valid: false, error: 'PLAYLIST_REMOVE requires userId and itemIds array' };
+      }
+      break;
+
+    case 'PLAYLIST_REORDER':
+      if (
+        !message.userId ||
+        !Array.isArray(message.itemIds) ||
+        typeof message.newIndex !== 'number'
+      ) {
+        return {
+          valid: false,
+          error: 'PLAYLIST_REORDER requires userId, itemIds array, and newIndex',
+        };
+      }
+      break;
+
+    case 'PLAYLIST_SKIP_VOTE':
+      if (!message.userId || !message.itemId) {
+        return { valid: false, error: 'PLAYLIST_SKIP_VOTE requires userId and itemId' };
+      }
+      break;
+
+    case 'SCHEDULE_SESSION':
+      if (!message.userId || !message.session) {
+        return { valid: false, error: 'SCHEDULE_SESSION requires userId and session' };
+      }
+      break;
+
+    case 'CANCEL_SESSION':
+      if (!message.userId || !message.sessionId) {
+        return { valid: false, error: 'CANCEL_SESSION requires userId and sessionId' };
+      }
+      break;
   }
 
   return { valid: true };
@@ -542,4 +711,51 @@ export function createErrorMessage(code: string, message: string, details?: any)
     error: { code, message, details },
     timestamp: Date.now(),
   };
+}
+
+// ─── Playlist Factory Functions ───────────────────────────
+
+export function createPlaylistAddMessage(
+  userId: string,
+  items: PlaylistAddMessage['items']
+): PlaylistAddMessage {
+  return { type: 'PLAYLIST_ADD', userId, items, timestamp: Date.now() };
+}
+
+export function createPlaylistRemoveMessage(
+  userId: string,
+  itemIds: string[]
+): PlaylistRemoveMessage {
+  return { type: 'PLAYLIST_REMOVE', userId, itemIds, timestamp: Date.now() };
+}
+
+export function createPlaylistReorderMessage(
+  userId: string,
+  itemIds: string[],
+  newIndex: number
+): PlaylistReorderMessage {
+  return { type: 'PLAYLIST_REORDER', userId, itemIds, newIndex, timestamp: Date.now() };
+}
+
+export function createPlaylistSkipVoteMessage(
+  userId: string,
+  itemId: string
+): PlaylistSkipVoteMessage {
+  return { type: 'PLAYLIST_SKIP_VOTE', userId, itemId, timestamp: Date.now() };
+}
+
+// ─── Scheduling Factory Functions ─────────────────────────
+
+export function createScheduleSessionMessage(
+  userId: string,
+  session: ScheduleSessionMessage['session']
+): ScheduleSessionMessage {
+  return { type: 'SCHEDULE_SESSION', userId, session, timestamp: Date.now() };
+}
+
+export function createCancelSessionMessage(
+  userId: string,
+  sessionId: string
+): CancelSessionMessage {
+  return { type: 'CANCEL_SESSION', userId, sessionId, timestamp: Date.now() };
 }

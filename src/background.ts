@@ -18,6 +18,14 @@ import { ReactionType } from '@core/chat/types';
 import { createPrivacyManager, PrivacyManager } from '@core/privacy/privacy-manager';
 import { createLoggingManager, LoggingManager } from '@core/logging';
 import { getRoomStateManager, RoomStateManager } from '@core/room-state/room-state-manager';
+import { getPlaylistManager, PlaylistManager } from '@core/playlist';
+import { getSchedulingManager, SchedulingManager } from '@core/scheduling';
+import {
+  createPlaylistAddMessage,
+  createPlaylistRemoveMessage,
+  createPlaylistReorderMessage,
+  createPlaylistSkipVoteMessage,
+} from '@core/signaling';
 import { getAPIKeyManager, APIKeyManager } from '@core/api-keys/api-key-manager';
 import { roomCreationResponseHandler } from '@core/room-creation/room-creation-response-handler';
 import {
@@ -44,6 +52,8 @@ class BackgroundService {
   private monitoringService: MonitoringService | null = null;
   private runtimeBugTracker: RuntimeBugTracker | null = null;
   private roomStateManager: RoomStateManager = getRoomStateManager();
+  private playlistManager: PlaylistManager = getPlaylistManager();
+  private schedulingManager: SchedulingManager = getSchedulingManager();
   private apiKeyManager: APIKeyManager = getAPIKeyManager();
   private voiceIntegration: VoiceIntegration | null = null;
   private currentUserId: string = '';
@@ -490,6 +500,93 @@ class BackgroundService {
             const messages = this.chatManager.getRecentMessages(message.count || 50);
             sendResponse({ success: true, messages });
             break;
+
+          // ─── Playlist Messages ─────────────────────────
+          case 'GET_PLAYLIST':
+            sendResponse({ success: true, playlist: this.playlistManager.getState() });
+            break;
+
+          case 'ADD_TO_PLAYLIST': {
+            if (!this.isHost) {
+              sendResponse({ success: false, error: 'Only host can modify playlist' });
+              break;
+            }
+            await this.playlistManager.addItems(message.items);
+            // Broadcast updated state to server
+            if (this.signalingClient?.isConnected()) {
+              this.signalingClient.sendMessage(
+                createPlaylistAddMessage(this.currentUserId!, message.items)
+              );
+            }
+            sendResponse({ success: true, playlist: this.playlistManager.getState() });
+            break;
+          }
+
+          case 'REMOVE_FROM_PLAYLIST': {
+            if (!this.isHost) {
+              sendResponse({ success: false, error: 'Only host can modify playlist' });
+              break;
+            }
+            await this.playlistManager.removeItems(message.itemIds);
+            if (this.signalingClient?.isConnected()) {
+              this.signalingClient.sendMessage(
+                createPlaylistRemoveMessage(this.currentUserId!, message.itemIds)
+              );
+            }
+            sendResponse({ success: true, playlist: this.playlistManager.getState() });
+            break;
+          }
+
+          case 'REORDER_PLAYLIST': {
+            if (!this.isHost) {
+              sendResponse({ success: false, error: 'Only host can modify playlist' });
+              break;
+            }
+            await this.playlistManager.reorderItems(message.itemIds, message.newIndex);
+            if (this.signalingClient?.isConnected()) {
+              this.signalingClient.sendMessage(
+                createPlaylistReorderMessage(this.currentUserId!, message.itemIds, message.newIndex)
+              );
+            }
+            sendResponse({ success: true, playlist: this.playlistManager.getState() });
+            break;
+          }
+
+          case 'VOTE_SKIP': {
+            if (this.signalingClient?.isConnected()) {
+              this.signalingClient.sendMessage(
+                createPlaylistSkipVoteMessage(this.currentUserId!, message.itemId)
+              );
+            }
+            sendResponse({ success: true });
+            break;
+          }
+
+          case 'ADVANCE_PLAYLIST': {
+            const nextItem = await this.playlistManager.advanceToNext();
+            sendResponse({ success: true, playlist: this.playlistManager.getState(), nextItem });
+            break;
+          }
+
+          // ─── Scheduling Messages ────────────────────────
+          case 'GET_SCHEDULED_SESSIONS':
+            sendResponse({
+              success: true,
+              sessions: this.schedulingManager.getUpcomingSessions(),
+            });
+            break;
+
+          case 'SCHEDULE_SESSION_UI': {
+            await this.schedulingManager.createSession(message.session);
+            sendResponse({ success: true });
+            break;
+          }
+
+          case 'CANCEL_SESSION_UI': {
+            await this.schedulingManager.cancelSession(message.sessionId);
+            sendResponse({ success: true });
+            break;
+          }
 
           // Connection status
           case 'GET_CONNECTION_STATUS':
@@ -1733,7 +1830,7 @@ class BackgroundService {
     }
   }
 
-  private handleServerMessage(message: ServerMessage): void {
+  private async handleServerMessage(message: ServerMessage): Promise<void> {
     console.log('Received server message:', message.type);
 
     switch (message.type) {
@@ -2042,6 +2139,60 @@ class BackgroundService {
             }
           });
         });
+        break;
+
+      case 'PLAYLIST_STATE':
+        // Update local playlist from server broadcast
+        if (message.playlist) {
+          // Reconcile playlist state from server
+          this.broadcastToUI({ type: 'PLAYLIST_STATE', playlist: message.playlist });
+        }
+        break;
+
+      case 'PLAYLIST_SKIP_RESULT':
+        if (message.skipped) {
+          // Auto-advance to next video
+          await this.playlistManager.advanceToNext();
+          const nextItem = this.playlistManager.getCurrentItem();
+          if (nextItem && this.signalingClient?.isConnected()) {
+            // Notify content scripts to change video
+            this.browserBridge.tabs.query({}).then((tabs) => {
+              tabs.forEach((tab) => {
+                if (tab.id) {
+                  this.browserBridge.tabs
+                    .sendMessage(tab.id, {
+                      type: 'PLAYLIST_ADVANCE',
+                      url: nextItem.url,
+                      item: nextItem,
+                    })
+                    .catch(() => {});
+                }
+              });
+            });
+          }
+        }
+        this.broadcastToUI({ type: 'PLAYLIST_SKIP_RESULT', ...message });
+        break;
+
+      case 'PLAYLIST_ADVANCE':
+        // Server-initiated advance
+        if (message.item) {
+          this.browserBridge.tabs.query({}).then((tabs) => {
+            tabs.forEach((tab) => {
+              if (tab.id) {
+                this.browserBridge.tabs
+                  .sendMessage(tab.id, {
+                    type: 'PLAYLIST_ADVANCE',
+                    url: message.item.url,
+                    item: message.item,
+                  })
+                  .catch(() => {});
+              }
+            });
+          });
+        }
+        await this.playlistManager.setCurrentIndex(message.nextIndex);
+        this.broadcastToUI({ type: 'PLAYLIST_ADVANCE', ...message });
         break;
     }
 

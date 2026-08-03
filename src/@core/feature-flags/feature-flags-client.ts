@@ -279,9 +279,9 @@ export class FeatureFlagsClient {
 export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   'webrtc-voice-chat': true,
   'advanced-annotations': false,
-  'playlist-management': false,
+  'playlist-management': true,
   'subtitle-auto-download': true,
-  'watch-party-scheduling': false,
+  'watch-party-scheduling': true,
   'enhanced-security': false,
   'telemetry-collection': false,
   'performance-monitoring': true,

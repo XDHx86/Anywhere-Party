@@ -6,17 +6,17 @@
 
 # Current Development
 
-The extension is in a late prototype / pre-distribution state. All core features and runtime fixes are implemented. Repository infrastructure (Milestone 1) and documentation (Milestone 3) are complete. The remaining work is feature completion (playlists, scheduling) and production deployment.
+The extension is in a pre-distribution state. Milestones 1–3 of the implementation plan are complete (repo infrastructure, feature completion, documentation). Remaining work: Milestone 4 (advanced features — annotations, encryption) and Milestone 5 (production readiness — store publishing, deployment).
 
 ---
 
 # Immediate Priorities
 
-1. **Playlist management** — Feature flag `PLAYLISTS` is `false` in `extension-config.json`. Task 9.1 in the implementation plan is pending.
-2. **Scheduled watch parties** — Feature flag `SCHEDULING` is `false`. Task 9.3 in the implementation plan is pending.
+1. **Advanced annotations** — Feature flag `ADVANCED_ANNOTATIONS` is `false`. Milestone 4.
+2. **E2E encryption** — Feature flag `E2E_ENCRYPTION` is `false`. Milestone 4.
 3. **TypeScript type errors** — 463 pre-existing MUI7/React19 type mismatches need resolution (currently non-blocking in CI).
 4. **Test suite reliability** — ~19% of tests fail due to timing sensitivity and Node 24 jsdom incompatibility.
-5. **Manual deployment testing** — Deployment checklist items for room persistence, popup scrolling, and config import/export need manual browser verification.
+5. **Production deployment** — Chrome Web Store submission, Firefox Add-ons, TURN server, monitoring.
 
 ---
 

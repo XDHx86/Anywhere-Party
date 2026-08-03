@@ -178,6 +178,12 @@ class LocalWebSocketRelay {
       case 'PONG':
         this.handlePong(socket, payload);
         break;
+      case 'PLAYLIST_ADD':
+      case 'PLAYLIST_REMOVE':
+      case 'PLAYLIST_REORDER':
+      case 'PLAYLIST_SKIP_VOTE':
+        this.handlePlaylistMessage(socket, type, payload);
+        break;
       default:
         console.warn(`⚠️  Unknown message type: ${type}`);
         this.sendError(socket, 'UNKNOWN_MESSAGE_TYPE', `Unknown message type: ${type}`);
@@ -362,8 +368,64 @@ class LocalWebSocketRelay {
         room.lastActivity = new Date();
       }
     }
-    
+
     console.log(`📡 Received pong from ${userId}`);
+  }
+
+  handlePlaylistMessage(socket, type, payload) {
+    const socketInfo = this.userSockets.get(socket);
+    if (!socketInfo) {
+      return this.sendError(socket, 'NOT_IN_ROOM', 'Must be in a room to manage playlist');
+    }
+
+    const room = this.rooms.get(socketInfo.roomId);
+    if (!room) {
+      return this.sendError(socket, 'ROOM_NOT_FOUND', 'Room not found');
+    }
+
+    const { userId } = payload;
+
+    // Relay playlist operation to all room participants
+    switch (type) {
+      case 'PLAYLIST_ADD':
+      case 'PLAYLIST_REMOVE':
+      case 'PLAYLIST_REORDER': {
+        // Broadcast the full playlist state back — the client that sent the
+        // message will receive its own state update and reconcile locally.
+        room.broadcast({
+          type: 'PLAYLIST_STATE',
+          playlist: payload.playlist || { items: [], currentIndex: 0, isPlaying: false, playHistory: [] },
+          senderUserId: userId,
+          timestamp: Date.now(),
+        });
+        break;
+      }
+      case 'PLAYLIST_SKIP_VOTE': {
+        // Count votes — for simplicity, relay vote tally to host who decides
+        if (!room.playlistVotes) room.playlistVotes = {};
+        const { itemId } = payload;
+        if (!room.playlistVotes[itemId]) room.playlistVotes[itemId] = new Set();
+        room.playlistVotes[itemId].add(userId);
+
+        const totalParticipants = room.participants.size;
+        const voteCount = room.playlistVotes[itemId].size;
+        const skipped = voteCount >= Math.ceil(totalParticipants / 2);
+
+        room.broadcast({
+          type: 'PLAYLIST_SKIP_RESULT',
+          itemId,
+          skipVotes: voteCount,
+          totalParticipants,
+          skipped,
+          timestamp: Date.now(),
+        });
+
+        if (skipped) {
+          delete room.playlistVotes[itemId];
+        }
+        break;
+      }
+    }
   }
 
   handleDisconnection(socket) {

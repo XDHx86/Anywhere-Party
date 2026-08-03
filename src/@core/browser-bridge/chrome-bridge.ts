@@ -1,4 +1,12 @@
-import { BrowserBridge, StorageArea, RuntimeAPI, TabsAPI, PermissionsAPI } from './types';
+import {
+  BrowserBridge,
+  StorageArea,
+  RuntimeAPI,
+  TabsAPI,
+  PermissionsAPI,
+  AlarmsAPI,
+  NotificationsAPI,
+} from './types';
 
 /**
  * Chrome-specific browser bridge implementation
@@ -140,6 +148,75 @@ class ChromePermissionsAPI implements PermissionsAPI {
   }
 }
 
+class ChromeAlarmsAPI implements AlarmsAPI {
+  create(
+    name: string,
+    alarmInfo: { when?: number; delayInMinutes?: number; periodInMinutes?: number }
+  ): void {
+    chrome.alarms.create(name, alarmInfo);
+  }
+
+  async clear(name: string): Promise<boolean> {
+    return chrome.alarms.clear(name);
+  }
+
+  async clearAll(): Promise<boolean> {
+    return chrome.alarms.clearAll();
+  }
+
+  onAlarm = {
+    addListener: (
+      callback: (alarm: { name: string; scheduledTime: number; periodInMinutes?: number }) => void
+    ) => {
+      chrome.alarms.onAlarm.addListener(callback as any);
+    },
+    removeListener: (callback: Function) => {
+      chrome.alarms.onAlarm.removeListener(callback as any);
+    },
+  };
+}
+
+class ChromeNotificationsAPI implements NotificationsAPI {
+  async create(
+    id: string,
+    options: {
+      type?: string;
+      title?: string;
+      message?: string;
+      iconUrl?: string;
+      priority?: number;
+      buttons?: Array<{ title: string; iconUrl?: string }>;
+    }
+  ): Promise<string> {
+    return new Promise((resolve) => {
+      chrome.notifications.create(
+        id,
+        options as chrome.notifications.NotificationOptions,
+        (notifId) => {
+          resolve(notifId);
+        }
+      );
+    });
+  }
+
+  async clear(id: string): Promise<boolean> {
+    return chrome.notifications.clear(id);
+  }
+
+  async clearAll(): Promise<boolean> {
+    return chrome.notifications.clearAll();
+  }
+
+  onClicked = {
+    addListener: (callback: (notificationId: string) => void) => {
+      chrome.notifications.onClicked.addListener(callback);
+    },
+    removeListener: (callback: Function) => {
+      chrome.notifications.onClicked.removeListener(callback as any);
+    },
+  };
+}
+
 export function createChromeBridge(): BrowserBridge {
   const manifest = chrome.runtime.getManifest();
   const manifestVersion = manifest.manifest_version || 2;
@@ -152,6 +229,8 @@ export function createChromeBridge(): BrowserBridge {
     runtime: new ChromeRuntimeAPI(),
     tabs: new ChromeTabsAPI(),
     permissions: new ChromePermissionsAPI(),
+    alarms: new ChromeAlarmsAPI(),
+    notifications: new ChromeNotificationsAPI(),
     isChrome: true,
     isFirefox: false,
     manifestVersion,

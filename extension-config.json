@@ -19,8 +19,8 @@
     "VOICE_CHAT": true,
     "ANNOTATIONS": true,
     "SUBTITLES": true,
-    "PLAYLISTS": false,
-    "SCHEDULING": false,
+    "PLAYLISTS": true,
+    "SCHEDULING": true,
     "ADVANCED_ANNOTATIONS": false,
     "E2E_ENCRYPTION": false
   },

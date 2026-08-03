@@ -43,6 +43,41 @@ export interface PermissionsAPI {
   remove(permissions: chrome.permissions.Permissions): Promise<boolean>;
 }
 
+export interface AlarmsAPI {
+  create(
+    name: string,
+    alarmInfo: { when?: number; delayInMinutes?: number; periodInMinutes?: number }
+  ): void;
+  clear(name: string): Promise<boolean>;
+  clearAll(): Promise<boolean>;
+  onAlarm: {
+    addListener(
+      callback: (alarm: { name: string; scheduledTime: number; periodInMinutes?: number }) => void
+    ): void;
+    removeListener(callback: Function): void;
+  };
+}
+
+export interface NotificationsAPI {
+  create(
+    id: string,
+    options: {
+      type?: string;
+      title?: string;
+      message?: string;
+      iconUrl?: string;
+      priority?: number;
+      buttons?: Array<{ title: string; iconUrl?: string }>;
+    }
+  ): Promise<string>;
+  clear(id: string): Promise<boolean>;
+  clearAll(): Promise<boolean>;
+  onClicked: {
+    addListener(callback: (notificationId: string) => void): void;
+    removeListener(callback: Function): void;
+  };
+}
+
 export interface BrowserBridge {
   storage: {
     local: StorageArea;
@@ -51,6 +86,8 @@ export interface BrowserBridge {
   runtime: RuntimeAPI;
   tabs: TabsAPI;
   permissions: PermissionsAPI;
+  alarms: AlarmsAPI;
+  notifications: NotificationsAPI;
   isChrome: boolean;
   isFirefox: boolean;
   manifestVersion: number;

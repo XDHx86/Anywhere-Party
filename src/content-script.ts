@@ -721,6 +721,16 @@ class ContentScript {
         }
         break;
 
+      case 'PLAYLIST_ADVANCE':
+        // Swap video source for playlist auto-advance
+        if (this.selectedVideo && message.url) {
+          console.log('🎬 Playlist advancing to:', message.url);
+          this.selectedVideo.src = message.url;
+          this.selectedVideo.load();
+          this.selectedVideo.play().catch(() => {});
+        }
+        break;
+
       default:
         // Ignore other server messages in content script
         break;

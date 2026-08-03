@@ -17,6 +17,7 @@ import { AccessibilityCard } from './components/AccessibilityCard';
 import { AppearanceCard } from './components/AppearanceCard';
 import { AboutCard } from './components/AboutCard';
 import { APIKeysCard } from './components/APIKeysCard';
+import { SchedulingCard } from './components/SchedulingCard';
 import { ImportPreviewModal, ConfigDiff } from './components/ImportPreviewModal';
 import { SettingsService, SettingsData, ConfigFormat } from './services/settings-service';
 import {
@@ -230,6 +231,11 @@ export const OptionsApp: React.FC = () => {
       id: 'appearance',
       label: 'Appearance',
       icon: <MaterialIcon name="palette" size="small" />,
+    },
+    {
+      id: 'scheduling',
+      label: 'Scheduling',
+      icon: <MaterialIcon name="schedule" size="small" />,
     },
     {
       id: 'about',
@@ -685,6 +691,16 @@ export const OptionsApp: React.FC = () => {
             data={settings.appearance}
             onChange={(field, value) => handleSettingsChange('appearance', field, value)}
             onThemePreview={handleThemePreview}
+          />
+        );
+
+      case 'scheduling':
+        return (
+          <SchedulingCard
+            onNotification={(message, severity) => {
+              const id = Date.now().toString();
+              setNotifications((prev) => [...prev, { id, message, type: severity, autoHide: true }]);
+            }}
           />
         );
 

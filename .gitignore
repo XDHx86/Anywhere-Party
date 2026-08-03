@@ -19,10 +19,14 @@ extension-config.local.json
 
 # IDE and editor files
 .vscode/
+.kiro/
+.codegraph/
 .idea/
 *.swp
 *.swo
 *~
+.claude/
+!.claude/docs
 
 # OS generated files
 .DS_Store
@@ -58,4 +62,4 @@ pids/
 .eslintcache
 
 # Husky
-.husky/_
+.husky/
