@@ -184,6 +184,13 @@ class LocalWebSocketRelay {
       case 'PLAYLIST_SKIP_VOTE':
         this.handlePlaylistMessage(socket, type, payload);
         break;
+      // ─── Annotation Messages (Milestone 4) ──────────────
+      case 'ANNOTATION_CREATED':
+      case 'ANNOTATION_UPDATED':
+      case 'ANNOTATION_DELETED':
+      case 'LAYER_VISIBILITY_CHANGED':
+        this.handleAnnotationMessage(socket, type, payload);
+        break;
       default:
         console.warn(`⚠️  Unknown message type: ${type}`);
         this.sendError(socket, 'UNKNOWN_MESSAGE_TYPE', `Unknown message type: ${type}`);
@@ -331,6 +338,30 @@ class LocalWebSocketRelay {
     });
 
     console.log(`💬 Chat message in room ${roomId} from ${userId}: ${message.substring(0, 50)}...`);
+  }
+
+  // ─── Annotation Message Handler (Milestone 4) ──────────
+
+  handleAnnotationMessage(socket, type, payload) {
+    const socketInfo = this.userSockets.get(socket);
+    if (!socketInfo) {
+      return this.sendError(socket, 'NOT_IN_ROOM', 'Must join a room first');
+    }
+
+    const { roomId } = socketInfo;
+    const room = this.rooms.get(roomId);
+    if (!room) {
+      return this.sendError(socket, 'ROOM_NOT_FOUND', 'Room no longer exists');
+    }
+
+    // Broadcast annotation operation to all participants
+    room.broadcast({
+      type,
+      ...payload,
+      timestamp: Date.now()
+    });
+
+    console.log(`🎨 Annotation message (${type}) in room ${roomId} from ${payload.userId}`);
   }
 
   handleHeartbeat(socket, { userId }) {

@@ -21,7 +21,7 @@
     "SUBTITLES": true,
     "PLAYLISTS": true,
     "SCHEDULING": true,
-    "ADVANCED_ANNOTATIONS": false,
+    "ADVANCED_ANNOTATIONS": true,
     "E2E_ENCRYPTION": false
   },
   "TELEMETRY_ENABLED": false,

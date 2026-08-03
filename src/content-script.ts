@@ -8,7 +8,11 @@ import { VideoDetector, VideoElement } from './@core/video-detector';
 import { ReactionOverlay } from './@core/reaction-overlay';
 import { ReactionType } from './@core/chat/types';
 import { EnhancedSubtitleEngine } from './@core/subtitle-engine/enhanced-subtitle-engine';
-import { AnnotationLayer, Annotation, AnnotationMessage } from './@core/annotation-layer';
+import {
+  CollaborativeAnnotationLayer,
+  Annotation,
+  AnnotationMessage,
+} from './@core/annotation-layer';
 import { CollaborationManager } from './@core/collaboration';
 import { AvatarManager, AvatarMessage, AVATAR_ANIMATIONS } from './@core/avatar-overlay';
 
@@ -18,7 +22,7 @@ class ContentScript {
   private videoDetector: VideoDetector;
   private reactionOverlay: ReactionOverlay;
   private subtitleEngine: EnhancedSubtitleEngine;
-  private annotationLayer: AnnotationLayer;
+  private annotationLayer: CollaborativeAnnotationLayer;
   private collaborationManager: CollaborationManager;
   private avatarManager: AvatarManager | null = null;
   private selectedVideo: VideoElement | null = null;
@@ -43,11 +47,16 @@ class ContentScript {
     // Initialize enhanced subtitle engine with error handling
     this.subtitleEngine = new EnhancedSubtitleEngine();
 
-    // Initialize annotation layer with default config (will be updated with real config)
-    this.annotationLayer = new AnnotationLayer({
+    // Initialize collaborative annotation layer with default config
+    // roomId/userId will be updated when room info arrives via SET_USER_INFO
+    this.annotationLayer = new CollaborativeAnnotationLayer({
       renderIntervalMs: 33, // ~30fps, will be updated from config
       maxAnnotationsPerLayer: 100,
       maxLayers: 10,
+      roomId: '',
+      userId: 'pending',
+      userName: 'pending',
+      onSyncMessage: (message) => this.handleAnnotationSyncMessage(message),
       onAnnotationCreated: (annotation) => this.handleAnnotationCreated(annotation),
       onAnnotationUpdated: (annotation) => this.handleAnnotationUpdated(annotation),
       onAnnotationDeleted: (annotationId) => this.handleAnnotationDeleted(annotationId),
@@ -130,10 +139,14 @@ class ContentScript {
         // Update annotation layer render interval from config
         // Note: This is separate from sync heartbeat interval
         if (config.ANNOTATION_RENDER_INTERVAL_MS) {
-          this.annotationLayer = new AnnotationLayer({
+          this.annotationLayer = new CollaborativeAnnotationLayer({
             renderIntervalMs: config.ANNOTATION_RENDER_INTERVAL_MS,
             maxAnnotationsPerLayer: 100,
             maxLayers: 10,
+            roomId: this.currentRoomId || '',
+            userId: this.currentUserId || 'pending',
+            userName: this.currentUserName || 'pending',
+            onSyncMessage: (message) => this.handleAnnotationSyncMessage(message),
             onAnnotationCreated: (annotation) => this.handleAnnotationCreated(annotation),
             onAnnotationUpdated: (annotation) => this.handleAnnotationUpdated(annotation),
             onAnnotationDeleted: (annotationId) => this.handleAnnotationDeleted(annotationId),
@@ -451,11 +464,32 @@ class ContentScript {
           sendResponse({ success: true, annotations });
           break;
 
+        case 'ANNOTATION_STATE_SNAPSHOT':
+          // Full state replacement from server/peer
+          if (message.annotations) {
+            this.annotationLayer.clearAllAnnotations();
+            for (const ann of message.annotations) {
+              this.annotationLayer.addAnnotation(ann);
+            }
+          }
+          sendResponse({ success: true });
+          break;
+
+        case 'ANNOTATION_SYNC':
+          // Forward sync message from server to collaborative layer
+          if (message.syncMessage) {
+            this.annotationLayer.handleSyncMessage(message.syncMessage);
+          }
+          sendResponse({ success: true });
+          break;
+
         // Collaboration message handlers
         case 'SET_USER_INFO':
           this.currentUserId = message.userId;
           this.currentUserName = message.userName;
           this.currentRoomId = message.roomId;
+          // Update collaborative annotation layer with room info
+          this.annotationLayer.updateOptions(message.userId, message.roomId, message.userName);
           sendResponse({ success: true });
           break;
 
@@ -928,6 +962,11 @@ class ContentScript {
       layerId,
       visible,
     });
+  }
+
+  private handleAnnotationSyncMessage(message: AnnotationMessage): void {
+    // Forward sync message from collaborative layer to background for server relay
+    this.notifyBackgroundScript('ANNOTATION_SYNC', { syncMessage: message });
   }
 
   // Collaboration event handlers

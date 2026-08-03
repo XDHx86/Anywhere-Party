@@ -2402,6 +2402,13 @@ class BackgroundService {
     }
   }
 
+  private annotationSequence: number = 0;
+
+  /** Monotonically increasing sequence number for annotation sync messages. */
+  private nextAnnotationSequence(): number {
+    return ++this.annotationSequence;
+  }
+
   // Annotation functionality handlers
   private async handleAnnotationCreated(annotation: any): Promise<void> {
     if (!this.signalingClient || !this.currentRoomId) {
@@ -2413,6 +2420,8 @@ class BackgroundService {
       // Send annotation to signaling server
       await this.signalingClient.sendMessage({
         type: 'ANNOTATION_CREATED',
+        protocolVersion: 1,
+        sequence: this.nextAnnotationSequence(),
         userId: this.currentUserId,
         annotation,
         timestamp: Date.now(),
@@ -2434,6 +2443,8 @@ class BackgroundService {
       // Send annotation update to signaling server
       await this.signalingClient.sendMessage({
         type: 'ANNOTATION_UPDATED',
+        protocolVersion: 1,
+        sequence: this.nextAnnotationSequence(),
         userId: this.currentUserId,
         annotationId,
         updates,
@@ -2456,6 +2467,8 @@ class BackgroundService {
       // Send annotation deletion to signaling server
       await this.signalingClient.sendMessage({
         type: 'ANNOTATION_DELETED',
+        protocolVersion: 1,
+        sequence: this.nextAnnotationSequence(),
         userId: this.currentUserId,
         annotationId,
         timestamp: Date.now(),
@@ -2477,6 +2490,8 @@ class BackgroundService {
       // Send layer visibility change to signaling server
       await this.signalingClient.sendMessage({
         type: 'LAYER_VISIBILITY_CHANGED',
+        protocolVersion: 1,
+        sequence: this.nextAnnotationSequence(),
         userId: this.currentUserId,
         layerId,
         visible,
