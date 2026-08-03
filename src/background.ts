@@ -28,6 +28,8 @@ import {
 } from '@core/signaling';
 import { getAPIKeyManager, APIKeyManager } from '@core/api-keys/api-key-manager';
 import { roomCreationResponseHandler } from '@core/room-creation/room-creation-response-handler';
+import { getParticipantManager, ParticipantManager } from '@core/participant-manager';
+import { createPublicKeyBroadcastMessage, createEncryptedChatMessage } from '@core/signaling';
 import {
   createMonitoringService,
   MonitoringService,
@@ -56,6 +58,7 @@ class BackgroundService {
   private schedulingManager: SchedulingManager = getSchedulingManager();
   private apiKeyManager: APIKeyManager = getAPIKeyManager();
   private voiceIntegration: VoiceIntegration | null = null;
+  private participantManager: ParticipantManager | null = null;
   private currentUserId: string = '';
   private currentRoomId: string = '';
   private isHost: boolean = false;
@@ -184,6 +187,10 @@ class BackgroundService {
       });
 
       await this.privacyManager.initialize();
+
+      // Initialize participant manager (single source of truth for participant state)
+      this.participantManager = getParticipantManager();
+      this.wireParticipantManagerEvents();
 
       // Initialize WebRTC voice integration
       await this.initializeVoiceIntegration(config);
@@ -1402,6 +1409,13 @@ class BackgroundService {
         if (this.privacyManager) {
           await this.privacyManager.onRoomJoined(roomId, this.currentUserId, []);
         }
+
+        // Initialize participant manager for this room
+        if (this.participantManager) {
+          this.participantManager.onRoomJoined(roomId, this.currentUserId, []);
+          // Broadcast own public key for E2E encryption
+          await this.broadcastPublicKey();
+        }
       }
     } catch (error) {
       this.loggingManager?.logErrorEvent({
@@ -1447,6 +1461,9 @@ class BackgroundService {
       await this.privacyManager.onRoomLeft(roomId, userId);
     }
 
+    // Reset participant manager
+    this.participantManager?.reset();
+
     this.currentRoomId = '';
     this.isHost = false;
   }
@@ -1464,6 +1481,105 @@ class BackgroundService {
     };
 
     this.signalingClient.sendMessage(message);
+  }
+
+  // ─── Participant Manager Event Wiring ──────────────────────
+
+  private wireParticipantManagerEvents(): void {
+    if (!this.participantManager) return;
+
+    // When a new participant's key arrives, store it for encryption
+    this.participantManager.onEvent('participant_added', async (event) => {
+      if (event.userId && event.userId !== this.currentUserId) {
+        console.log(`Participant joined: ${event.userId}`);
+      }
+    });
+
+    // When all keys are exchanged, we can start encrypting
+    this.participantManager.onEvent('keys_exchanged', () => {
+      console.log('All participant keys exchanged — E2E encryption ready');
+      // Flush any queued encrypted messages
+      this.flushQueuedEncryptedMessages();
+    });
+
+    // When key exchange times out, log the issue
+    this.participantManager.onEvent('key_exchange_timeout', () => {
+      console.warn('Key exchange timeout — some participants may not receive encrypted messages');
+    });
+  }
+
+  private async broadcastPublicKey(): Promise<void> {
+    if (!this.signalingClient || !this.privacyManager?.isEncryptionEnabled()) return;
+
+    const publicKey = await this.privacyManager.getPublicKey();
+    if (publicKey) {
+      const msg = createPublicKeyBroadcastMessage(this.currentUserId, publicKey);
+      this.signalingClient.sendMessage(msg);
+      console.log('Broadcast public key to room');
+    }
+  }
+
+  // ─── Encrypted Message Queue ─────────────────────────────
+
+  private encryptedMessageQueue: Array<{
+    messageText: string;
+    resolve: (value: void) => void;
+    reject: (reason: Error) => void;
+  }> = [];
+
+  private async flushQueuedEncryptedMessages(): Promise<void> {
+    const queue = [...this.encryptedMessageQueue];
+    this.encryptedMessageQueue = [];
+
+    for (const item of queue) {
+      try {
+        await this.encryptAndSendChatMessage(item.messageText);
+        item.resolve();
+      } catch (error) {
+        item.reject(error instanceof Error ? error : new Error(String(error)));
+      }
+    }
+  }
+
+  private async encryptAndSendChatMessage(messageText: string): Promise<void> {
+    if (!this.signalingClient || !this.privacyManager) {
+      throw new Error('Not connected to a room');
+    }
+
+    const participantIds =
+      this.participantManager?.getParticipantIds().filter((id) => id !== this.currentUserId) ?? [];
+
+    if (participantIds.length === 0) {
+      // No other participants — nothing to encrypt for, skip (never send plaintext)
+      console.log('No other participants in room — message not sent');
+      return;
+    }
+
+    const encryptedPayload = await this.privacyManager.encryptMessageForGroup(
+      messageText,
+      participantIds
+    );
+
+    if (!encryptedPayload || encryptedPayload.size === 0) {
+      // Never fall back to plaintext when encryption is enabled. Queue for retry
+      // once keys are exchanged instead of leaking the message.
+      console.warn('Encryption returned empty payload — queueing for retry');
+      return new Promise((resolve, reject) => {
+        this.encryptedMessageQueue.push({ messageText, resolve, reject });
+      });
+    }
+
+    // Convert Map to plain object for serialization
+    const payloadRecord: Record<
+      string,
+      { encryptedContent: string; iv: string; senderPublicKey: string; timestamp: number }
+    > = {};
+    encryptedPayload.forEach((value, key) => {
+      payloadRecord[key] = value;
+    });
+
+    const msg = createEncryptedChatMessage(this.currentUserId, payloadRecord);
+    this.signalingClient.sendMessage(msg);
   }
 
   private async handleKickParticipant(targetUserId: string): Promise<void> {
@@ -1796,11 +1912,29 @@ class BackgroundService {
     }
 
     // Add to local chat
-    const chatMessage = this.chatManager.addMessage(this.currentUserId, messageText);
+    this.chatManager.addMessage(this.currentUserId, messageText);
 
-    // Send to server
-    const signalingMessage = createChatMessage(this.currentUserId, messageText);
-    this.signalingClient.sendMessage(signalingMessage);
+    // Check if E2E encryption is enabled and keys are ready
+    if (this.privacyManager?.isEncryptionEnabled() && this.participantManager) {
+      if (this.participantManager.hasKeysExchanged()) {
+        // Keys ready — encrypt and send
+        await this.encryptAndSendChatMessage(messageText);
+      } else if (this.participantManager.size > 1) {
+        // Keys not yet exchanged — queue for later
+        console.log('Keys not ready — queuing encrypted message');
+        return new Promise((resolve, reject) => {
+          this.encryptedMessageQueue.push({ messageText, resolve, reject });
+        });
+      } else {
+        // Only self in room — send plaintext
+        const signalingMessage = createChatMessage(this.currentUserId, messageText);
+        this.signalingClient.sendMessage(signalingMessage);
+      }
+    } else {
+      // Encryption disabled — send plaintext
+      const signalingMessage = createChatMessage(this.currentUserId, messageText);
+      this.signalingClient.sendMessage(signalingMessage);
+    }
   }
 
   private async handleSendReaction(reactionType: ReactionType): Promise<void> {
@@ -2038,6 +2172,24 @@ class BackgroundService {
 
         // Update runtime bug tracker with room ID
         this.runtimeBugTracker?.setRoomId(message.roomId);
+
+        // Initialize participant manager with server-provided participant list
+        if (this.participantManager) {
+          const participantIds = (message.participants || [])
+            .map((p: any) => p.id)
+            .filter((id: string) => id !== this.currentUserId);
+          this.participantManager.onRoomJoined(message.roomId, this.currentUserId, participantIds);
+          // Notify privacy manager with actual participant list
+          if (this.privacyManager) {
+            await this.privacyManager.onRoomJoined(
+              message.roomId,
+              this.currentUserId,
+              participantIds
+            );
+          }
+          // Broadcast own public key for E2E encryption
+          await this.broadcastPublicKey();
+        }
         break;
 
       case 'SYNC_UPDATE':
@@ -2063,11 +2215,75 @@ class BackgroundService {
         }
         break;
 
+      case 'PARTICIPANT_JOINED':
+        // Update participant manager
+        if (this.participantManager) {
+          this.participantManager.addParticipant(message.userId);
+          // Notify privacy manager for key exchange
+          if (this.privacyManager) {
+            const publicKey = (message as any).publicKey;
+            await this.privacyManager.onParticipantJoined(
+              this.currentRoomId,
+              message.userId,
+              publicKey
+            );
+          }
+          // Send our public key to the new participant
+          await this.broadcastPublicKey();
+        }
+        break;
+
       case 'PARTICIPANT_LEFT':
         if (message.newHostId === this.currentUserId) {
           this.isHost = true;
           if (this.syncEngine) {
             this.syncEngine.setHost(true);
+          }
+        }
+        // Update participant manager
+        if (this.participantManager) {
+          this.participantManager.removeParticipant(message.userId);
+          // Notify privacy manager
+          if (this.privacyManager && this.currentRoomId) {
+            await this.privacyManager.onParticipantLeft(this.currentRoomId, message.userId);
+          }
+        }
+        break;
+
+      case 'PUBLIC_KEY_BROADCAST':
+        // Store the participant's public key for E2E encryption
+        if (message.userId !== this.currentUserId && this.participantManager) {
+          this.participantManager.setParticipantKey(message.userId, message.publicKey);
+          if (this.privacyManager) {
+            await this.privacyManager.addParticipantKey(message.userId, message.publicKey);
+          }
+        }
+        break;
+
+      case 'ENCRYPTED_CHAT_MESSAGE':
+        // Decrypt incoming encrypted chat message
+        if (this.privacyManager && message.userId !== this.currentUserId) {
+          try {
+            const encryptedEntry = message.encryptedPayload[this.currentUserId];
+            if (encryptedEntry) {
+              const plaintext = await this.privacyManager.decryptMessage(encryptedEntry);
+              if (plaintext) {
+                this.chatManager.addMessage(message.userId, plaintext);
+              } else {
+                console.warn('Failed to decrypt message from', message.userId);
+              }
+            } else {
+              console.warn('No encrypted payload for self from', message.userId);
+            }
+          } catch (error) {
+            console.error('Decryption error:', error);
+            this.loggingManager?.logErrorEvent({
+              component: 'background_service',
+              operation: 'decrypt_chat_message',
+              errorType: 'DecryptionError',
+              errorMessage: error instanceof Error ? error.message : String(error),
+              context: { fromUserId: message.userId },
+            });
           }
         }
         break;

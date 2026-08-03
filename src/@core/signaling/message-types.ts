@@ -42,6 +42,25 @@ export interface ChatMessage extends BaseMessage {
   message: string;
 }
 
+// ─── E2E Encryption Messages (Milestone 4) ────────────────
+
+export interface PublicKeyBroadcastMessage extends BaseMessage {
+  type: 'PUBLIC_KEY_BROADCAST';
+  protocolVersion: 1;
+  userId: string;
+  publicKey: string; // base64 SPKI
+}
+
+export interface EncryptedChatMessage extends BaseMessage {
+  type: 'ENCRYPTED_CHAT_MESSAGE';
+  protocolVersion: 1;
+  userId: string;
+  encryptedPayload: Record<
+    string,
+    { encryptedContent: string; iv: string; senderPublicKey: string; timestamp: number }
+  >;
+}
+
 export interface HeartbeatMessage extends BaseMessage {
   type: 'HEARTBEAT';
   userId: string;
@@ -147,14 +166,37 @@ export interface ReactionBroadcastMessage extends BaseMessage {
   videoTimestamp: number;
 }
 
+// ─── Encryption Broadcast Messages ───────────────────────
+
+export interface PublicKeyBroadcastBroadcastMessage extends BaseMessage {
+  type: 'PUBLIC_KEY_BROADCAST';
+  protocolVersion: 1;
+  userId: string;
+  publicKey: string;
+}
+
+export interface EncryptedChatBroadcastMessage extends BaseMessage {
+  type: 'ENCRYPTED_CHAT_MESSAGE';
+  protocolVersion: 1;
+  userId: string;
+  encryptedPayload: Record<
+    string,
+    { encryptedContent: string; iv: string; senderPublicKey: string; timestamp: number }
+  >;
+}
+
 export interface AnnotationCreatedBroadcastMessage extends BaseMessage {
   type: 'ANNOTATION_CREATED';
+  protocolVersion: 1;
+  sequence: number;
   userId: string;
   annotation: AnnotationData;
 }
 
 export interface AnnotationUpdatedBroadcastMessage extends BaseMessage {
   type: 'ANNOTATION_UPDATED';
+  protocolVersion: 1;
+  sequence: number;
   userId: string;
   annotationId: string;
   updates: Partial<AnnotationData>;
@@ -345,7 +387,9 @@ export type ClientMessage =
   | PlaylistReorderMessage
   | PlaylistSkipVoteMessage
   | ScheduleSessionMessage
-  | CancelSessionMessage;
+  | CancelSessionMessage
+  | PublicKeyBroadcastMessage
+  | EncryptedChatMessage;
 
 export type ServerMessage =
   | WelcomeMessage
@@ -356,6 +400,8 @@ export type ServerMessage =
   | SyncUpdateMessage
   | ChatBroadcastMessage
   | ReactionBroadcastMessage
+  | PublicKeyBroadcastBroadcastMessage
+  | EncryptedChatBroadcastMessage
   | AnnotationCreatedBroadcastMessage
   | AnnotationUpdatedBroadcastMessage
   | AnnotationDeletedBroadcastMessage
@@ -499,6 +545,8 @@ export function isClientMessage(message: any): message is ClientMessage {
     'PLAYLIST_SKIP_VOTE',
     'SCHEDULE_SESSION',
     'CANCEL_SESSION',
+    'PUBLIC_KEY_BROADCAST',
+    'ENCRYPTED_CHAT_MESSAGE',
   ].includes(message.type);
 }
 
@@ -516,6 +564,8 @@ export function isServerMessage(message: any): message is ServerMessage {
     'SYNC_UPDATE',
     'CHAT_MESSAGE',
     'REACTION',
+    'PUBLIC_KEY_BROADCAST',
+    'ENCRYPTED_CHAT_MESSAGE',
     'ANNOTATION_CREATED',
     'ANNOTATION_UPDATED',
     'ANNOTATION_DELETED',
@@ -709,6 +759,34 @@ export function createErrorMessage(code: string, message: string, details?: any)
   return {
     type: 'ERROR',
     error: { code, message, details },
+    timestamp: Date.now(),
+  };
+}
+
+// ─── Encryption Factory Functions (Milestone 4) ───────────
+
+export function createPublicKeyBroadcastMessage(
+  userId: string,
+  publicKey: string
+): PublicKeyBroadcastMessage {
+  return {
+    type: 'PUBLIC_KEY_BROADCAST',
+    protocolVersion: 1,
+    userId,
+    publicKey,
+    timestamp: Date.now(),
+  };
+}
+
+export function createEncryptedChatMessage(
+  userId: string,
+  encryptedPayload: EncryptedChatMessage['encryptedPayload']
+): EncryptedChatMessage {
+  return {
+    type: 'ENCRYPTED_CHAT_MESSAGE',
+    protocolVersion: 1,
+    userId,
+    encryptedPayload,
     timestamp: Date.now(),
   };
 }
