@@ -75,12 +75,16 @@ export interface ReactionMessage extends BaseMessage {
 
 export interface AnnotationCreatedMessage extends BaseMessage {
   type: 'ANNOTATION_CREATED';
+  protocolVersion: 1;
+  sequence: number;
   userId: string;
   annotation: AnnotationData;
 }
 
 export interface AnnotationUpdatedMessage extends BaseMessage {
   type: 'ANNOTATION_UPDATED';
+  protocolVersion: 1;
+  sequence: number;
   userId: string;
   annotationId: string;
   updates: Partial<AnnotationData>;
@@ -88,12 +92,16 @@ export interface AnnotationUpdatedMessage extends BaseMessage {
 
 export interface AnnotationDeletedMessage extends BaseMessage {
   type: 'ANNOTATION_DELETED';
+  protocolVersion: 1;
+  sequence: number;
   userId: string;
   annotationId: string;
 }
 
 export interface LayerVisibilityChangedMessage extends BaseMessage {
   type: 'LAYER_VISIBILITY_CHANGED';
+  protocolVersion: 1;
+  sequence: number;
   userId: string;
   layerId: string;
   visible: boolean;
@@ -204,12 +212,16 @@ export interface AnnotationUpdatedBroadcastMessage extends BaseMessage {
 
 export interface AnnotationDeletedBroadcastMessage extends BaseMessage {
   type: 'ANNOTATION_DELETED';
+  protocolVersion: 1;
+  sequence: number;
   userId: string;
   annotationId: string;
 }
 
 export interface LayerVisibilityChangedBroadcastMessage extends BaseMessage {
   type: 'LAYER_VISIBILITY_CHANGED';
+  protocolVersion: 1;
+  sequence: number;
   userId: string;
   layerId: string;
   visible: boolean;
@@ -448,7 +460,7 @@ export interface AnnotationData {
   id: string;
   userId: string;
   videoTimestamp: number;
-  type: 'pen' | 'rectangle' | 'circle' | 'arrow' | 'text';
+  type: 'pen' | 'rectangle' | 'circle' | 'arrow' | 'text' | 'eraser' | 'highlighter' | 'line';
   layerId: string;
   data: {
     // Common properties
@@ -466,7 +478,7 @@ export interface AnnotationData {
     height?: number;
     radius?: number;
 
-    // Arrow-specific
+    // Arrow/line-specific
     startX?: number;
     startY?: number;
     endX?: number;
@@ -476,6 +488,12 @@ export interface AnnotationData {
     text?: string;
     fontSize?: number;
     fontFamily?: string;
+
+    // Extended (Milestone 4)
+    lineStyle?: 'solid' | 'dashed' | 'dotted';
+    fillColor?: string;
+    fontWeight?: 'normal' | 'bold';
+    isEphemeral?: boolean;
   };
   visible: boolean;
   createdAt: number;

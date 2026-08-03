@@ -159,6 +159,7 @@ describe('CollaborativeAnnotationLayer', () => {
   let syncMessages: AnnotationMessage[];
 
   beforeEach(() => {
+    vi.useFakeTimers();
     vi.clearAllMocks();
     syncMessages = [];
 
@@ -189,6 +190,7 @@ describe('CollaborativeAnnotationLayer', () => {
     if (collaborativeLayer && collaborativeLayer.isActive()) {
       collaborativeLayer.removeOverlay();
     }
+    vi.useRealTimers();
   });
 
   describe('Collaborative Features', () => {

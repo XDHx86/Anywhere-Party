@@ -159,7 +159,7 @@ export class AnnotationLayer {
    */
   stopRenderLoop(): void {
     if (this.renderTimer) {
-      clearInterval(this.renderTimer);
+      window.clearInterval(this.renderTimer);
       this.renderTimer = null;
     }
   }
@@ -264,6 +264,81 @@ export class AnnotationLayer {
     }
 
     console.log('Layer visibility changed:', layerId, visible);
+  }
+
+  /**
+   * Set layer opacity (0.0–1.0)
+   */
+  setLayerOpacity(layerId: string, opacity: number): void {
+    const layer = this.state.layers.get(layerId);
+    if (!layer) {
+      console.warn('Layer not found:', layerId);
+      return;
+    }
+
+    const previousOpacity = layer.opacity;
+    layer.opacity = Math.max(0, Math.min(1, opacity));
+
+    const action: AnnotationAction = {
+      type: 'layer_opacity',
+      layerId,
+      previousState: { opacity: previousOpacity },
+      newState: { opacity: layer.opacity },
+      timestamp: Date.now(),
+    };
+
+    this.addToUndoStack(action);
+    console.log('Layer opacity changed:', layerId, layer.opacity);
+  }
+
+  /**
+   * Reorder a layer's z-index
+   */
+  reorderLayer(layerId: string, newZIndex: number): void {
+    const layer = this.state.layers.get(layerId);
+    if (!layer) {
+      console.warn('Layer not found:', layerId);
+      return;
+    }
+
+    const previousZIndex = layer.zIndex;
+    layer.zIndex = newZIndex;
+
+    const action: AnnotationAction = {
+      type: 'layer_reorder',
+      layerId,
+      previousState: { zIndex: previousZIndex },
+      newState: { zIndex: newZIndex },
+      timestamp: Date.now(),
+    };
+
+    this.addToUndoStack(action);
+    console.log('Layer reordered:', layerId, 'zIndex:', newZIndex);
+  }
+
+  /**
+   * Rename a layer
+   */
+  renameLayer(layerId: string, name: string): void {
+    const layer = this.state.layers.get(layerId);
+    if (!layer) {
+      console.warn('Layer not found:', layerId);
+      return;
+    }
+
+    const previousName = layer.name;
+    layer.name = name;
+
+    const action: AnnotationAction = {
+      type: 'layer_rename',
+      layerId,
+      previousState: { name: previousName },
+      newState: { name },
+      timestamp: Date.now(),
+    };
+
+    this.addToUndoStack(action);
+    console.log('Layer renamed:', layerId, '→', name);
   }
 
   /**
@@ -634,7 +709,87 @@ export class AnnotationLayer {
       case 'text':
         this.renderTextAnnotation(annotation);
         break;
+      case 'eraser':
+        this.renderEraserAnnotation(annotation);
+        break;
+      case 'highlighter':
+        this.renderHighlighterAnnotation(annotation);
+        break;
+      case 'line':
+        this.renderLineAnnotation(annotation);
+        break;
     }
+  }
+
+  // ─── New Tool Renderers (Milestone 4) ─────────────────────
+
+  private renderEraserAnnotation(annotation: Annotation): void {
+    if (!this.ctx || !annotation.data.points || annotation.data.points.length < 2) return;
+
+    const prevComposite = this.ctx.globalCompositeOperation;
+    this.ctx.globalCompositeOperation = 'destination-out';
+    this.ctx.strokeStyle = 'rgba(0,0,0,1)';
+    this.ctx.lineWidth = annotation.data.strokeWidth * 3; // Eraser is wider
+    this.ctx.globalAlpha = 1;
+
+    this.ctx.beginPath();
+    this.ctx.moveTo(annotation.data.points[0].x, annotation.data.points[0].y);
+    for (let i = 1; i < annotation.data.points.length; i++) {
+      this.ctx.lineTo(annotation.data.points[i].x, annotation.data.points[i].y);
+    }
+    this.ctx.stroke();
+
+    this.ctx.globalCompositeOperation = prevComposite;
+  }
+
+  private renderHighlighterAnnotation(annotation: Annotation): void {
+    if (!this.ctx || !annotation.data.points || annotation.data.points.length < 2) return;
+
+    const prevComposite = this.ctx.globalCompositeOperation;
+    this.ctx.globalCompositeOperation = 'multiply';
+    this.ctx.strokeStyle = annotation.data.color;
+    this.ctx.lineWidth = annotation.data.strokeWidth * 4; // Wide highlighter
+    this.ctx.globalAlpha = 0.3; // Always semi-transparent
+    this.ctx.lineCap = 'round';
+    this.ctx.lineJoin = 'round';
+
+    this.ctx.beginPath();
+    this.ctx.moveTo(annotation.data.points[0].x, annotation.data.points[0].y);
+    for (let i = 1; i < annotation.data.points.length; i++) {
+      this.ctx.lineTo(annotation.data.points[i].x, annotation.data.points[i].y);
+    }
+    this.ctx.stroke();
+
+    this.ctx.globalCompositeOperation = prevComposite;
+  }
+
+  private renderLineAnnotation(annotation: Annotation): void {
+    if (
+      !this.ctx ||
+      annotation.data.startX === undefined ||
+      annotation.data.startY === undefined ||
+      annotation.data.endX === undefined ||
+      annotation.data.endY === undefined
+    )
+      return;
+
+    this.ctx.beginPath();
+
+    // Apply line style
+    const lineStyle = annotation.data.lineStyle || 'solid';
+    if (lineStyle === 'dashed') {
+      this.ctx.setLineDash([10, 5]);
+    } else if (lineStyle === 'dotted') {
+      this.ctx.setLineDash([3, 3]);
+    } else {
+      this.ctx.setLineDash([]);
+    }
+
+    this.ctx.moveTo(annotation.data.startX, annotation.data.startY);
+    this.ctx.lineTo(annotation.data.endX, annotation.data.endY);
+    this.ctx.stroke();
+
+    this.ctx.setLineDash([]);
   }
 
   private renderPenAnnotation(annotation: Annotation): void {
@@ -807,7 +962,7 @@ export class AnnotationLayer {
     }
   }
 
-  private startDrawing(x: number, y: number): void {
+  protected startDrawing(x: number, y: number): void {
     if (!this.video) return;
 
     const currentLayer = this.state.layers.get(this.state.currentLayer);
@@ -815,9 +970,12 @@ export class AnnotationLayer {
 
     this.state.isDrawing = true;
 
+    const isPenLike = ['pen', 'eraser', 'highlighter'].includes(this.state.currentTool.type);
+    const isArrowLike = ['arrow', 'line'].includes(this.state.currentTool.type);
+
     const annotation: Annotation = {
       id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      userId: 'current-user', // This would come from the background script
+      userId: 'current-user', // Overridden by CollaborativeAnnotationLayer.startDrawing
       videoTimestamp: this.video.currentTime,
       type: this.state.currentTool.type,
       layerId: this.state.currentLayer,
@@ -825,11 +983,11 @@ export class AnnotationLayer {
         color: this.state.currentTool.color,
         strokeWidth: this.state.currentTool.strokeWidth,
         opacity: this.state.currentTool.opacity,
-        points: this.state.currentTool.type === 'pen' ? [{ x, y }] : undefined,
-        x: this.state.currentTool.type !== 'pen' ? x : undefined,
-        y: this.state.currentTool.type !== 'pen' ? y : undefined,
-        startX: this.state.currentTool.type === 'arrow' ? x : undefined,
-        startY: this.state.currentTool.type === 'arrow' ? y : undefined,
+        points: isPenLike ? [{ x, y }] : undefined,
+        x: !isPenLike ? x : undefined,
+        y: !isPenLike ? y : undefined,
+        startX: isArrowLike ? x : undefined,
+        startY: isArrowLike ? y : undefined,
         fontSize: this.state.currentTool.fontSize,
         fontFamily: this.state.currentTool.fontFamily,
       },
@@ -844,35 +1002,32 @@ export class AnnotationLayer {
   private continueDrawing(x: number, y: number): void {
     if (!this.state.currentAnnotation) return;
 
-    switch (this.state.currentAnnotation.type) {
-      case 'pen':
-        if (this.state.currentAnnotation.data.points) {
-          this.state.currentAnnotation.data.points.push({ x, y });
-        }
-        break;
-      case 'rectangle':
-        if (
-          this.state.currentAnnotation.data.x !== undefined &&
-          this.state.currentAnnotation.data.y !== undefined
-        ) {
-          this.state.currentAnnotation.data.width = x - this.state.currentAnnotation.data.x;
-          this.state.currentAnnotation.data.height = y - this.state.currentAnnotation.data.y;
-        }
-        break;
-      case 'circle':
-        if (
-          this.state.currentAnnotation.data.x !== undefined &&
-          this.state.currentAnnotation.data.y !== undefined
-        ) {
-          const dx = x - this.state.currentAnnotation.data.x;
-          const dy = y - this.state.currentAnnotation.data.y;
-          this.state.currentAnnotation.data.radius = Math.sqrt(dx * dx + dy * dy);
-        }
-        break;
-      case 'arrow':
-        this.state.currentAnnotation.data.endX = x;
-        this.state.currentAnnotation.data.endY = y;
-        break;
+    const type = this.state.currentAnnotation.type;
+
+    if (type === 'pen' || type === 'eraser' || type === 'highlighter') {
+      if (this.state.currentAnnotation.data.points) {
+        this.state.currentAnnotation.data.points.push({ x, y });
+      }
+    } else if (type === 'rectangle') {
+      if (
+        this.state.currentAnnotation.data.x !== undefined &&
+        this.state.currentAnnotation.data.y !== undefined
+      ) {
+        this.state.currentAnnotation.data.width = x - this.state.currentAnnotation.data.x;
+        this.state.currentAnnotation.data.height = y - this.state.currentAnnotation.data.y;
+      }
+    } else if (type === 'circle') {
+      if (
+        this.state.currentAnnotation.data.x !== undefined &&
+        this.state.currentAnnotation.data.y !== undefined
+      ) {
+        const dx = x - this.state.currentAnnotation.data.x;
+        const dy = y - this.state.currentAnnotation.data.y;
+        this.state.currentAnnotation.data.radius = Math.sqrt(dx * dx + dy * dy);
+      }
+    } else if (type === 'arrow' || type === 'line') {
+      this.state.currentAnnotation.data.endX = x;
+      this.state.currentAnnotation.data.endY = y;
     }
 
     this.state.currentAnnotation.updatedAt = Date.now();
@@ -907,7 +1062,7 @@ export class AnnotationLayer {
     this.state.isDrawing = false;
   }
 
-  private addToUndoStack(action: AnnotationAction): void {
+  protected addToUndoStack(action: AnnotationAction): void {
     this.state.undoStack.push(action);
 
     // Limit undo stack size

@@ -51,6 +51,8 @@ const mockDocument = {
   })),
   body: { appendChild: vi.fn() },
   getElementById: vi.fn(() => null),
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
 };
 
 const mockWindow = {
