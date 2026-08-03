@@ -95,23 +95,35 @@ A fully-featured, production-ready cross-browser watch party extension with comp
 
 ---
 
-## Milestone 4: Advanced Features — Future
+## Milestone 4: Advanced Features — Completed
 
 **Objective:** Implement advanced annotation features and end-to-end encryption.
 
 ### ADVANCED_ANNOTATIONS
-**Status:** Future (flag `ADVANCED_ANNOTATIONS: false`)
+**Status:** Completed (flag `ADVANCED_ANNOTATIONS: true`)
 
-- Advanced drawing tools, layers, and collaborative editing
-- Expand on existing annotation-layer module
+- Extended annotation tools: eraser, highlighter, line (in addition to pen/rect/circle/arrow/text)
+- Ephemeral laser pointer with separate lifecycle (no persistence, no sync, auto-fade)
+- Layer enhancements: lock enforcement, opacity control, reorder, rename
+- Fixed CollaborativeAnnotationLayer sync: userId hardcoding fix, double-sync fix, onAnnotationUpdated wrapping
+- Sequence-based deduplication and out-of-order message handling
+- State snapshot support for late joiners
+- Annotation message relay through local-relay.js
+- Updated MaterialAnnotationToolbar with new tools and layer UI
 
 ### E2E_ENCRYPTION
-**Status:** Future (flag `E2E_ENCRYPTION: false`)
+**Status:** Completed (config flag `E2E_ENCRYPTION_ENABLED: true`)
 
-- End-to-end encryption for chat communications
-- Expand on existing encryption module (`src/@core/encryption/`)
+- Always-on encryption when config flag is enabled
+- PUBLIC_KEY_BROADCAST message type for key exchange
+- ENCRYPTED_CHAT_MESSAGE for encrypted chat payloads
+- ParticipantManager as single source of truth for participant state
+- Dynamic RSA key size detection (fixes hardcoded 2048 limitation)
+- Protocol versioning on all new message types
+- Server relay extensions for encrypted chat, key exchange, and annotations
+- Deterministic recovery for missing keys, malformed payloads, reconnect
 
-**Validation:** Feature flag enabled; integration tests pass; cross-browser verified.
+**Validation:** Feature flags enabled; unit tests pass; build succeeds; cross-browser verified.
 
 ---
 
@@ -168,5 +180,5 @@ Milestone 5 (Production) → Milestones 1–3 complete
 | 1. Repository Infrastructure | Completed | 0 |
 | 2. Feature Completion | Completed | 0 |
 | 3. Documentation & Deployment | Completed | 0 |
-| 4. Advanced Features | Future | 2 features |
+| 4. Advanced Features | Completed | 0 |
 | 5. Production Readiness | Future | Multiple |
