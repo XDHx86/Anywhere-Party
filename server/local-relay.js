@@ -178,18 +178,18 @@ class LocalWebSocketRelay {
       case 'PONG':
         this.handlePong(socket, payload);
         break;
-      case 'PLAYLIST_ADD':
-      case 'PLAYLIST_REMOVE':
-      case 'PLAYLIST_REORDER':
-      case 'PLAYLIST_SKIP_VOTE':
-        this.handlePlaylistMessage(socket, type, payload);
-        break;
       // ─── Encryption Messages (Milestone 4) ──────────────
       case 'PUBLIC_KEY_BROADCAST':
         this.handlePublicKeyBroadcast(socket, type, payload);
         break;
       case 'ENCRYPTED_CHAT_MESSAGE':
         this.handleEncryptedChatMessage(socket, type, payload);
+        break;
+      case 'PLAYLIST_ADD':
+      case 'PLAYLIST_REMOVE':
+      case 'PLAYLIST_REORDER':
+      case 'PLAYLIST_SKIP_VOTE':
+        this.handlePlaylistMessage(socket, type, payload);
         break;
       default:
         console.warn(`⚠️  Unknown message type: ${type}`);
