@@ -258,6 +258,11 @@ class ContentScript {
     // Listen for messages from background script
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
       chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        // Security: Only accept messages from our own extension
+        if (!sender?.id || sender.id !== chrome.runtime.id) {
+          sendResponse({ success: false, error: 'Untrusted sender' });
+          return false;
+        }
         this.handleMessage(message, sendResponse);
         return true; // Keep message channel open for async response
       });
@@ -266,6 +271,22 @@ class ContentScript {
 
   private handleMessage(message: any, sendResponse: (response: any) => void) {
     try {
+      // Room-scoped messages must only be processed when this tab is part of an active
+      // watch party. This prevents room data (chat, reactions, annotations) from leaking
+      // to content scripts running on unrelated tabs.
+      const roomScopedTypes = [
+        'SHOW_REACTION',
+        'SERVER_MESSAGE',
+        'ADD_ANNOTATION',
+        'UPDATE_ANNOTATION',
+        'DELETE_ANNOTATION',
+        'SET_ANNOTATION_LAYER_VISIBILITY',
+      ];
+      if (roomScopedTypes.includes(message.type) && !this.currentRoomId) {
+        sendResponse({ success: false, error: 'Not in a room' });
+        return;
+      }
+
       switch (message.type) {
         case 'GET_VIDEO_TIMESTAMP':
           const timestamp = this.getCurrentVideoTimestamp();

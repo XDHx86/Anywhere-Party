@@ -46,8 +46,13 @@ export class TelemetryService {
     }
 
     // Generate anonymized ID (same as logger for consistency)
-    const anonymizedId =
-      'anon_' + Math.random().toString(36).substr(2, 16) + '_' + Date.now().toString(36);
+    // Use crypto.getRandomValues for cryptographically secure random ID
+    const randomBytes = new Uint8Array(12);
+    crypto.getRandomValues(randomBytes);
+    const randomPart = Array.from(randomBytes)
+      .map((b) => b.toString(36).padStart(2, '0'))
+      .join('');
+    const anonymizedId = 'anon_' + randomPart + '_' + Date.now().toString(36);
     await this.browserBridge.storage.local.set({ anonymizedUserId: anonymizedId });
     return anonymizedId;
   }

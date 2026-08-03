@@ -316,6 +316,14 @@ class BackgroundService {
 
   private setupMessageHandlers() {
     this.browserBridge.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+      // Security: Validate message origin. Only accept messages from the extension
+      // itself (content scripts, popup, options page). Reject external callers.
+      if (!this.isValidMessageSender(sender)) {
+        console.warn('Rejected message from untrusted sender:', message.type);
+        sendResponse({ success: false, error: 'Untrusted sender' });
+        return;
+      }
+
       try {
         switch (message.type) {
           case 'GET_CONFIG':
@@ -1227,14 +1235,43 @@ class BackgroundService {
     });
   }
 
+  /**
+   * Validate that a message sender is trusted (comes from within the extension).
+   * Rejects messages from external/untrusted sources.
+   */
+  private isValidMessageSender(sender: chrome.runtime.MessageSender | undefined): boolean {
+    if (!sender) return false;
+
+    // Messages from extension pages (popup, options) always have sender.id set
+    // Messages from content scripts also have sender.id set
+    // Messages from external web pages should have sender.id undefined or mismatch
+    if (sender.id && sender.id !== this.browserBridge.runtime?.id) {
+      return false;
+    }
+
+    // If sender.id is present, verify it matches this extension
+    if (sender.id) {
+      return sender.id === this.browserBridge.runtime?.id;
+    }
+
+    // sender.id missing: could be from an external source — reject
+    // In MV3, only extension contexts (content scripts, popup, options) can send messages
+    return false;
+  }
+
   private async getOrCreateUserId(): Promise<string> {
     const result = await this.browserBridge.storage.local.get('userId');
     if (result.userId) {
       return result.userId;
     }
 
-    // Generate new user ID
-    const userId = 'user_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+    // Generate cryptographically secure user ID
+    const randomBytes = new Uint8Array(9);
+    crypto.getRandomValues(randomBytes);
+    const randomStr = Array.from(randomBytes)
+      .map((b) => b.toString(36).padStart(2, '0'))
+      .join('');
+    const userId = 'user_' + randomStr + '_' + Date.now();
     await this.browserBridge.storage.local.set({ userId });
     return userId;
   }

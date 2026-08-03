@@ -164,7 +164,10 @@ class FirefoxNotificationsAPI implements NotificationsAPI {
   }
 
   async clearAll(): Promise<boolean> {
-    return browser.notifications.clearAll();
+    // Firefox notifications API has no clearAll — clear each notification individually.
+    const notificationIds = Object.keys(await browser.notifications.getAll());
+    await Promise.all(notificationIds.map((id) => this.clear(id)));
+    return notificationIds.length > 0;
   }
 
   onClicked = {

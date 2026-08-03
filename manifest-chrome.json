@@ -57,7 +57,6 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "extension-config.json",
         "assets/fonts/fontawesome/css/all.min.css",
         "assets/fonts/fontawesome/webfonts/*",
         "assets/icons/sprite.svg",
