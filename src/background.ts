@@ -8,8 +8,6 @@ import {
   createJoinRoomMessage,
   createSyncStateMessage,
   createChatMessage,
-  HostTransferMessage,
-  KickParticipantMessage,
 } from '@core/signaling';
 import { SyncEngine } from '@core/sync-engine';
 import { SyncMessage } from '@core/sync-engine/types';
@@ -2171,7 +2169,7 @@ class BackgroundService {
             });
           }
         }
-        this.broadcastToUI({ type: 'PLAYLIST_SKIP_RESULT', ...message });
+        this.broadcastToUI({ ...message, type: 'PLAYLIST_SKIP_RESULT' });
         break;
 
       case 'PLAYLIST_ADVANCE':
@@ -2192,7 +2190,7 @@ class BackgroundService {
           });
         }
         await this.playlistManager.setCurrentIndex(message.nextIndex);
-        this.broadcastToUI({ type: 'PLAYLIST_ADVANCE', ...message });
+        this.broadcastToUI({ ...message, type: 'PLAYLIST_ADVANCE' });
         break;
     }
 

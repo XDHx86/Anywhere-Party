@@ -34,14 +34,26 @@ Object.defineProperty(global, 'performance', {
   writable: true,
 });
 
-Object.defineProperty(global, 'window', {
-  value: {
-    PerformanceObserver: vi.fn(),
-    requestAnimationFrame: vi.fn((cb) => setTimeout(cb, 16)),
-    addEventListener: vi.fn(),
-  },
-  writable: true,
-});
+// Patch individual window props instead of replacing the whole window object,
+// which breaks jsdom's internal timers during teardown.
+if (!('PerformanceObserver' in window)) {
+  Object.defineProperty(window, 'PerformanceObserver', {
+    value: vi.fn(),
+    writable: true,
+  });
+}
+if (typeof window.requestAnimationFrame !== 'function') {
+  Object.defineProperty(window, 'requestAnimationFrame', {
+    value: vi.fn((cb) => setTimeout(cb, 16)),
+    writable: true,
+  });
+}
+if (typeof window.addEventListener !== 'function') {
+  Object.defineProperty(window, 'addEventListener', {
+    value: vi.fn(),
+    writable: true,
+  });
+}
 
 describe('PerformanceMetricsCollector', () => {
   let collector: PerformanceMetricsCollector;

@@ -81,8 +81,21 @@ class PerformanceMetricsCollector {
 
   constructor(sessionId: string) {
     this.sessionId = sessionId;
-    this.startTime = performance.now();
+    this.startTime = PerformanceMetricsCollector.now();
     this.initializeMonitoring();
+  }
+
+  /**
+   * Safe timing helper that falls back to Date.now() when the Performance API
+   * is unavailable (e.g. some test environments or restricted contexts).
+   */
+  static now(): number {
+    try {
+      const perf = (globalThis as { performance?: { now?: () => number } }).performance;
+      return perf && typeof perf.now === 'function' ? perf.now() : Date.now();
+    } catch {
+      return Date.now();
+    }
   }
 
   private initializeMonitoring(): void {
@@ -128,12 +141,12 @@ class PerformanceMetricsCollector {
 
   private setupFrameRateMonitoring(): void {
     let frameCount = 0;
-    let lastTime = performance.now();
+    let lastTime = PerformanceMetricsCollector.now();
     let frameRate = 0;
 
     const measureFrameRate = () => {
       frameCount++;
-      const currentTime = performance.now();
+      const currentTime = PerformanceMetricsCollector.now();
 
       if (currentTime - lastTime >= 1000) {
         frameRate = Math.round((frameCount * 1000) / (currentTime - lastTime));
@@ -234,8 +247,9 @@ class PerformanceMetricsCollector {
   }
 
   private getCurrentMemoryUsage(): MemoryUsage {
-    if ('memory' in performance) {
-      const memory = (performance as any).memory;
+    const perf = (globalThis as { performance?: { memory?: any } }).performance;
+    if (perf && 'memory' in perf) {
+      const memory = perf.memory;
       const used = memory.usedJSHeapSize;
       const total = memory.totalJSHeapSize;
       const limit = memory.jsHeapSizeLimit;
@@ -257,8 +271,9 @@ class PerformanceMetricsCollector {
 
   private measureNetworkLatency(): number | undefined {
     // Use navigation timing to estimate network latency
-    if (performance.timing) {
-      const timing = performance.timing;
+    const perf = (globalThis as { performance?: { timing?: any } }).performance;
+    if (perf && perf.timing) {
+      const timing = perf.timing;
       return timing.responseStart - timing.requestStart;
     }
     return undefined;
@@ -310,7 +325,7 @@ class PerformanceMetricsCollector {
 
     const stageMetrics: ComponentLoadingStage = {
       stage,
-      startTime: performance.now(),
+      startTime: PerformanceMetricsCollector.now(),
       memoryUsage: this.getCurrentMemoryUsage(),
       errors: [],
     };
@@ -327,7 +342,7 @@ class PerformanceMetricsCollector {
     const lastStage = metrics.loadingStages[metrics.loadingStages.length - 1];
     if (!lastStage || lastStage.endTime) return;
 
-    lastStage.endTime = performance.now();
+    lastStage.endTime = PerformanceMetricsCollector.now();
     lastStage.duration = lastStage.endTime - lastStage.startTime;
 
     if (error) {
@@ -524,7 +539,7 @@ class PerformanceMetricsCollector {
   } {
     return {
       sessionId: this.sessionId,
-      sessionDuration: performance.now() - this.startTime,
+      sessionDuration: PerformanceMetricsCollector.now() - this.startTime,
       componentMetrics: this.getAllComponentMetrics(),
       systemMetrics: this.getSystemMetrics(),
       summary: this.getPerformanceSummary(),

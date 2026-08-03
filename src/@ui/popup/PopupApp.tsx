@@ -578,7 +578,7 @@ export const PopupApp: React.FC = () => {
             isCompact={responsive.isPopup}
             isMobile={responsive.isMobile}
             tabIndex={0}
-            onKeyDown={(e) => {
+            onKeyDown={(e: React.KeyboardEvent<HTMLElement>) => {
               // Enhanced keyboard navigation for scrolling
               if (e.key === 'ArrowDown' && e.ctrlKey) {
                 e.preventDefault();
@@ -629,7 +629,7 @@ export const PopupApp: React.FC = () => {
             </ErrorBoundary>
 
             {/* Playlist Card — visible when in a room and PLAYLISTS flag is on */}
-            {state.currentView === 'room' && state.connectionStatus === 'connected' && (
+            {state.currentView === 'roomView' && state.connectionStatus === 'connected' && (
               <ErrorBoundary
                 componentName="PlaylistCard"
                 onError={handleComponentError}

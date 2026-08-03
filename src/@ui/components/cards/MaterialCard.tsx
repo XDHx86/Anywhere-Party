@@ -52,8 +52,8 @@ const StyledCard = styled(Card, {
   rounded: BorderRadiusSize;
   padding: SpacingSize;
 }>(({ theme, materialVariant, rounded, padding }) => ({
-  borderRadius: borderRadiusMap[rounded],
-  padding: spacingMap[padding],
+  borderRadius: borderRadiusMap[rounded as BorderRadiusSize],
+  padding: spacingMap[padding as SpacingSize],
   transition: createTransition(
     ['box-shadow', 'transform', 'background-color'],
     'medium2',
