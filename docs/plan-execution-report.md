@@ -1,6 +1,6 @@
 # Plan Execution Report
 
-> Execution of `plan.md` Milestones 1 and 3 on 2026-08-03.
+> Execution of `plan.md` Milestones 1, 2, and 3 on 2026-08-03.
 
 ---
 
@@ -101,3 +101,74 @@ Updated `docs/deployment-checklist.md` with functional verification items:
 | `src/@core/webrtc-voice/webrtc-voice-manager.ts` | Add eslint-disable for prefer-const |
 | `src/@ui/integration/runtime-fix-validation.test.ts` | Fix regex escape |
 | `src/@ui/popup/popup-scrolling-integration.test.tsx` | Renamed from .ts (JSX) |
+
+---
+
+## Milestone 2: Feature Completion — ✅ Completed
+
+### Task 9.1: Playlist Management
+
+**New files created:**
+- `src/@core/playlist/types.ts` — PlaylistItem, PlaylistState, PlaylistVote, PlaylistManagerConfig
+- `src/@core/playlist/playlist-manager.ts` — In-memory queue with host-only control, skip voting (>50% threshold), auto-advance, 24h TTL persistence via browser.storage.local
+- `src/@core/playlist/index.ts` — Public API
+- `src/@core/playlist/playlist-manager.test.ts` — 14 unit tests
+- `src/@ui/popup/PlaylistCard.tsx` — MD3 playlist UI (queue display, add/skip/reorder, host controls)
+
+**Files modified:**
+- `src/@core/signaling/message-types.ts` — 7 new message types (PLAYLIST_ADD/REMOVE/REORDER/SKIP_VOTE/STATE/SKIP_RESULT/ADVANCE), unions, validation, factory functions
+- `server/local-relay.js` — Playlist message relay with vote counting
+- `src/background.ts` — PlaylistManager field, UI message handlers (GET/ADD/REMOVE/REORDER/VOTE_SKIP/ADVANCE_PLAYLIST), server message routing
+- `src/content-script.ts` — PLAYLIST_ADVANCE handler for video-swap
+- `src/@ui/popup/PopupApp.tsx` — Integrated PlaylistCard (shown when in room + connected)
+
+### Task 9.3: Scheduled Watch Parties (ICS + Reminders)
+
+**New files created:**
+- `src/@core/scheduling/types.ts` — ScheduledSession, ReminderConfig, RecurrenceRule, SchedulingEvent
+- `src/@core/scheduling/scheduling-manager.ts` — CRUD for sessions, alarm-based reminders, notification delivery
+- `src/@core/scheduling/ics-generator.ts` — RFC 5545 compliant ICS generation with recurrence and VALARM
+- `src/@core/scheduling/index.ts` — Public API
+- `src/@core/scheduling/ics-generator.test.ts` — 7 unit tests
+- `src/@ui/options/components/SchedulingCard.tsx` — MD3 scheduling UI (session creation, ICS download, countdown)
+
+**Files modified:**
+- `src/@core/browser-bridge/types.ts` — Added AlarmsAPI and NotificationsAPI interfaces
+- `src/@core/browser-bridge/chrome-bridge.ts` — ChromeAlarmsAPI, ChromeNotificationsAPI implementations
+- `src/@core/browser-bridge/firefox-bridge.ts` — FirefoxAlarmsAPI, FirefoxNotificationsAPI implementations
+- `manifest-chrome.json` — Added `alarms`, `notifications` permissions
+- `manifest-firefox.json` — Added `alarms`, `notifications` permissions
+- `src/@core/signaling/message-types.ts` — 3 scheduling message types (SCHEDULE_SESSION/CANCEL_SESSION/SCHEDULED_SESSIONS)
+- `src/background.ts` — SchedulingManager field, GET_SCHEDULED_SESSIONS/SCHEDULE_SESSION_UI/CANCEL_SESSION_UI handlers
+- `src/@ui/options/OptionsApp.tsx` — Added Scheduling tab with SchedulingCard
+- `extension-config.json` — `PLAYLISTS: true`, `SCHEDULING: true`
+- `src/@core/config/config-manager.ts` — Updated hardcoded defaults
+- `src/@core/feature-flags/feature-flags-client.ts` — Updated default flags
+
+---
+
+## Commits
+
+```
+feat: implement playlist management and scheduled watch parties (Milestone 2)
+docs: add plan execution report for Milestones 1 and 3
+docs: update plan and deployment checklist for completed milestones
+chore: initial commit of watch party extension source
+```
+
+---
+
+## Remaining Phases (Future)
+
+### Milestone 4: Advanced Features
+- **ADVANCED_ANNOTATIONS** — Advanced drawing tools, layers, collaborative editing (flag `ADVANCED_ANNOTATIONS: false`)
+- **E2E_ENCRYPTION** — End-to-end encryption for chat communications (flag `E2E_ENCRYPTION: false`)
+- Existing modules: `src/@core/annotation-layer/`, `src/@core/encryption/`
+
+### Milestone 5: Production Readiness
+- Chrome Web Store submission
+- Firefox Add-ons submission
+- Production TURN server deployment
+- Monitoring and alerting setup
+- Data retention policy enforcement
+- Google Calendar / Outlook OAuth integration (from deferred Task 9.3)
