@@ -13,6 +13,7 @@ import {
   AnnotationLayerOptions,
   Annotation,
   AnnotationMessage,
+  AnnotationAction,
   DrawingTool,
   AnnotationType,
 } from './types';
@@ -41,6 +42,13 @@ export class CollaborativeAnnotationLayer extends AnnotationLayer {
   private syncTimer: number | null = null;
   private messageQueue: AnnotationMessage[] = [];
   private participantCursors: Map<string, { x: number; y: number; tool: DrawingTool }> = new Map();
+  private sequenceCounter: number = 0;
+  private lastAppliedSequence: number = 0;
+
+  /** Monotonically increasing sequence for sync messages. */
+  private nextSequence(): number {
+    return ++this.sequenceCounter;
+  }
 
   constructor(options: CollaborativeAnnotationOptions) {
     super(options);
@@ -61,6 +69,16 @@ export class CollaborativeAnnotationLayer extends AnnotationLayer {
 
     // Override callbacks to include synchronization
     this.setupCollaborativeCallbacks();
+  }
+
+  /**
+   * Update collaborative options after construction (e.g., when room info arrives).
+   */
+  updateOptions(userId: string, roomId: string, userName: string): void {
+    this.collaborativeOptions.userId = userId;
+    this.collaborativeOptions.roomId = roomId;
+    this.collaborativeOptions.userName = userName;
+    console.log('CollaborativeAnnotationLayer options updated:', { userId, roomId });
   }
 
   /**
@@ -109,7 +127,7 @@ export class CollaborativeAnnotationLayer extends AnnotationLayer {
       userId: this.collaborativeOptions.userId,
       videoTimestamp: this.video.currentTime,
       type,
-      layerId: (this as any).state.currentLayer,
+      layerId: this.state.currentLayer,
       data: {
         ...data,
         x: position.x,
@@ -122,19 +140,61 @@ export class CollaborativeAnnotationLayer extends AnnotationLayer {
       updatedAt: Date.now(),
     };
 
-    // Add to local layer
+    // Add to local layer — the wrapped onAnnotationCreated callback
+    // handles syncing via queueSyncMessage (no double-sync)
     this.addAnnotation(annotation);
 
-    // Queue for synchronization
-    this.queueSyncMessage({
-      type: 'annotation_created',
-      userId: this.collaborativeOptions.userId,
-      roomId: this.collaborativeOptions.roomId,
-      annotation,
+    // Record undo action for local creation (remote syncs bypass this path)
+    const action: AnnotationAction = {
+      type: 'create',
+      annotationId: annotation.id,
+      layerId: annotation.layerId,
+      newState: { ...annotation },
       timestamp: Date.now(),
-    });
+    };
+    this.addToUndoStack(action);
 
     return annotation;
+  }
+
+  /**
+   * Override startDrawing to inject the real user ID instead of hardcoded 'current-user'.
+   */
+  protected startDrawing(x: number, y: number): void {
+    if (!this.isActive() || !this.video) return;
+
+    const currentLayer = this.state.layers.get(this.state.currentLayer);
+    if (currentLayer?.locked) {
+      console.warn('Cannot draw on a locked layer');
+      return;
+    }
+
+    const tool = this.state.currentTool;
+    if (!tool) return;
+
+    const annotation: Annotation = {
+      id: `${this.collaborativeOptions.userId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      userId: this.collaborativeOptions.userId,
+      videoTimestamp: this.video.currentTime,
+      type: tool.type,
+      layerId: this.state.currentLayer || 'default',
+      data: {
+        color: tool.color,
+        strokeWidth: tool.strokeWidth,
+        opacity: tool.opacity,
+        points: [{ x, y, pressure: 0, timestamp: Date.now() }],
+        x,
+        y,
+        startX: x,
+        startY: y,
+      },
+      visible: true,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    this.state.currentAnnotation = annotation;
+    this.state.isDrawing = true;
   }
 
   /**
@@ -144,6 +204,11 @@ export class CollaborativeAnnotationLayer extends AnnotationLayer {
     // Don't process our own messages
     if (message.userId === this.collaborativeOptions.userId) {
       return;
+    }
+
+    // Sequence-based deduplication: skip if already applied
+    if (message.sequence && message.sequence <= this.lastAppliedSequence) {
+      return; // Duplicate or out-of-order — already handled
     }
 
     switch (message.type) {
@@ -170,6 +235,21 @@ export class CollaborativeAnnotationLayer extends AnnotationLayer {
           this.setLayerVisibility(message.layerId, message.visible);
         }
         break;
+
+      case 'annotation_state_snapshot':
+        // Full state replacement — used on join/reconnect
+        if (message.annotations) {
+          this.clearAllAnnotations();
+          for (const annotation of message.annotations) {
+            this.addAnnotation(annotation);
+          }
+        }
+        break;
+    }
+
+    // Track applied sequence
+    if (message.sequence) {
+      this.lastAppliedSequence = Math.max(this.lastAppliedSequence, message.sequence);
     }
 
     this.syncState.lastSyncTime = Date.now();
@@ -240,7 +320,10 @@ export class CollaborativeAnnotationLayer extends AnnotationLayer {
   }
 
   private setupCollaborativeCallbacks(): void {
-    const originalOptions = this.collaborativeOptions;
+    // Wrap the base options callbacks (this.options) — those are what
+    // addAnnotation/updateAnnotation/deleteAnnotation/setLayerVisibility actually invoke.
+    // collaborativeOptions is a separate spread object, so wrapping it alone would be a no-op.
+    const originalOptions = this.options;
 
     // Wrap original callbacks to include sync
     const originalOnAnnotationCreated = originalOptions.onAnnotationCreated;
@@ -253,9 +336,33 @@ export class CollaborativeAnnotationLayer extends AnnotationLayer {
       if (annotation.userId === this.collaborativeOptions.userId) {
         this.queueSyncMessage({
           type: 'annotation_created',
+          protocolVersion: 1,
+          sequence: this.nextSequence(),
           userId: this.collaborativeOptions.userId,
           roomId: this.collaborativeOptions.roomId,
           annotation,
+          timestamp: Date.now(),
+        });
+      }
+    };
+
+    // Wrap onAnnotationUpdated — was previously missing, breaking sync for edits
+    const originalOnAnnotationUpdated = originalOptions.onAnnotationUpdated;
+    originalOptions.onAnnotationUpdated = (annotation: Annotation) => {
+      if (originalOnAnnotationUpdated) {
+        originalOnAnnotationUpdated(annotation);
+      }
+
+      if (annotation.userId === this.collaborativeOptions.userId) {
+        this.queueSyncMessage({
+          type: 'annotation_updated',
+          protocolVersion: 1,
+          sequence: this.nextSequence(),
+          userId: this.collaborativeOptions.userId,
+          roomId: this.collaborativeOptions.roomId,
+          annotation,
+          annotationId: annotation.id,
+          updates: annotation.data,
           timestamp: Date.now(),
         });
       }
@@ -269,6 +376,8 @@ export class CollaborativeAnnotationLayer extends AnnotationLayer {
 
       this.queueSyncMessage({
         type: 'annotation_deleted',
+        protocolVersion: 1,
+        sequence: this.nextSequence(),
         userId: this.collaborativeOptions.userId,
         roomId: this.collaborativeOptions.roomId,
         annotationId,
@@ -284,6 +393,8 @@ export class CollaborativeAnnotationLayer extends AnnotationLayer {
 
       this.queueSyncMessage({
         type: 'layer_visibility_changed',
+        protocolVersion: 1,
+        sequence: this.nextSequence(),
         userId: this.collaborativeOptions.userId,
         roomId: this.collaborativeOptions.roomId,
         layerId,
@@ -307,7 +418,7 @@ export class CollaborativeAnnotationLayer extends AnnotationLayer {
 
   private stopCollaborativeSync(): void {
     if (this.syncTimer) {
-      clearInterval(this.syncTimer);
+      window.clearInterval(this.syncTimer);
       this.syncTimer = null;
     }
 
@@ -505,14 +616,14 @@ export class CollaborativeAnnotationLayer extends AnnotationLayer {
 
   // Expose private properties for testing
   public getVideo(): HTMLVideoElement | null {
-    return (this as any).video;
+    return this.video;
   }
 
   public getOverlay(): HTMLElement | null {
-    return (this as any).overlay;
+    return this.overlay;
   }
 
   public getFallbackUI(): HTMLElement | null {
-    return (this as any).fallbackUI;
+    return this.fallbackUI;
   }
 }

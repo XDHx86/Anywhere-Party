@@ -93,7 +93,7 @@ export class AuthClient {
     try {
       // Create user profile
       const userProfile: UserProfile = {
-        id: 'user_' + Math.random().toString(36).substring(2, 11),
+        id: 'user_' + this.generateRandomId(),
         username: username.trim(),
         displayName: username.trim(),
         isAnonymous: false,
@@ -227,11 +227,23 @@ export class AuthClient {
   }
 
   /**
+   * Cryptographically secure random identifier for user/anonymous sessions.
+   * Uses crypto.getRandomValues instead of Math.random to avoid predictable IDs.
+   */
+  private generateRandomId(): string {
+    const bytes = new Uint8Array(9);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes)
+      .map((b) => b.toString(36).padStart(2, '0'))
+      .join('');
+  }
+
+  /**
    * Create anonymous session
    */
   private async createAnonymousSession(): Promise<void> {
     const anonymousUser: UserProfile = {
-      id: 'anon_' + Math.random().toString(36).substring(2, 11),
+      id: 'anon_' + this.generateRandomId(),
       username: 'Anonymous',
       displayName: 'Anonymous User',
       isAnonymous: true,

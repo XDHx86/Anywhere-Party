@@ -42,6 +42,8 @@ interface LoadingIndicatorProps {
   minHeight?: number | string;
   /** Enable accessibility features */
   accessible?: boolean;
+  /** Timeout duration in ms before triggering onTimeout */
+  timeout?: number;
   /** Custom timeout handler */
   onTimeout?: (operation: string, duration: number) => void;
   /** Custom retry handler */

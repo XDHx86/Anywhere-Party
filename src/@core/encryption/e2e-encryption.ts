@@ -21,6 +21,9 @@ export interface E2EConfig {
   keySize: number;
 }
 
+/** Current wire protocol version for E2E encryption messages. */
+export const E2E_PROTOCOL_VERSION = 1;
+
 export class E2EEncryption {
   private keyPair: EncryptionKeyPair | null = null;
   private participantKeys: Map<string, CryptoKey> = new Map();
@@ -42,11 +45,27 @@ export class E2EEncryption {
     try {
       // Generate key pair for this user
       this.keyPair = await this.generateKeyPair();
-      console.log('E2E encryption initialized');
+      console.log(
+        `E2E encryption initialized (protocol v${E2E_PROTOCOL_VERSION}, RSA-${this.config.keySize})`
+      );
     } catch (error) {
       console.error('Failed to initialize E2E encryption:', error);
       throw error;
     }
+  }
+
+  /**
+   * Check if encryption is initialized and ready for use.
+   */
+  isReady(): boolean {
+    return this.config.enabled && this.keyPair !== null;
+  }
+
+  /**
+   * Get the configured RSA key size in bits.
+   */
+  getKeySize(): number {
+    return this.config.keySize;
   }
 
   /**
@@ -187,9 +206,12 @@ export class E2EEncryption {
       const combinedBuffer = this.base64ToArrayBuffer(encryptedMessage.encryptedContent);
       const iv = this.base64ToArrayBuffer(encryptedMessage.iv);
 
-      // Split combined buffer (first 256 bytes are encrypted symmetric key for RSA-2048)
-      const encryptedSymmetricKey = combinedBuffer.slice(0, 256);
-      const encryptedMessageContent = combinedBuffer.slice(256);
+      // The combined buffer is [encrypted symmetric key][encrypted message].
+      // The encrypted symmetric key length equals the RSA key size in bytes
+      // (keySize/8), so this is dynamic rather than hardcoded to RSA-2048.
+      const encryptedKeyBytes = this.config.keySize / 8;
+      const encryptedSymmetricKey = combinedBuffer.slice(0, encryptedKeyBytes);
+      const encryptedMessageContent = combinedBuffer.slice(encryptedKeyBytes);
 
       // Decrypt symmetric key with our private key
       const decryptedSymmetricKeyBuffer = await crypto.subtle.decrypt(

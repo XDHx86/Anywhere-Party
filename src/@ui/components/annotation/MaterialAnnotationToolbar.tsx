@@ -5,7 +5,7 @@
  * Implements collaborative annotation system with real-time synchronization
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { AnnotationType, DrawingTool } from '../../../@core/annotation-layer/types';
 import { MaterialCard } from '../cards/MaterialCard';
 import { MaterialButton } from '../cards/MaterialButton';
@@ -15,6 +15,7 @@ export interface MaterialAnnotationToolbarProps {
   onToolChange: (tool: Partial<DrawingTool>) => void;
   onLayerChange: (layerId: string) => void;
   onLayerVisibilityToggle: (layerId: string, visible: boolean) => void;
+  onLayerOpacityChange?: (layerId: string, opacity: number) => void;
   onUndo: () => void;
   onRedo: () => void;
   onClear: () => void;
@@ -37,6 +38,7 @@ export const MaterialAnnotationToolbar: React.FC<MaterialAnnotationToolbarProps>
   onToolChange,
   onLayerChange,
   onLayerVisibilityToggle,
+  onLayerOpacityChange,
   onUndo,
   onRedo,
   onClear,
@@ -63,13 +65,28 @@ export const MaterialAnnotationToolbar: React.FC<MaterialAnnotationToolbarProps>
   const [currentLayerId, setCurrentLayerId] = useState('default');
   const [showLayerDialog, setShowLayerDialog] = useState(false);
   const [newLayerName, setNewLayerName] = useState('');
+  const [selectedLayerOpacity, setSelectedLayerOpacity] = useState<number | undefined>(undefined);
+
+  // Update opacity when layer selection changes
+  const handleLayerSelect = useCallback(
+    (layerId: string) => {
+      setCurrentLayerId(layerId);
+      onLayerChange(layerId);
+      const layer = layers.find((l) => l.id === layerId);
+      setSelectedLayerOpacity(layer ? 1.0 : undefined); // Default to 1.0 for new selections
+    },
+    [layers, onLayerChange]
+  );
 
   // Tool definitions with Material Design 3 icons
   const tools: Array<{ type: AnnotationType; icon: string; label: string }> = [
     { type: 'pen', icon: 'edit', label: 'Pen Tool' },
+    { type: 'highlighter', icon: 'brush', label: 'Highlighter' },
+    { type: 'eraser', icon: 'ink_eraser', label: 'Eraser' },
+    { type: 'line', icon: 'horizontal_rule', label: 'Line' },
+    { type: 'arrow', icon: 'arrow_forward', label: 'Arrow' },
     { type: 'rectangle', icon: 'crop_din', label: 'Rectangle' },
     { type: 'circle', icon: 'radio_button_unchecked', label: 'Circle' },
-    { type: 'arrow', icon: 'arrow_forward', label: 'Arrow' },
     { type: 'text', icon: 'text_fields', label: 'Text' },
   ];
 
@@ -123,13 +140,7 @@ export const MaterialAnnotationToolbar: React.FC<MaterialAnnotationToolbarProps>
     [currentTool, onToolChange]
   );
 
-  const handleLayerSelect = useCallback(
-    (layerId: string) => {
-      setCurrentLayerId(layerId);
-      onLayerChange(layerId);
-    },
-    [onLayerChange]
-  );
+  // handleLayerSelect is defined above with opacity tracking
 
   const handleCreateLayer = useCallback(() => {
     if (newLayerName.trim()) {
@@ -205,7 +216,7 @@ export const MaterialAnnotationToolbar: React.FC<MaterialAnnotationToolbarProps>
         <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">
           Drawing Tools
         </h3>
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           {tools.map((tool) => (
             <MaterialButton
               key={tool.type}
@@ -230,7 +241,7 @@ export const MaterialAnnotationToolbar: React.FC<MaterialAnnotationToolbarProps>
         {/* Color Palette */}
         <div className="mb-4">
           <label className="block text-xs text-gray-600 mb-2">Color</label>
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-4 gap-2">
             {colorPalette.map((color) => (
               <button
                 key={color}
@@ -325,6 +336,10 @@ export const MaterialAnnotationToolbar: React.FC<MaterialAnnotationToolbarProps>
 
               <span className="flex-1 text-sm truncate">{layer.name}</span>
 
+              {layer.locked && (
+                <MaterialIcon name="lock" size="small" color="disabled" className="mr-1" />
+              )}
+
               {layer.id !== 'default' && (
                 <button
                   className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -340,6 +355,25 @@ export const MaterialAnnotationToolbar: React.FC<MaterialAnnotationToolbarProps>
             </div>
           ))}
         </div>
+
+        {/* Layer Opacity Control */}
+        {selectedLayerOpacity !== undefined && onLayerOpacityChange && (
+          <div className="mt-2">
+            <label className="block text-xs text-gray-600 mb-1">
+              Layer Opacity: {Math.round(selectedLayerOpacity * 100)}%
+            </label>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={selectedLayerOpacity}
+              onChange={(e) => onLayerOpacityChange(currentLayerId, parseFloat(e.target.value))}
+              className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+              data-testid="layer-opacity-slider"
+            />
+          </div>
+        )}
 
         {/* Layer Creation Dialog */}
         {showLayerDialog && (

@@ -3,7 +3,7 @@
  * Custom hooks for managing component animations and states
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, type MouseEvent as ReactMouseEvent } from 'react';
 import { materialMotion } from '../animations/material-animations';
 
 // Animation state types
@@ -14,7 +14,7 @@ export const useRipple = () => {
   const [ripples, setRipples] = useState<Array<{ id: number; x: number; y: number }>>([]);
   const nextRippleId = useRef(0);
 
-  const createRipple = useCallback((event: React.MouseEvent<HTMLElement>) => {
+  const createRipple = useCallback((event: ReactMouseEvent<HTMLElement>) => {
     const element = event.currentTarget;
     const rect = element.getBoundingClientRect();
     const x = event.clientX - rect.left;

@@ -178,11 +178,25 @@ class LocalWebSocketRelay {
       case 'PONG':
         this.handlePong(socket, payload);
         break;
+      // ─── Encryption Messages (Milestone 4) ──────────────
+      case 'PUBLIC_KEY_BROADCAST':
+        this.handlePublicKeyBroadcast(socket, type, payload);
+        break;
+      case 'ENCRYPTED_CHAT_MESSAGE':
+        this.handleEncryptedChatMessage(socket, type, payload);
+        break;
       case 'PLAYLIST_ADD':
       case 'PLAYLIST_REMOVE':
       case 'PLAYLIST_REORDER':
       case 'PLAYLIST_SKIP_VOTE':
         this.handlePlaylistMessage(socket, type, payload);
+        break;
+      // ─── Annotation Messages (Milestone 4) ──────────────
+      case 'ANNOTATION_CREATED':
+      case 'ANNOTATION_UPDATED':
+      case 'ANNOTATION_DELETED':
+      case 'LAYER_VISIBILITY_CHANGED':
+        this.handleAnnotationMessage(socket, type, payload);
         break;
       default:
         console.warn(`⚠️  Unknown message type: ${type}`);
@@ -310,7 +324,7 @@ class LocalWebSocketRelay {
     console.log(`🔄 Sync state updated in room ${roomId} by ${userId}`);
   }
 
-  handleChatMessage(socket, { userId, message }) {
+  handleChatMessage(socket, payload) {
     const socketInfo = this.userSockets.get(socket);
     if (!socketInfo) {
       return this.sendError(socket, 'NOT_IN_ROOM', 'Must join a room first');
@@ -322,15 +336,62 @@ class LocalWebSocketRelay {
       return this.sendError(socket, 'ROOM_NOT_FOUND', 'Room no longer exists');
     }
 
-    // Broadcast chat message to all participants
+    // Broadcast full payload to all participants (preserves encryption fields)
     room.broadcast({
       type: 'CHAT_MESSAGE',
-      userId,
-      message,
+      ...payload,
       timestamp: Date.now()
     });
 
-    console.log(`💬 Chat message in room ${roomId} from ${userId}: ${message.substring(0, 50)}...`);
+    const userId = payload.userId || 'unknown';
+    const preview = payload.message ? payload.message.substring(0, 50) : '(encrypted)';
+    console.log(`💬 Chat message in room ${roomId} from ${userId}: ${preview}...`);
+  }
+
+  // ─── Encryption Message Handlers (Milestone 4) ──────────
+
+  handlePublicKeyBroadcast(socket, type, payload) {
+    const socketInfo = this.userSockets.get(socket);
+    if (!socketInfo) {
+      return this.sendError(socket, 'NOT_IN_ROOM', 'Must join a room first');
+    }
+
+    const { roomId } = socketInfo;
+    const room = this.rooms.get(roomId);
+    if (!room) {
+      return this.sendError(socket, 'ROOM_NOT_FOUND', 'Room no longer exists');
+    }
+
+    // Broadcast public key to all room participants
+    room.broadcast({
+      type,
+      ...payload,
+      timestamp: Date.now()
+    });
+
+    console.log(`🔑 Public key broadcast in room ${roomId} from ${payload.userId}`);
+  }
+
+  handleEncryptedChatMessage(socket, type, payload) {
+    const socketInfo = this.userSockets.get(socket);
+    if (!socketInfo) {
+      return this.sendError(socket, 'NOT_IN_ROOM', 'Must join a room first');
+    }
+
+    const { roomId } = socketInfo;
+    const room = this.rooms.get(roomId);
+    if (!room) {
+      return this.sendError(socket, 'ROOM_NOT_FOUND', 'Room no longer exists');
+    }
+
+    // Broadcast full encrypted payload to all participants (no destructuring)
+    room.broadcast({
+      type,
+      ...payload,
+      timestamp: Date.now()
+    });
+
+    console.log(`🔒 Encrypted chat message in room ${roomId} from ${payload.userId}`);
   }
 
   handleHeartbeat(socket, { userId }) {
@@ -426,6 +487,30 @@ class LocalWebSocketRelay {
         break;
       }
     }
+  }
+
+  // ─── Annotation Message Handler (Milestone 4) ──────────
+
+  handleAnnotationMessage(socket, type, payload) {
+    const socketInfo = this.userSockets.get(socket);
+    if (!socketInfo) {
+      return this.sendError(socket, 'NOT_IN_ROOM', 'Must join a room first');
+    }
+
+    const { roomId } = socketInfo;
+    const room = this.rooms.get(roomId);
+    if (!room) {
+      return this.sendError(socket, 'ROOM_NOT_FOUND', 'Room no longer exists');
+    }
+
+    // Broadcast annotation operation to all participants
+    room.broadcast({
+      type,
+      ...payload,
+      timestamp: Date.now()
+    });
+
+    console.log(`🎨 Annotation message (${type}) in room ${roomId} from ${payload.userId}`);
   }
 
   handleDisconnection(socket) {

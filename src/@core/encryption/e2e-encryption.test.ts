@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { E2EEncryption, E2EConfig } from './e2e-encryption';
+import { E2EEncryption, E2EConfig, E2E_PROTOCOL_VERSION } from './e2e-encryption';
 
 // Mock crypto API for testing
 const mockCrypto = {
@@ -71,6 +71,29 @@ describe('E2EEncryption', () => {
         false,
         ['encrypt', 'decrypt']
       );
+    });
+
+    it('should be ready after successful initialization', async () => {
+      mockCrypto.subtle.generateKey.mockResolvedValue({
+        publicKey: 'mock-public-key',
+        privateKey: 'mock-private-key',
+      });
+
+      await encryption.initialize();
+
+      expect(encryption.isReady()).toBe(true);
+    });
+
+    it('should expose the protocol version constant', () => {
+      expect(E2E_PROTOCOL_VERSION).toBe(1);
+    });
+
+    it('should not be ready before initialization', () => {
+      expect(encryption.isReady()).toBe(false);
+    });
+
+    it('should report configured key size', () => {
+      expect(encryption.getKeySize()).toBe(2048);
     });
 
     it('should handle key generation failure', async () => {

@@ -26,7 +26,15 @@ export interface Annotation {
   updatedAt: number;
 }
 
-export type AnnotationType = 'pen' | 'rectangle' | 'circle' | 'arrow' | 'text';
+export type AnnotationType =
+  | 'pen'
+  | 'rectangle'
+  | 'circle'
+  | 'arrow'
+  | 'text'
+  | 'eraser'
+  | 'highlighter'
+  | 'line';
 
 export interface AnnotationData {
   // Common properties
@@ -44,7 +52,7 @@ export interface AnnotationData {
   height?: number;
   radius?: number;
 
-  // Arrow-specific
+  // Arrow/line-specific
   startX?: number;
   startY?: number;
   endX?: number;
@@ -54,6 +62,12 @@ export interface AnnotationData {
   text?: string;
   fontSize?: number;
   fontFamily?: string;
+
+  // Extended (Milestone 4)
+  lineStyle?: 'solid' | 'dashed' | 'dotted';
+  fillColor?: string;
+  fontWeight?: 'normal' | 'bold';
+  isEphemeral?: boolean;
 }
 
 export interface Point {
@@ -95,7 +109,16 @@ export interface AnnotationState {
 }
 
 export interface AnnotationAction {
-  type: 'create' | 'update' | 'delete' | 'layer_visibility' | 'layer_create' | 'layer_delete';
+  type:
+    | 'create'
+    | 'update'
+    | 'delete'
+    | 'layer_visibility'
+    | 'layer_create'
+    | 'layer_delete'
+    | 'layer_opacity'
+    | 'layer_reorder'
+    | 'layer_rename';
   annotationId?: string;
   layerId?: string;
   previousState?: any;
@@ -108,13 +131,24 @@ export interface AnnotationMessage {
     | 'annotation_created'
     | 'annotation_updated'
     | 'annotation_deleted'
-    | 'layer_visibility_changed';
+    | 'layer_visibility_changed'
+    | 'layer_opacity_changed'
+    | 'layer_reordered'
+    | 'layer_renamed'
+    | 'annotation_state_snapshot';
+  protocolVersion: 1;
+  sequence: number;
   userId: string;
   roomId: string;
   annotation?: Annotation;
   annotationId?: string;
   layerId?: string;
+  updates?: AnnotationData;
   visible?: boolean;
+  opacity?: number;
+  zIndex?: number;
+  name?: string;
+  annotations?: Annotation[];
   timestamp: number;
 }
 

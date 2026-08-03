@@ -87,9 +87,9 @@ export class ReactFallbackHandler {
    */
   checkReactDependencies(): { available: boolean; missing: string[] } {
     const dependencies = [
-      { name: 'React', check: () => typeof React !== 'undefined' },
-      { name: 'ReactDOM', check: () => typeof ReactDOM !== 'undefined' },
-      { name: 'createRoot', check: () => typeof ReactDOM?.createRoot === 'function' },
+      { name: 'React', check: () => (window as any).React !== undefined },
+      { name: 'ReactDOM', check: () => (window as any).ReactDOM !== undefined },
+      { name: 'createRoot', check: () => (window as any).ReactDOM?.createRoot === 'function' },
     ];
 
     const missing: string[] = [];
@@ -307,7 +307,4 @@ declare global {
     React?: any;
     ReactDOM?: any;
   }
-
-  const React: any;
-  const ReactDOM: any;
 }
