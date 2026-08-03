@@ -191,7 +191,7 @@ class ChromeNotificationsAPI implements NotificationsAPI {
     return new Promise((resolve) => {
       chrome.notifications.create(
         id,
-        options as chrome.notifications.NotificationOptions,
+        options as chrome.notifications.NotificationOptions<true>,
         (notifId) => {
           resolve(notifId);
         }
@@ -200,11 +200,22 @@ class ChromeNotificationsAPI implements NotificationsAPI {
   }
 
   async clear(id: string): Promise<boolean> {
-    return chrome.notifications.clear(id);
+    return new Promise<boolean>((resolve) => {
+      chrome.notifications.clear(id, (wasCleared) => resolve(wasCleared));
+    });
   }
 
   async clearAll(): Promise<boolean> {
-    return chrome.notifications.clearAll();
+    // chrome.notifications has no clearAll API — clear every notification individually.
+    const notificationIds = await this.getAll();
+    await Promise.all(notificationIds.map((id) => this.clear(id)));
+    return notificationIds.length > 0;
+  }
+
+  private getAll(): Promise<string[]> {
+    return new Promise<string[]>((resolve) => {
+      chrome.notifications.getAll((notifications) => resolve(Object.keys(notifications || {})));
+    });
   }
 
   onClicked = {

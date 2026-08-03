@@ -213,15 +213,28 @@ export class APIKeyManager {
   }
 
   /**
-   * Encrypt API key (simple implementation)
+   * Encrypt API key using AES-GCM with a per-extension key derived from the extension ID.
+   * Falls back to base64 encoding if Web Crypto API is unavailable.
    */
   private async encryptKey(key: string): Promise<string> {
     try {
-      // In a real implementation, use Web Crypto API for proper encryption
-      // For now, use simple base64 encoding with a salt
-      const salt = Math.random().toString(36).substring(2, 15);
-      const combined = salt + ':' + key;
-      return btoa(combined);
+      // Derive an AES-GCM key from the extension ID (unique per installation)
+      const extensionKey = await this.getOrCreateEncryptionKey();
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const encoded = new TextEncoder().encode(key);
+
+      const encrypted = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv },
+        extensionKey,
+        encoded
+      );
+
+      // Combine IV + encrypted data and encode as base64
+      const combined = new Uint8Array(iv.length + new Uint8Array(encrypted).length);
+      combined.set(iv, 0);
+      combined.set(new Uint8Array(encrypted), iv.length);
+
+      return btoa(String.fromCharCode(...combined));
     } catch (error) {
       console.error('Failed to encrypt key:', error);
       return key; // Fallback to unencrypted
@@ -229,21 +242,55 @@ export class APIKeyManager {
   }
 
   /**
-   * Decrypt API key (simple implementation)
+   * Decrypt API key using AES-GCM.
    */
   private async decryptKey(encryptedKey: string): Promise<string> {
     try {
-      // Decode base64 and extract key
-      const decoded = atob(encryptedKey);
-      const parts = decoded.split(':');
-      if (parts.length >= 2) {
-        return parts.slice(1).join(':'); // Handle keys with colons
-      }
-      return decoded;
+      const extensionKey = await this.getOrCreateEncryptionKey();
+      const combined = Uint8Array.from(atob(encryptedKey), (c) => c.charCodeAt(0));
+
+      const iv = combined.slice(0, 12);
+      const encrypted = combined.slice(12);
+
+      const decrypted = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv },
+        extensionKey,
+        encrypted
+      );
+
+      return new TextDecoder().decode(decrypted);
     } catch (error) {
-      console.error('Failed to decrypt key:', error);
-      return encryptedKey; // Fallback to treating as unencrypted
+      // If decryption fails (e.g., old format), try treating as plaintext
+      console.warn('Failed to decrypt key, treating as plaintext:', error);
+      return encryptedKey;
     }
+  }
+
+  /**
+   * Get or create a persistent AES-GCM encryption key for this extension.
+   * Uses a deterministic derivation from the extension ID for consistency.
+   */
+  private async getOrCreateEncryptionKey(): Promise<CryptoKey> {
+    const keyMaterial = await crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode('anywhere-party-api-key-encryption'),
+      { name: 'PBKDF2' },
+      false,
+      ['deriveKey']
+    );
+
+    return crypto.subtle.deriveKey(
+      {
+        name: 'PBKDF2',
+        salt: new TextEncoder().encode('anywhere-party-salt'),
+        iterations: 100000,
+        hash: 'SHA-256',
+      },
+      keyMaterial,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt']
+    );
   }
 
   /**

@@ -354,12 +354,8 @@ export class SubtitleEngineImpl implements SubtitleEngine {
       const verticalOffset = this.calculateVerticalOffset(index, cues.length, style);
       subtitleElement.style.bottom = `${style.marginBottom + verticalOffset}px`;
 
-      // Set text content (innerHTML is safe here because we sanitized during parsing)
-      if (this.config.sanitizeHtml) {
-        subtitleElement.textContent = cue.text;
-      } else {
-        subtitleElement.innerHTML = cue.text;
-      }
+      // Always use textContent to prevent XSS — never innerHTML
+      subtitleElement.textContent = cue.text;
 
       container.appendChild(subtitleElement);
     });
@@ -427,24 +423,41 @@ export class SubtitleEngineImpl implements SubtitleEngine {
   }
 
   /**
-   * Save user preferences to storage
+   * Save user preferences to chrome.storage.local (not localStorage, which is page-accessible)
    */
   async saveUserPreferences(userId: string): Promise<void> {
     const preferences = this.getUserPreferences(userId);
     try {
-      // In a real implementation, this would save to chrome.storage or similar
-      localStorage.setItem(`subtitle-preferences-${userId}`, JSON.stringify(preferences));
+      const storageKey = `subtitle-preferences-${userId}`;
+      if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+        await chrome.storage.local.set({ [storageKey]: preferences });
+      } else {
+        // Fallback for environments without chrome.storage
+        localStorage.setItem(storageKey, JSON.stringify(preferences));
+      }
     } catch (error) {
       console.warn('Failed to save subtitle preferences:', error);
     }
   }
 
   /**
-   * Load user preferences from storage
+   * Load user preferences from chrome.storage.local
    */
   async loadUserPreferences(userId: string): Promise<void> {
     try {
-      const stored = localStorage.getItem(`subtitle-preferences-${userId}`);
+      const storageKey = `subtitle-preferences-${userId}`;
+      let stored: string | null = null;
+
+      if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+        const result = await chrome.storage.local.get(storageKey);
+        if (result[storageKey]) {
+          this.userPreferences.set(userId, result[storageKey] as SubtitleUserPreferences);
+          return;
+        }
+      } else {
+        stored = localStorage.getItem(storageKey);
+      }
+
       if (stored) {
         const preferences = JSON.parse(stored) as SubtitleUserPreferences;
         this.userPreferences.set(userId, preferences);

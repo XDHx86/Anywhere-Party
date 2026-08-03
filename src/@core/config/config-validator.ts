@@ -326,9 +326,9 @@ export class ConfigValidator {
       }
 
       if (url.protocol === 'ws:' && !value.includes('localhost') && !value.includes('127.0.0.1')) {
-        warnings.push({
+        errors.push({
           field: 'SIGNALING_SERVER',
-          message: 'Using unencrypted WebSocket (ws://) for non-local server may be insecure',
+          message: 'Unencrypted WebSocket (ws://) is not allowed for non-local servers. Use wss://',
           value,
         });
       }
