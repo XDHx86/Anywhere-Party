@@ -32,6 +32,6 @@
 ## Project Resources
 
 - **Source code:** `src/` (extension), `server/` (backend)
-- **Specifications:** `.kiro/specs/` (requirements, design, tasks)
+- **Roadmap:** [`plan.md`](../plan.md) (milestones, tasks, status)
 - **Internal docs (AI):** `.claude/docs/`
 - **Build output:** `dist/chrome/`, `dist/firefox/`

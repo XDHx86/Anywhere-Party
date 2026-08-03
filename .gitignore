@@ -25,8 +25,9 @@ extension-config.local.json
 *.swp
 *.swo
 *~
-.claude/
-!.claude/docs
+.claude/*
+!.claude/docs/
+!.claude/docs/**
 
 # OS generated files
 .DS_Store

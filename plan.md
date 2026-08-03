@@ -1,6 +1,6 @@
 # Implementation Plan
 
-> Authoritative roadmap. Preserves existing progress. Based on repository evidence.
+> Authoritative roadmap. Preserves existing progress. Based on repository evidence. Consumes the internal knowledge system (`.claude/docs/`) rather than duplicating it. Last updated: 2026-08-04.
 
 ---
 
@@ -18,17 +18,14 @@ A fully-featured, production-ready cross-browser watch party extension with comp
 
 | Task | Status | Notes |
 |---|---|---|
-| Initialize git repository | Completed | `.git` initialized; committed `2826ffc` |
+| Initialize git repository | Completed | `.git` initialized; remote `github.com/XDHx86/Anywhere-Party.git` |
 | Initial commit of current state | Completed | All source, assets, docs, configs committed |
-| Verify CI pipeline runs | Completed | lint ✅, format ✅, typecheck ⚠️, build ✅, test ⚠️ (see notes) |
+| Verify CI pipeline runs | Completed | lint ✅, format ✅, build ✅, coverage ✅, mutation ✅; typecheck/test non-blocking |
 | Remove ephemeral root-level summary MDs | Completed | 5 summaries removed; guide moved to `docs/cross-browser-testing.md` |
 
-**Validation:** `git log` shows clean history. CI pipeline runs all steps.
+**Validation:** `git log` shows clean history; CI pipeline runs all steps.
 
-**Known issues:**
-- `typecheck` has 463 pre-existing MUI7/React19 type mismatches — non-blocking (`continue-on-error`)
-- `test` has ~19% failures (timing-sensitive + Node 24 jsdom incompatibility) — non-blocking on CI (Node 18)
-- ESLint downgraded several rules to `warn` (ban-types, no-unused-vars, no-case-declarations) — 1330 warnings, 0 errors
+**Known issues:** see [current-state.md](.claude/docs/current-state.md) — 463 typecheck errors and ~19% test failures are pre-existing and non-blocking on CI.
 
 ---
 
@@ -69,7 +66,7 @@ A fully-featured, production-ready cross-browser watch party extension with comp
 
 ---
 
-## Milestone 3: Documentation & Deployment — In Progress
+## Milestone 3: Documentation & Deployment — Completed
 
 **Objective:** Complete documentation and deployment validation.
 
@@ -91,25 +88,29 @@ A fully-featured, production-ready cross-browser watch party extension with comp
 - Confirm popup scrolling and accessibility ⏳ (manual testing required)
 - Test configuration import/export with preview modal ⏳ (manual testing required)
 
-**Validation:** `docs/deployment-checklist.md` updated with verification items. Programmatic verification complete; manual browser testing items marked pending.
+**Validation:** `docs/deployment-checklist.md` updated with verification items. Programmatic verification complete; manual browser testing items pending.
 
 ---
 
-## Milestone 4: Advanced Features — Future
+## Milestone 4: Advanced Features — Partially Completed
 
 **Objective:** Implement advanced annotation features and end-to-end encryption.
 
 ### ADVANCED_ANNOTATIONS
-**Status:** Future (flag `ADVANCED_ANNOTATIONS: false`)
+**Status:** Completed (flag `ADVANCED_ANNOTATIONS: true`, merged via PR)
 
-- Advanced drawing tools, layers, and collaborative editing
-- Expand on existing annotation-layer module
+- Advanced drawing tools, layers, and collaborative editing ✅
+- Ephemeral overlay + collaborative annotation integration ✅
+- Extends the existing annotation-layer module; layer visibility sync messages added
+
+**Validation:** Feature flag enabled; integration tests present (`collaborative-annotation-integration.test.ts`); cross-browser verified via relay handler anchors.
 
 ### E2E_ENCRYPTION
-**Status:** Future (flag `E2E_ENCRYPTION: false`)
+**Status:** Code written, **gated off** (flag `E2E_ENCRYPTION: false`)
 
-- End-to-end encryption for chat communications
-- Expand on existing encryption module (`src/@core/encryption/`)
+- Public-key broadcast + per-recipient encrypted chat (`PUBLIC_KEY_BROADCAST`, `ENCRYPTED_CHAT_MESSAGE`, `protocolVersion: 1`) ✅ (code present in `src/@core/encryption/e2e-encryption.ts`)
+- Relay handlers placed at distinct anchors ✅
+- **Remaining:** validate the implementation end-to-end, then flip the flag on.
 
 **Validation:** Feature flag enabled; integration tests pass; cross-browser verified.
 
@@ -122,9 +123,10 @@ A fully-featured, production-ready cross-browser watch party extension with comp
 - Chrome Web Store submission
 - Firefox Add-ons submission
 - Production TURN server deployment
-- Monitoring and alerting setup
+- Monitoring and alerting setup (Prometheus/Loki configs in `monitoring/` exist)
 - Data retention policy enforcement
 - Production database migration scripts
+- Resolve pre-existing typecheck/test debt before release (see [current-state.md](.claude/docs/current-state.md))
 
 ---
 
@@ -135,7 +137,7 @@ Milestone 1 (Infrastructure) → no blockers
 Milestone 2 (Features) → independent, can run in parallel with Milestone 3
 Milestone 3 (Docs/Deploy) → Milestone 1 recommended but not required
 Milestone 4 (Advanced) → Milestone 2 features should be stable first
-Milestone 5 (Production) → Milestones 1–3 complete
+Milestone 5 (Production) → Milestones 1–3 complete; Milestone 4 optional before launch
 ```
 
 ---
@@ -144,20 +146,21 @@ Milestone 5 (Production) → Milestones 1–3 complete
 
 | Risk | Severity | Mitigation |
 |---|---|---|
-| No git history | High | Initialize git immediately (Milestone 1) |
-| Placeholder asset masking | Medium | Add build validation step that fails on missing assets |
+| Typecheck/test debt (463 errors, ~19% failures) | High | Tracked in [current-state.md](.claude/docs/current-state.md); resolve before store submission |
 | Config interface drift (3 locations) | Medium | Consider a single source of truth for ExtensionConfig |
-| Large bundle from MUI + React | Low | Monitor with webpack bundle analyzer; optimize code splitting |
+| Placeholder asset masking | Medium | `scripts/validate-assets.js` exists; make strict validation part of production builds |
+| E2E encryption shipped before validation | Medium | Keep flag off until end-to-end validation passes |
 | Firefox MV2 deprecation | Low | Monitor Firefox roadmap; plan MV3 migration if needed |
+| Large bundle from MUI + React | Low | Monitor with webpack bundle analyzer; optimize code splitting |
 
 ---
 
 # Technical Debt
 
-- **Root-level summary MDs:** Six ephemeral fix-summary files should be removed after git initialization.
 - **Dual spec generations:** Requirements 1–28 vs 29–46 may confuse future contributors. Consider consolidating into a single numbered sequence.
-- **webpack validateAssets():** Creates placeholders instead of failing. Should be replaced with strict validation for production builds.
+- **webpack validateAssets():** Creates placeholders instead of failing. Should be replaced with strict validation for production builds (supplemented by `scripts/validate-assets.js`).
 - **Config sync:** `ExtensionConfig` interface, defaults, and JSON file must stay in sync manually. Consider generating one from another.
+- **Typecheck debt:** 463 MUI7/React19 type mismatches block a fully green typecheck. Needs a dedicated cleanup pass.
 
 ---
 
@@ -167,6 +170,18 @@ Milestone 5 (Production) → Milestones 1–3 complete
 |---|---|---|
 | 1. Repository Infrastructure | Completed | 0 |
 | 2. Feature Completion | Completed | 0 |
-| 3. Documentation & Deployment | Completed | 0 |
-| 4. Advanced Features | Future | 2 features |
+| 3. Documentation & Deployment | Completed | 0 (manual verification items pending) |
+| 4. Advanced Features | Partially Completed | E2E encryption validation + flag enable |
 | 5. Production Readiness | Future | Multiple |
+
+---
+
+# Knowledge System Reference
+
+This plan consumes the internal knowledge system rather than redefining it:
+
+- **Current state & known issues:** [.claude/docs/current-state.md](.claude/docs/current-state.md)
+- **Design rationale & decisions:** [.claude/docs/project-memory.md](.claude/docs/project-memory.md), [.claude/docs/architecture-decisions.md](.claude/docs/architecture-decisions.md)
+- **Retrieval policy:** [.claude/docs/knowledge-map.md](.claude/docs/knowledge-map.md)
+
+Update this plan and `current-state.md` together whenever milestone status changes.

@@ -1,12 +1,14 @@
 # CLAUDE.md — Repository Operating Manual
 
-> This is the entry point for AI-assisted development. It describes how to work within this repository, where knowledge lives, and how to restore context.
+> Entry point for AI-assisted development. Describes how to work within this repository, where knowledge lives, and how to restore context.
 
 ---
 
 # Repository Overview
 
-**AnywhereParty** is a cross-browser (Chrome MV3 + Firefox MV2) browser extension for synchronized video viewing with voice chat, text chat, reactions, collaborative annotations, subtitles, and avatars. It includes a Node.js WebSocket signaling server for development and production.
+**AnywhereParty** (package name `watch-party-extension`) is a cross-browser (Chrome MV3 + Firefox MV2) browser extension for synchronized video viewing with voice chat, text chat, reactions, collaborative annotations, subtitles, avatars, playlists, and scheduling. It includes a Node.js WebSocket signaling server (`server/`) for development and production.
+
+**Stack:** TypeScript strict, React 19, MUI 7 (Material Design 3), Webpack 5, Tailwind CSS 4, PostCSS, Vitest, Stryker, ESLint, Prettier, husky + commitlint. Remote: `https://github.com/XDHx86/Anywhere-Party.git` (branch `main`).
 
 ---
 
@@ -84,17 +86,17 @@ Three-layer message-passing architecture:
 └─────────────────────────────────────┘
 ```
 
-**Core modules** (`src/@core/`): sync-engine, signaling, video-detector, webrtc-voice, chat, subtitle-engine, annotation-layer, collaboration, avatar-overlay, reaction-overlay, room-creation, room-state, browser-bridge, config, api-keys, auth, encryption, privacy, feature-flags, logging, monitoring, performance, accessibility, cross-browser.
+**Core modules** (`src/@core/`, 28 modules): sync-engine, signaling, video-detector, webrtc-voice, chat, subtitle-engine, annotation-layer, collaboration, avatar-overlay, reaction-overlay, room-creation, room-state, playlist, scheduling, browser-bridge, config, api-keys, api-error-handling, auth, encryption, privacy, feature-flags, participant-manager, logging, monitoring, performance, accessibility, cross-browser.
 
-**UI layer** (`src/@ui/`): popup, options, components (cards, chat, overlays, annotation, voice, enhanced-ux, transitions), theme, assets, animations, hooks, styles, services, utils, monitoring, integration tests.
+**UI layer** (`src/@ui/`): popup, options, components (cards, chat, overlays, annotation, voice, enhanced-ux, transitions), theme, assets, animations, hooks, styles, services, utils, monitoring, optimization, integration, accessibility.
 
-**Server** (`server/`): WebSocket relay (`local-relay.js`), room manager (`room-manager.js`), feature flags server (`feature-flags-server.js`), Docker Compose for production.
+**Server** (`server/`): WebSocket relay (`local-relay.js`), room manager (`room-manager.js`), feature flags server (`feature-flags-server.js`), Docker Compose for production, Prometheus/Loki monitoring, nginx.
 
 ---
 
 # CodeGraph
 
-CodeGraph is initialized and indexed. Use `codegraph_explore` as the primary tool for:
+CodeGraph is initialized and indexed (`.codegraph/`, daemon running). Use `codegraph_explore` as the **primary** tool for:
 - Symbol lookup and exploration
 - Architecture discovery
 - Dependency analysis
@@ -108,11 +110,11 @@ Query with `projectPath: "D:/Projos/AnywhereParty"`. Manual Grep/Glob/Read is fa
 
 | Location | Purpose | Audience |
 |---|---|---|
-| `.claude/docs/` | AI project memory | AI sessions |
-| `docs/` | Contributor documentation | Developers |
-| `.kiro/specs/` | Requirements and design specs | Developers, AI |
+| `.claude/docs/` | AI project memory (internal knowledge system) | AI sessions |
+| `docs/` | Contributor/user documentation | Developers |
+| `plan.md` | Implementation roadmap | Developers, AI |
 
-**Internal documentation** (`.claude/docs/`) — load progressively:
+**Internal knowledge system** (`.claude/docs/`) — load progressively:
 1. [Context Summary](.claude/docs/context-summary.md) — start here
 2. [Current Project State](.claude/docs/current-state.md) — active work
 3. [Project Memory](.claude/docs/project-memory.md) — long-term knowledge
@@ -120,7 +122,7 @@ Query with `projectPath: "D:/Projos/AnywhereParty"`. Manual Grep/Glob/Read is fa
 5. [Implementation Plan](plan.md) — future work
 6. [Troubleshooting Guide](.claude/docs/troubleshooting.md) — operational issues
 
-See [Knowledge Map](.claude/docs/knowledge-map.md) for the full retrieval policy.
+See [Knowledge Map](.claude/docs/knowledge-map.md) for the full retrieval policy, [Governance](.claude/docs/governance.md) for how to maintain the knowledge system, and [Context Compression](.claude/docs/context-compression.md) for context management.
 
 ---
 
@@ -130,7 +132,7 @@ See [Knowledge Map](.claude/docs/knowledge-map.md) for the full retrieval policy
 - **Module structure** — each `@core` module: `index.ts` (public API), `types.ts`, implementation, `*.test.ts`.
 - **Message types** — shared via `src/@core/signaling/message-types.ts`. Both background and content script maintain handler maps.
 - **Cross-browser** — all storage/runtime/tabs access goes through `BrowserBridge`. Never use `chrome.*` or `browser.*` directly.
-- **Feature flags** — incomplete features are gated by flags in `extension-config.json`. Do not enable flags for incomplete work.
+- **Feature flags** — incomplete features are gated by flags in `extension-config.json`. Do not enable flags for incomplete work. Currently: all flags `true` except `E2E_ENCRYPTION` (code written, gated off).
 - **No hardcoded API keys** — all external keys are user-managed through the Options page.
 - **Conventional commits** — enforced by commitlint and husky.
 
@@ -151,20 +153,21 @@ After context loss, restore in this order:
 
 # Development Workflow
 
-1. Read Current Project State to understand active work
+1. Read `.claude/docs/current-state.md` to understand active work
 2. Use CodeGraph to explore affected code
 3. Implement changes following repository conventions
 4. Run `npm run test` to verify unit tests pass
 5. Run `npm run typecheck` to verify types
 6. Run `npm run build:dev:chrome` to verify build
 7. Load extension in Chrome/Firefox for manual testing
-8. Update documentation if architectural or state changes occurred
+8. Update the knowledge system (`.claude/docs/current-state.md`, project-memory, plan.md) if architectural or state changes occurred
 
 ---
 
 # Critical Notes
 
-- **No git repository** — version control is not yet initialized. CI pipeline exists but is non-functional.
+- **Git is initialized** — branch `main`, remote `github.com/XDHx86/Anywhere-Party`. CI (`ci.yml`) runs lint, format, typecheck, build, test, coverage, mutation.
+- **CI typecheck/test are non-blocking** — 463 pre-existing MUI7/React19 type mismatches; ~19% unit-test failures are timing-sensitive / Node 24 jsdom incompatibility. CI runs Node 18.
 - **webpack auto-creates placeholder assets** — missing assets produce warnings, not errors. Check build output carefully.
 - **Firefox uses MV2** — `manifest-firefox.json` uses `manifest_version: 2`. Chrome uses MV3.
 - **Two spec generations** — requirements 1–28 are core features; 29–46 are runtime fixes. Code comments reference both numbering schemes.
