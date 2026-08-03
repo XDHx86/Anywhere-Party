@@ -1,4 +1,34 @@
-# Material Design 3 Deployment Checklist
+# Deployment Checklist
+
+## Functional Verification (Task 8.3)
+
+### Icon Assets
+- [x] Chrome build contains icon-16.png, icon-32.png, icon-48.png, icon-128.png
+- [x] Firefox build contains icon-16.png, icon-32.png, icon-48.png, icon-128.png
+- [x] manifest-chrome.json references correct icon paths
+- [ ] Manual: verify icons render in Chrome toolbar and about:addons
+
+### Room Creation & State Persistence
+- [ ] Create room via popup → verify room ID returned
+- [ ] Close popup and reopen → verify room state persists
+- [ ] Join room from second browser tab → verify state syncs
+
+### API Key Management
+- [x] Options page has API Keys tab with OpenSubtitles configuration
+- [x] API docs document error responses for all14 endpoints
+- [ ] Manual: add API key → test connection → verify persistence across restarts
+
+### Popup Scrolling & Accessibility
+- [ ] Popup scrolls when content exceeds viewport
+- [ ] Keyboard navigation works (Tab, Enter, Escape)
+- [ ] Screen reader announces room status and controls
+
+### Configuration Import/Export
+- [ ] Export config → verify JSON file downloads
+- [ ] Import config → verify preview modal shows changes
+- [ ] Apply imported config → verify settings take effect
+
+---
 
 ## Pre-Deployment Verification
 

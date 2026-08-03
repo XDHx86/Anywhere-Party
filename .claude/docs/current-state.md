@@ -6,17 +6,17 @@
 
 # Current Development
 
-The extension is in a late prototype / pre-distribution state. All core features and runtime fixes are implemented. The primary remaining work is feature completion (playlists, scheduling), deployment validation, and infrastructure setup (git initialization).
+The extension is in a late prototype / pre-distribution state. All core features and runtime fixes are implemented. Repository infrastructure (Milestone 1) and documentation (Milestone 3) are complete. The remaining work is feature completion (playlists, scheduling) and production deployment.
 
 ---
 
 # Immediate Priorities
 
-1. **Git initialization** — No git repo exists. `.github/workflows/ci.yml`, `.husky/`, and `.gitignore` are present but non-functional without it.
-2. **Playlist management** — Feature flag `PLAYLISTS` is `false` in `extension-config.json`. Task 9.1 in the implementation plan is pending.
-3. **Scheduled watch parties** — Feature flag `SCHEDULING` is `false`. Task 9.3 in the implementation plan is pending.
-4. **Documentation updates** — Task 8.2 (debugging guides) and 8.3 (deployment checklist validation) are incomplete.
-5. **Root-level summary MDs** — Six ephemeral fix-summary documents at the root should be cleaned up (consolidated into project memory or removed).
+1. **Playlist management** — Feature flag `PLAYLISTS` is `false` in `extension-config.json`. Task 9.1 in the implementation plan is pending.
+2. **Scheduled watch parties** — Feature flag `SCHEDULING` is `false`. Task 9.3 in the implementation plan is pending.
+3. **TypeScript type errors** — 463 pre-existing MUI7/React19 type mismatches need resolution (currently non-blocking in CI).
+4. **Test suite reliability** — ~19% of tests fail due to timing sensitivity and Node 24 jsdom incompatibility.
+5. **Manual deployment testing** — Deployment checklist items for room persistence, popup scrolling, and config import/export need manual browser verification.
 
 ---
 

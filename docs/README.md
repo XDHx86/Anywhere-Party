@@ -23,6 +23,10 @@
 
 - [Avatar Overlay System](avatar-overlay-system.md) — Real-time synchronized avatar overlay system
 
+## Testing
+
+- [Cross-Browser Testing Guide](cross-browser-testing.md) — Manual testing procedures for Chrome MV3 and Firefox
+
 ---
 
 ## Project Resources
