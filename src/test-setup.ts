@@ -6,17 +6,20 @@
 import '@testing-library/jest-dom';
 
 // Ensure global timer functions are available (jsdom compatibility)
-if (typeof globalThis.clearInterval === 'undefined') {
-  globalThis.clearInterval = clearInterval;
+// Reference timers via the global/window object to avoid ReferenceError when
+// the bare identifier is unavailable in the current scope.
+const g = globalThis as any;
+if (typeof g.clearInterval === 'undefined' && typeof window !== 'undefined') {
+  g.clearInterval = (window as any).clearInterval?.bind(window);
 }
-if (typeof globalThis.clearTimeout === 'undefined') {
-  globalThis.clearTimeout = clearTimeout;
+if (typeof g.clearTimeout === 'undefined' && typeof window !== 'undefined') {
+  g.clearTimeout = (window as any).clearTimeout?.bind(window);
 }
-if (typeof globalThis.setInterval === 'undefined') {
-  globalThis.setInterval = setInterval;
+if (typeof g.setInterval === 'undefined' && typeof window !== 'undefined') {
+  g.setInterval = (window as any).setInterval?.bind(window);
 }
-if (typeof globalThis.setTimeout === 'undefined') {
-  globalThis.setTimeout = setTimeout;
+if (typeof g.setTimeout === 'undefined' && typeof window !== 'undefined') {
+  g.setTimeout = (window as any).setTimeout?.bind(window);
 }
 
 // Mock ResizeObserver
@@ -76,7 +79,7 @@ Object.defineProperty(window, 'getComputedStyle', {
 });
 
 // Mock performance.memory if not available
-if (!('memory' in performance)) {
+if (typeof performance !== 'undefined' && !('memory' in performance)) {
   Object.defineProperty(performance, 'memory', {
     value: {
       usedJSHeapSize: 1000000,
