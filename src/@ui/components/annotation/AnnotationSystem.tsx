@@ -88,14 +88,30 @@ export const AnnotationSystem: React.FC<AnnotationSystemProps> = ({
       },
     };
 
-    const layer = new CollaborativeAnnotationLayer(options);
+    let layer: CollaborativeAnnotationLayer;
+    try {
+      layer = new CollaborativeAnnotationLayer(options);
+    } catch (error) {
+      console.error('Failed to initialize annotation layer:', error);
+      return;
+    }
+
     layerRef.current = layer;
     setAnnotationLayer(layer);
 
     // Try to inject overlay
     const success = layer.injectOverlay(videoElement);
     setIsActive(success);
-    setIsCrossOriginBlocked(!success && layer.isCrossOriginBlocked());
+    const blocked = !success && layer.isCrossOriginBlocked();
+    setIsCrossOriginBlocked(blocked);
+
+    // Populate sync stats immediately so the UI reflects current state
+    setSyncStats(layer.getSyncStats());
+
+    // Notify parent when cross-origin is detected
+    if (blocked && onCrossOriginBlocked) {
+      onCrossOriginBlocked();
+    }
 
     // Start sync stats monitoring
     const statsInterval = setInterval(() => {

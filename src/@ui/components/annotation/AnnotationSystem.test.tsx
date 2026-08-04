@@ -7,6 +7,7 @@ import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { AnnotationSystem, AnnotationSystemProps } from './AnnotationSystem';
 import { AnnotationMessage } from '../../../@core/annotation-layer/types';
+import { CollaborativeAnnotationLayer } from '../../../@core/annotation-layer/collaborative-annotation-layer';
 
 // Mock the collaborative annotation layer
 vi.mock('../../../@core/annotation-layer/collaborative-annotation-layer', () => ({
@@ -50,11 +51,12 @@ vi.mock('./MaterialAnnotationToolbar', () => ({
 }));
 
 vi.mock('../overlays/FloatingSurface', () => ({
-  FloatingSurface: ({ children, visible, ...props }: any) => (
-    <div data-testid="floating-surface" data-visible={visible} {...props}>
-      {children}
-    </div>
-  ),
+  default: ({ children, visible, 'data-testid': testId, ...props }: any) =>
+    visible ? (
+      <div data-testid={testId ?? 'floating-surface'} data-visible={visible} {...props}>
+        {children}
+      </div>
+    ) : null,
 }));
 
 // Mock video element
@@ -92,6 +94,30 @@ describe('AnnotationSystem', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Reset the mock to the default implementation so per-test overrides don't leak
+    CollaborativeAnnotationLayer.mockImplementation(() => ({
+      injectOverlay: vi.fn(() => true),
+      removeOverlay: vi.fn(),
+      isActive: vi.fn(() => true),
+      isCrossOriginBlocked: vi.fn(() => false),
+      setTool: vi.fn(),
+      setCurrentLayer: vi.fn(),
+      setLayerVisibility: vi.fn(),
+      undo: vi.fn(() => true),
+      redo: vi.fn(() => true),
+      clearAllAnnotations: vi.fn(),
+      createLayer: vi.fn(() => true),
+      deleteLayer: vi.fn(() => true),
+      handleSyncMessage: vi.fn(),
+      getSyncStats: vi.fn(() => ({
+        isConnected: true,
+        lastSyncTime: Date.now(),
+        pendingMessages: 0,
+        participantCount: 2,
+        syncErrors: [],
+      })),
+    }));
     syncMessages = [];
 
     mockVideo = new MockVideoElement();
@@ -119,10 +145,6 @@ describe('AnnotationSystem', () => {
     });
 
     test('should initialize collaborative annotation layer', () => {
-      const {
-        CollaborativeAnnotationLayer,
-      } = require('../../../@core/annotation-layer/collaborative-annotation-layer');
-
       render(<AnnotationSystem {...mockProps} />);
 
       expect(CollaborativeAnnotationLayer).toHaveBeenCalledWith(
@@ -188,9 +210,6 @@ describe('AnnotationSystem', () => {
   describe('Cross-Origin Handling', () => {
     test('should handle cross-origin blocked scenario', () => {
       // Mock the annotation layer to simulate cross-origin blocking
-      const {
-        CollaborativeAnnotationLayer,
-      } = require('../../../@core/annotation-layer/collaborative-annotation-layer');
       CollaborativeAnnotationLayer.mockImplementation(() => ({
         injectOverlay: vi.fn(() => false),
         removeOverlay: vi.fn(),
@@ -227,9 +246,6 @@ describe('AnnotationSystem', () => {
 
     test('should show disconnected state', async () => {
       // Mock disconnected state
-      const {
-        CollaborativeAnnotationLayer,
-      } = require('../../../@core/annotation-layer/collaborative-annotation-layer');
       CollaborativeAnnotationLayer.mockImplementation(() => ({
         injectOverlay: vi.fn(() => true),
         removeOverlay: vi.fn(),
@@ -256,9 +272,6 @@ describe('AnnotationSystem', () => {
 
     test('should hide sync status when no participants and no errors', async () => {
       // Mock empty state
-      const {
-        CollaborativeAnnotationLayer,
-      } = require('../../../@core/annotation-layer/collaborative-annotation-layer');
       CollaborativeAnnotationLayer.mockImplementation(() => ({
         injectOverlay: vi.fn(() => true),
         removeOverlay: vi.fn(),
@@ -346,7 +359,7 @@ describe('AnnotationSystem', () => {
     test('should use FloatingSurface for toolbar positioning', () => {
       render(<AnnotationSystem {...mockProps} />);
 
-      const surface = screen.getByTestId('floating-surface');
+      const surface = screen.getByTestId('annotation-toolbar-surface');
       expect(surface).toHaveAttribute('data-visible', 'true');
     });
 
@@ -365,9 +378,6 @@ describe('AnnotationSystem', () => {
     test('should cleanup annotation layer on unmount', () => {
       const { unmount } = render(<AnnotationSystem {...mockProps} />);
 
-      const {
-        CollaborativeAnnotationLayer,
-      } = require('../../../@core/annotation-layer/collaborative-annotation-layer');
       const mockInstance = CollaborativeAnnotationLayer.mock.results[0].value;
 
       unmount();
@@ -382,9 +392,6 @@ describe('AnnotationSystem', () => {
       rerender(<AnnotationSystem {...mockProps} videoElement={newVideo as any} />);
 
       // Should reinitialize with new video element
-      const {
-        CollaborativeAnnotationLayer,
-      } = require('../../../@core/annotation-layer/collaborative-annotation-layer');
       expect(CollaborativeAnnotationLayer).toHaveBeenCalledTimes(2);
     });
   });
@@ -392,9 +399,6 @@ describe('AnnotationSystem', () => {
   describe('Error Handling', () => {
     test('should handle annotation layer initialization errors', () => {
       // Mock annotation layer to throw error
-      const {
-        CollaborativeAnnotationLayer,
-      } = require('../../../@core/annotation-layer/collaborative-annotation-layer');
       CollaborativeAnnotationLayer.mockImplementation(() => {
         throw new Error('Initialization failed');
       });
