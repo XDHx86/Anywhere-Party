@@ -3,7 +3,88 @@
  * Sets up testing environment for React components and Material UI
  */
 
+// Mock webextension-polyfill before any module that depends on it is loaded.
+// The polyfill throws "This script should only be loaded in a browser extension"
+// when imported outside a real extension context (i.e. in jsdom/Node).
+vi.mock('webextension-polyfill', () => {
+  const noop = vi.fn();
+  const passthrough = new Proxy(
+    {},
+    {
+      get(_target, _prop, _receiver) {
+        return new Proxy(noop, {
+          apply(_fn, _thisArg, args) {
+            return args[0] ?? {};
+          },
+          get(_t, _p) {
+            if (_p === 'then') return undefined; // prevent Promise coercion
+            return new Proxy(noop, {
+              apply(_fn, _t, args) {
+                return args[0] ?? {};
+              },
+              get() {
+                return new Proxy(noop, {
+                  apply(_fn, _t, args) {
+                    return args[0] ?? {};
+                  },
+                  get() {
+                    return noop;
+                  },
+                });
+              },
+            });
+          },
+        });
+      },
+    }
+  );
+  return { default: passthrough, ...passthrough };
+});
+
 import '@testing-library/jest-dom';
+
+// ── Chrome / Browser extension global mocks ──────────────────────────────────
+// Many source modules call chrome.* at import/initialization time.  Provide a
+// minimal stub so that vitest / jsdom doesn't crash when those modules load.
+
+const chromeStorageLocal = {
+  get: vi.fn().mockResolvedValue({}),
+  set: vi.fn().mockResolvedValue(undefined),
+  remove: vi.fn().mockResolvedValue(undefined),
+  clear: vi.fn().mockResolvedValue(undefined),
+};
+
+if (typeof (globalThis as any).chrome === 'undefined') {
+  (globalThis as any).chrome = {
+    runtime: {
+      getManifest: vi.fn(() => ({ manifest_version: 3, name: 'Test', version: '1.0.0' })),
+      sendMessage: vi.fn(),
+      onMessage: { addListener: vi.fn(), removeListener: vi.fn() },
+      connect: vi.fn(() => ({
+        onMessage: { addListener: vi.fn() },
+        onDisconnect: { addListener: vi.fn() },
+        postMessage: vi.fn(),
+      })),
+      getURL: vi.fn((path: string) => `chrome-extension://test/${path}`),
+      id: 'test-extension-id',
+    },
+    storage: {
+      local: chromeStorageLocal,
+      sync: { ...chromeStorageLocal },
+    },
+    tabs: {
+      query: vi.fn().mockResolvedValue([]),
+      sendMessage: vi.fn().mockResolvedValue(undefined),
+      get: vi.fn().mockResolvedValue({}),
+      create: vi.fn().mockResolvedValue(undefined),
+    },
+    action: {
+      setBadgeText: vi.fn(),
+      setBadgeBackgroundColor: vi.fn(),
+      setTitle: vi.fn(),
+    },
+  };
+}
 
 // Ensure global timer functions are available (jsdom compatibility)
 // Reference timers via the global/window object to avoid ReferenceError when
