@@ -223,11 +223,7 @@ export class APIKeyManager {
       const iv = crypto.getRandomValues(new Uint8Array(12));
       const encoded = new TextEncoder().encode(key);
 
-      const encrypted = await crypto.subtle.encrypt(
-        { name: 'AES-GCM', iv },
-        extensionKey,
-        encoded
-      );
+      const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, extensionKey, encoded);
 
       // Combine IV + encrypted data and encode as base64
       const combined = new Uint8Array(iv.length + new Uint8Array(encrypted).length);

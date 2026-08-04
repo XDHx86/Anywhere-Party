@@ -699,7 +699,10 @@ export const OptionsApp: React.FC = () => {
           <SchedulingCard
             onNotification={(message, severity) => {
               const id = Date.now().toString();
-              setNotifications((prev) => [...prev, { id, message, type: severity, autoHide: true }]);
+              setNotifications((prev) => [
+                ...prev,
+                { id, message, type: severity, autoHide: true },
+              ]);
             }}
           />
         );

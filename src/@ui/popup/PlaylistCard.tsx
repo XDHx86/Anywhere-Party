@@ -62,7 +62,10 @@ export const PlaylistCard: React.FC<PlaylistCardProps> = ({ isHost, onAction }) 
     });
 
     // Listen for playlist updates
-    const listener = (message: { type: string; playlist?: { items: PlaylistItem[]; currentIndex: number } }) => {
+    const listener = (message: {
+      type: string;
+      playlist?: { items: PlaylistItem[]; currentIndex: number };
+    }) => {
       if (message.type === 'PLAYLIST_STATE' && message.playlist) {
         setItems(message.playlist.items || []);
         setCurrentIndex(message.playlist.currentIndex || 0);
@@ -141,7 +144,11 @@ export const PlaylistCard: React.FC<PlaylistCardProps> = ({ isHost, onAction }) 
             Playlist ({items.length})
           </Typography>
           {isHost && (
-            <IconButton size="small" onClick={() => setAddDialogOpen(true)} data-testid="add-to-playlist">
+            <IconButton
+              size="small"
+              onClick={() => setAddDialogOpen(true)}
+              data-testid="add-to-playlist"
+            >
               <AddIcon fontSize="small" />
             </IconButton>
           )}
@@ -149,7 +156,8 @@ export const PlaylistCard: React.FC<PlaylistCardProps> = ({ isHost, onAction }) 
 
         {items.length === 0 ? (
           <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-            No videos in queue. {isHost ? 'Add a video to get started.' : 'Waiting for host to add videos.'}
+            No videos in queue.{' '}
+            {isHost ? 'Add a video to get started.' : 'Waiting for host to add videos.'}
           </Typography>
         ) : (
           <List dense disablePadding>
@@ -163,15 +171,27 @@ export const PlaylistCard: React.FC<PlaylistCardProps> = ({ isHost, onAction }) 
                 }}
                 secondaryAction={
                   <Box sx={{ display: 'flex', gap: 0.25 }}>
-                    <IconButton size="small" onClick={() => handleSkip(item.id)} title="Vote to skip">
+                    <IconButton
+                      size="small"
+                      onClick={() => handleSkip(item.id)}
+                      title="Vote to skip"
+                    >
                       <SkipNextIcon fontSize="small" />
                     </IconButton>
                     {isHost && (
                       <>
-                        <IconButton size="small" onClick={() => handleMoveUp(index)} disabled={index === 0}>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleMoveUp(index)}
+                          disabled={index === 0}
+                        >
                           <ArrowUpIcon fontSize="small" />
                         </IconButton>
-                        <IconButton size="small" onClick={() => handleMoveDown(index)} disabled={index === items.length - 1}>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleMoveDown(index)}
+                          disabled={index === items.length - 1}
+                        >
                           <ArrowDownIcon fontSize="small" />
                         </IconButton>
                         <IconButton size="small" onClick={() => handleRemove(item.id)}>
@@ -182,12 +202,20 @@ export const PlaylistCard: React.FC<PlaylistCardProps> = ({ isHost, onAction }) 
                   </Box>
                 }
               >
-                {index === currentIndex && <PlayIcon fontSize="small" color="primary" sx={{ mr: 1 }} />}
+                {index === currentIndex && (
+                  <PlayIcon fontSize="small" color="primary" sx={{ mr: 1 }} />
+                )}
                 <ListItemText
                   primary={item.title || item.url}
                   secondary={
                     <Box component="span" sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                      {item.duration ? <Chip label={formatDuration(item.duration)} size="small" variant="outlined" /> : null}
+                      {item.duration ? (
+                        <Chip
+                          label={formatDuration(item.duration)}
+                          size="small"
+                          variant="outlined"
+                        />
+                      ) : null}
                       <Typography variant="caption" color="text.secondary">
                         by {item.addedBy}
                       </Typography>
@@ -201,7 +229,12 @@ export const PlaylistCard: React.FC<PlaylistCardProps> = ({ isHost, onAction }) 
         )}
 
         {/* Add Video Dialog */}
-        <Dialog open={addDialogOpen} onClose={() => setAddDialogOpen(false)} maxWidth="sm" fullWidth>
+        <Dialog
+          open={addDialogOpen}
+          onClose={() => setAddDialogOpen(false)}
+          maxWidth="sm"
+          fullWidth
+        >
           <DialogTitle>Add Video to Playlist</DialogTitle>
           <DialogContent>
             <TextField
