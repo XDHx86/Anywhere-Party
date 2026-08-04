@@ -20,10 +20,26 @@ const mockBrowserAPI = {
   },
   runtime: {
     sendMessage: vi.fn(),
+    getManifest: vi.fn(() => ({ manifest_version: 3, name: 'Test', version: '1.0.0' })),
+    getURL: vi.fn((path: string) => `chrome-extension://test/${path}`),
+    id: 'test-extension-id',
     onMessage: {
       addListener: vi.fn(),
       removeListener: vi.fn(),
     },
+    connect: vi.fn(() => ({
+      onMessage: { addListener: vi.fn() },
+      onDisconnect: { addListener: vi.fn() },
+      postMessage: vi.fn(),
+    })),
+  },
+  tabs: {
+    query: vi.fn().mockResolvedValue([]),
+    sendMessage: vi.fn().mockResolvedValue(undefined),
+  },
+  action: {
+    setBadgeText: vi.fn(),
+    setBadgeBackgroundColor: vi.fn(),
   },
 };
 
