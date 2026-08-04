@@ -3,6 +3,7 @@
   "reporters": ["html", "clear-text", "progress"],
   "testRunner": "vitest",
   "coverageAnalysis": "perTest",
+  "disableTypeChecks": "{**/*.ts,**/*.tsx}",
   "mutate": [
     "src/@core/**/*.ts",
     "!src/@core/**/*.d.ts",
