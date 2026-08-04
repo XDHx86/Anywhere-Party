@@ -102,7 +102,15 @@ export const SchedulingCard: React.FC<SchedulingCardProps> = ({ onNotification }
     setFormDescription('');
     setFormReminder('15');
     setFormRecurrence('NONE');
-  }, [formTitle, formDateTime, formVideoUrl, formDescription, formReminder, formRecurrence, onNotification]);
+  }, [
+    formTitle,
+    formDateTime,
+    formVideoUrl,
+    formDescription,
+    formReminder,
+    formRecurrence,
+    onNotification,
+  ]);
 
   const handleCancel = useCallback(
     (sessionId: string) => {
@@ -145,7 +153,9 @@ export const SchedulingCard: React.FC<SchedulingCardProps> = ({ onNotification }
   return (
     <Card data-testid="scheduling-card" sx={{ mb: 2 }}>
       <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+        <Box
+          sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}
+        >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <ScheduleIcon color="primary" fontSize="small" />
             <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
@@ -200,7 +210,10 @@ export const SchedulingCard: React.FC<SchedulingCardProps> = ({ onNotification }
                 <ListItemText
                   primary={session.title}
                   secondary={
-                    <Box component="span" sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Box
+                      component="span"
+                      sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}
+                    >
                       <Typography variant="caption" component="span">
                         📅 {formatDateTime(session.scheduledTime)}
                       </Typography>
@@ -308,7 +321,11 @@ export const SchedulingCard: React.FC<SchedulingCardProps> = ({ onNotification }
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreate} variant="contained" disabled={!formTitle.trim() || !formDateTime}>
+            <Button
+              onClick={handleCreate}
+              variant="contained"
+              disabled={!formTitle.trim() || !formDateTime}
+            >
               Schedule
             </Button>
           </DialogActions>

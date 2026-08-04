@@ -1,0 +1,6 @@
+# Normalize all text files to LF on check-in and check-out.
+# Prettier is configured with endOfLine: "lf" — keeping the working tree
+# LF prevents CRLF churn on Windows (core.autocrlf=true) and keeps
+# `lint` / `format:check` green locally and in CI.
+# text=auto lets git detect binary files by content and leave them untouched.
+* text=auto eol=lf

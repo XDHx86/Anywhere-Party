@@ -3,7 +3,13 @@
  * Custom hooks for managing component animations and states
  */
 
-import { useState, useEffect, useCallback, useRef, type MouseEvent as ReactMouseEvent } from 'react';
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  type MouseEvent as ReactMouseEvent,
+} from 'react';
 import { materialMotion } from '../animations/material-animations';
 
 // Animation state types
