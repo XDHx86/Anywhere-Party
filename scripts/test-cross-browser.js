@@ -25,9 +25,9 @@ function testBuildOutputs() {
     'background.js',
     'content-script.js',
     'popup.html',
-    'popup.js',
+    'popup-react.js',
     'options.html',
-    'options.js',
+    'options-react.js',
     'extension-config.json'
   ];
   
@@ -146,7 +146,7 @@ function testConfigurationCompatibility() {
 function testJavaScriptCompatibility() {
   console.log('\n🔧 Testing JavaScript Compatibility...');
   
-  const files = ['background.js', 'content-script.js', 'popup.js'];
+  const files = ['background.js', 'content-script.js', 'popup-react.js'];
   let allValid = true;
   
   for (const file of files) {
@@ -196,10 +196,19 @@ function testCommonIssues() {
     );
     
     // Check for proper browser API usage patterns
-    // Both builds should contain both chrome.* and browser.* APIs due to browser bridge abstraction
-    
-    const hasChromeBrowserAPIs = firefoxBackground.includes('chrome.runtime') && firefoxBackground.includes('browser.runtime');
-    const hasBrowserDetection = firefoxBackground.includes('chrome') && firefoxBackground.includes('firefox');
+    // Both builds should contain both chrome.* and browser.* APIs due to browser bridge abstraction.
+    // After webpack chunking, these references may land in core-modules.js rather than background.js,
+    // so we scan ALL .js files in the dist directory.
+    const readAllJs = (dir) => {
+      return fs.readdirSync(dir).filter(f => f.endsWith('.js')).map(f =>
+        fs.readFileSync(path.join(dir, f), 'utf8')
+      ).join('\n');
+    };
+    const firefoxAllJs = readAllJs(path.join(__dirname, '../dist/firefox'));
+    const chromeAllJs = readAllJs(path.join(__dirname, '../dist/chrome'));
+
+    const hasChromeBrowserAPIs = firefoxAllJs.includes('chrome.runtime') && firefoxAllJs.includes('browser.runtime');
+    const hasBrowserDetection = firefoxAllJs.includes('chrome') && firefoxAllJs.includes('firefox');
     
     if (!hasChromeBrowserAPIs) {
       issues.push('Firefox build missing expected browser API references');
@@ -209,13 +218,9 @@ function testCommonIssues() {
       issues.push('Firefox build missing browser detection logic');
     }
     
-    // Check Chrome build
-    const chromeBackground = fs.readFileSync(
-      path.join(__dirname, '../dist/chrome/background.js'), 'utf8'
-    );
-    
-    const chromeHasBrowserAPIs = chromeBackground.includes('chrome.runtime') && chromeBackground.includes('browser.runtime');
-    const chromeHasBrowserDetection = chromeBackground.includes('chrome') && chromeBackground.includes('firefox');
+    // Check Chrome build (scan all JS files, not just background.js)
+    const chromeHasBrowserAPIs = chromeAllJs.includes('chrome.runtime') && chromeAllJs.includes('browser.runtime');
+    const chromeHasBrowserDetection = chromeAllJs.includes('chrome') && chromeAllJs.includes('firefox');
     
     if (!chromeHasBrowserAPIs) {
       issues.push('Chrome build missing expected browser API references');
