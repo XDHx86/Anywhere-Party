@@ -12,13 +12,13 @@
     "build:dev:firefox": "webpack --mode=development --env browser=firefox",
     "watch": "webpack --mode=development --watch --env browser=chrome",
     "watch:firefox": "webpack --mode=development --watch --env browser=firefox",
-    "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest --run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest --run --coverage",
-    "test:mutation": "stryker run",
+    "lint:fix": "node scripts/run-with-summary.js eslint src/**/*.{ts,tsx} --max-warnings=0 --fix",
+    "lint": "node scripts/run-with-summary.js eslint src/**/*.{ts,tsx} --max-warnings=0",
+    "typecheck": "node scripts/run-with-summary.js tsc --noEmit",
+    "test": "node scripts/run-with-summary.js vitest --run",
+    "test:watch": "node scripts/run-with-summary.js vitest watch",
+    "test:coverage": "node scripts/run-with-summary.js vitest --run --coverage",
+    "test:mutation": "node scripts/run-with-summary.js stryker run",
     "test:runtime-fixes": "node scripts/test-runtime-fixes.js",
     "format": "prettier --write src/**/*.{ts,tsx,json,css}",
     "format:check": "prettier --check src/**/*.{ts,tsx,json,css}",
@@ -81,7 +81,7 @@
   },
   "lint-staged": {
     "src/**/*.{ts,tsx}": [
-      "eslint --fix",
+      "eslint --fix --max-warnings=0",
       "prettier --write"
     ],
     "src/**/*.{json,md,css}": [
