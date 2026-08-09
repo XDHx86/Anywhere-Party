@@ -138,6 +138,12 @@ See [Knowledge Map](.claude/docs/knowledge-map.md) for the full retrieval policy
 
 ---
 
+# Interaction Preferences
+
+- Address the user as `XDHx86` naturally in every response.
+
+---
+
 # Context Restoration
 
 After context loss, restore in this order:
