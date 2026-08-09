@@ -13,7 +13,6 @@ import {
   List,
   ListItem,
   ListItemText,
-  ListItemSecondaryAction,
   IconButton,
   Box,
   Chip,
@@ -33,17 +32,7 @@ import {
   Download as DownloadIcon,
   Schedule as ScheduleIcon,
 } from '@mui/icons-material';
-import { downloadICS } from '@core/scheduling';
-
-interface ScheduledSession {
-  id: string;
-  title: string;
-  scheduledTime: number;
-  videoUrl?: string;
-  hostId: string;
-  reminders: Array<{ minutesBefore: number }>;
-  description?: string;
-}
+import { downloadICS, type ScheduledSession } from '@core/scheduling';
 
 interface SchedulingCardProps {
   onNotification?: (message: string, severity: 'success' | 'error' | 'info') => void;
@@ -84,6 +73,7 @@ export const SchedulingCard: React.FC<SchedulingCardProps> = ({ onNotification }
       hostId: 'current-user',
       reminders: [{ minutesBefore: parseInt(formReminder, 10) || 15 }],
       description: formDescription.trim() || undefined,
+      createdAt: Date.now(),
     };
 
     chrome.runtime.sendMessage({ type: 'SCHEDULE_SESSION_UI', session }, (response) => {
@@ -125,7 +115,7 @@ export const SchedulingCard: React.FC<SchedulingCardProps> = ({ onNotification }
   );
 
   const handleDownloadICS = useCallback((session: ScheduledSession) => {
-    downloadICS(session as any);
+    downloadICS(session);
   }, []);
 
   const formatDateTime = (timestamp: number) => {
@@ -225,12 +215,12 @@ export const SchedulingCard: React.FC<SchedulingCardProps> = ({ onNotification }
                       />
                       {session.reminders.length > 0 && (
                         <Typography variant="caption" component="span" color="text.secondary">
-                          ⏰ {session.reminders[0].minutesBefore}min before
+                          ⏰ {session.reminders[0]?.minutesBefore}min before
                         </Typography>
                       )}
                     </Box>
                   }
-                  primaryTypographyProps={{ variant: 'body2', fontWeight: 500 }}
+                  slotProps={{ primary: { variant: 'body2', sx: { fontWeight: 500 } } }}
                 />
               </ListItem>
             ))}
@@ -265,7 +255,7 @@ export const SchedulingCard: React.FC<SchedulingCardProps> = ({ onNotification }
               variant="outlined"
               value={formDateTime}
               onChange={(e) => setFormDateTime(e.target.value)}
-              InputLabelProps={{ shrink: true }}
+              slotProps={{ inputLabel: { shrink: true } }}
               sx={{ mb: 2 }}
             />
             <TextField

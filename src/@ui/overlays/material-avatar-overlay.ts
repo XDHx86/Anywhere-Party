@@ -408,7 +408,7 @@ export class MaterialAvatarOverlay {
       hash = userId.charCodeAt(i) + ((hash << 5) - hash);
     }
 
-    return this.avatarColors[Math.abs(hash) % this.avatarColors.length];
+    return this.avatarColors[Math.abs(hash) % this.avatarColors.length] ?? '';
   }
 }
 

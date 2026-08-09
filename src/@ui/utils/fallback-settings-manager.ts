@@ -319,7 +319,7 @@ export class FallbackSettingsManager {
 
       return {
         success: true,
-        settings: this.currentSettings!,
+        settings: this.currentSettings as FallbackSettings,
       };
     } catch (error) {
       console.error('Failed to import settings:', error);
@@ -401,7 +401,7 @@ export class FallbackSettingsManager {
       'customBorderColor',
     ];
     for (const field of colorFields) {
-      const value = (settings as any)[field];
+      const value = (settings as Record<string, string | undefined>)[field];
       if (value !== undefined && !this.isValidColor(value)) {
         errors.push({
           field,
@@ -435,8 +435,9 @@ export class FallbackSettingsManager {
   /**
    * Extract settings from browser storage format
    */
-  private extractSettingsFromStorage(stored: any): Partial<FallbackSettings> {
+  private extractSettingsFromStorage(stored: unknown): Partial<FallbackSettings> {
     const settings: Partial<FallbackSettings> = {};
+    const storedRecord = stored as Record<string, unknown>;
 
     // Map storage keys to settings
     const keyMapping: Record<string, keyof FallbackSettings> = {
@@ -469,20 +470,20 @@ export class FallbackSettingsManager {
     };
 
     for (const [storageKey, settingKey] of Object.entries(keyMapping)) {
-      if (stored[storageKey] !== undefined) {
-        (settings as any)[settingKey] = stored[storageKey];
+      if (storedRecord[storageKey] !== undefined) {
+        (settings as Record<string, unknown>)[settingKey] = storedRecord[storageKey];
       }
     }
 
     // Handle arrays
-    if (stored.STUN_SERVERS) {
-      settings.stunServers = stored.STUN_SERVERS;
+    if (storedRecord.STUN_SERVERS) {
+      settings.stunServers = storedRecord.STUN_SERVERS as string[];
     }
-    if (stored.TURN_SERVERS) {
-      settings.turnServers = stored.TURN_SERVERS;
+    if (storedRecord.TURN_SERVERS) {
+      settings.turnServers = storedRecord.TURN_SERVERS as FallbackSettings['turnServers'];
     }
-    if (stored.SUBTITLE_LANGUAGES) {
-      settings.subtitleLanguages = stored.SUBTITLE_LANGUAGES;
+    if (storedRecord.SUBTITLE_LANGUAGES) {
+      settings.subtitleLanguages = storedRecord.SUBTITLE_LANGUAGES as string[];
     }
 
     return settings;
@@ -491,7 +492,7 @@ export class FallbackSettingsManager {
   /**
    * Convert settings to browser storage format
    */
-  private convertSettingsToStorage(settings: FallbackSettings): Record<string, any> {
+  private convertSettingsToStorage(settings: FallbackSettings): Record<string, unknown> {
     return {
       SIGNALING_SERVER: settings.signalingServer,
       SIGNALING_WS_PATH: settings.signalingWsPath,
@@ -569,7 +570,7 @@ export class FallbackSettingsManager {
    * Parse environment variable format
    */
   private parseEnvFormat(content: string): Partial<FallbackSettings> {
-    const settings: any = {};
+    const settings: Record<string, unknown> = {};
     const lines = content.split('\n');
 
     for (const line of lines) {
@@ -589,7 +590,7 @@ export class FallbackSettingsManager {
         rawValue = rawValue.slice(1, -1);
       }
 
-      let parsedValue: any = rawValue;
+      let parsedValue: unknown = rawValue;
 
       // Try to parse as JSON for arrays
       try {
@@ -620,7 +621,7 @@ export class FallbackSettingsManager {
    * Parse INI format
    */
   private parseIniFormat(content: string): Partial<FallbackSettings> {
-    const settings: any = {};
+    const settings: Record<string, unknown> = {};
     const lines = content.split('\n');
 
     for (const line of lines) {
@@ -631,7 +632,7 @@ export class FallbackSettingsManager {
       if (!key || valueParts.length === 0) continue;
 
       const rawValue = valueParts.join('=');
-      let parsedValue: any = rawValue;
+      let parsedValue: unknown = rawValue;
 
       // Try to parse as JSON for arrays
       try {

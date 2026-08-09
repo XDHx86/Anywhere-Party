@@ -8,7 +8,6 @@ import React, { useState } from 'react';
 import { Box, Typography, Chip, IconButton, Tooltip } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { MaterialCard } from './MaterialCard';
-import { MaterialButton } from './MaterialButton';
 import { MaterialIcon } from './MaterialIcon';
 import { useMaterialTheme } from '../../theme';
 import { browserAPI } from '../../utils/browser-api';
@@ -97,7 +96,7 @@ export const FooterCard: React.FC<FooterCardProps> = ({
   className,
   'data-testid': testId,
 }) => {
-  const { theme } = useMaterialTheme();
+  useMaterialTheme();
   const [isMuted, setIsMuted] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
 
@@ -129,11 +128,11 @@ export const FooterCard: React.FC<FooterCardProps> = ({
 
   const handleChatToggle = async () => {
     try {
-      const response = await browserAPI.runtime.sendMessage({
+      const response = (await browserAPI.runtime.sendMessage({
         type: 'TOGGLE_CHAT',
         isOpen: !isChatOpen,
         timestamp: Date.now(),
-      });
+      })) as { success: boolean; error?: string };
 
       if (response.success) {
         setIsChatOpen(!isChatOpen);
@@ -154,11 +153,11 @@ export const FooterCard: React.FC<FooterCardProps> = ({
 
   const handleMuteToggle = async () => {
     try {
-      const response = await browserAPI.runtime.sendMessage({
+      const response = (await browserAPI.runtime.sendMessage({
         type: 'TOGGLE_MUTE',
         isMuted: !isMuted,
         timestamp: Date.now(),
-      });
+      })) as { success: boolean; error?: string };
 
       if (response.success) {
         setIsMuted(!isMuted);
@@ -190,7 +189,7 @@ export const FooterCard: React.FC<FooterCardProps> = ({
         type: 'success',
         message: 'Room ID copied to clipboard',
       });
-    } catch (error) {
+    } catch {
       onNotification({
         type: 'error',
         message: 'Failed to copy room ID',

@@ -17,7 +17,6 @@ import {
   AccordionDetails,
   Alert,
   Chip,
-  Divider,
   List,
   ListItem,
   ListItemText,
@@ -29,11 +28,11 @@ import {
 import { styled } from '@mui/material/styles';
 import { MaterialButton } from '../../components/cards/MaterialButton';
 import { MaterialIcon } from '../../components/cards/MaterialIcon';
-import { ValidationResult, ValidationError } from '../utils/validation';
+import { ValidationResult } from '../utils/validation';
 
 export interface ConfigDiff {
-  added: Record<string, any>;
-  modified: Record<string, { old: any; new: any }>;
+  added: Record<string, unknown>;
+  modified: Record<string, { old: unknown; new: unknown }>;
   removed: string[];
   summary: {
     totalChanges: number;
@@ -52,7 +51,9 @@ export interface ImportPreviewModalProps {
   loading?: boolean;
 }
 
-const StyledDialog = styled(Dialog)(({ theme }) => ({
+const StyledDialog = styled(Dialog, {
+  shouldForwardProp: (_prop) => true,
+})(() => ({
   '& .MuiDialog-paper': {
     borderRadius: '16px',
     maxWidth: '800px',
@@ -61,7 +62,9 @@ const StyledDialog = styled(Dialog)(({ theme }) => ({
   },
 }));
 
-const DiffContainer = styled(Paper)(({ theme }) => ({
+const DiffContainer = styled(Paper, {
+  shouldForwardProp: (_prop) => true,
+})(({ theme }) => ({
   padding: theme.spacing(2),
   marginBottom: theme.spacing(2),
   backgroundColor: theme.palette.background.default,
@@ -69,7 +72,9 @@ const DiffContainer = styled(Paper)(({ theme }) => ({
   borderRadius: '8px',
 }));
 
-const ChangeItem = styled(Box)(({ theme }) => ({
+const ChangeItem = styled(Box, {
+  shouldForwardProp: (_prop) => true,
+})(({ theme }) => ({
   padding: theme.spacing(1),
   marginBottom: theme.spacing(1),
   borderRadius: '4px',
@@ -78,22 +83,30 @@ const ChangeItem = styled(Box)(({ theme }) => ({
   wordBreak: 'break-all',
 }));
 
-const AddedItem = styled(ChangeItem)(({ theme }) => ({
+const AddedItem = styled(ChangeItem, {
+  shouldForwardProp: (_prop) => true,
+})(({ theme }) => ({
   backgroundColor: theme.palette.success.light + '20',
   borderLeft: `4px solid ${theme.palette.success.main}`,
 }));
 
-const ModifiedItem = styled(ChangeItem)(({ theme }) => ({
+const ModifiedItem = styled(ChangeItem, {
+  shouldForwardProp: (_prop) => true,
+})(({ theme }) => ({
   backgroundColor: theme.palette.warning.light + '20',
   borderLeft: `4px solid ${theme.palette.warning.main}`,
 }));
 
-const RemovedItem = styled(ChangeItem)(({ theme }) => ({
+const RemovedItem = styled(ChangeItem, {
+  shouldForwardProp: (_prop) => true,
+})(({ theme }) => ({
   backgroundColor: theme.palette.error.light + '20',
   borderLeft: `4px solid ${theme.palette.error.main}`,
 }));
 
-const SummaryChip = styled(Chip)(({ theme }) => ({
+const SummaryChip = styled(Chip, {
+  shouldForwardProp: (_prop) => true,
+})(({ theme }) => ({
   margin: theme.spacing(0.5),
   fontWeight: 500,
 }));
@@ -130,7 +143,7 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({
     );
   };
 
-  const formatValue = (value: any): string => {
+  const formatValue = (value: unknown): string => {
     if (typeof value === 'object' && value !== null) {
       return JSON.stringify(value, null, 2);
     }
@@ -151,7 +164,7 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({
         onChange={() => handleSectionToggle('validation')}
       >
         <AccordionSummary expandIcon={<MaterialIcon name="expand_more" />}>
-          <Box display="flex" alignItems="center" gap={1}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <MaterialIcon
               name={validationResult.errors.length > 0 ? 'error' : 'warning'}
               color={validationResult.errors.length > 0 ? 'error' : 'primary'}
@@ -166,7 +179,7 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({
         </AccordionSummary>
         <AccordionDetails>
           {validationResult.errors.length > 0 && (
-            <Box mb={2}>
+            <Box sx={{ mb: 2 }}>
               <Typography variant="subtitle2" color="error" gutterBottom>
                 Errors (will prevent import):
               </Typography>
@@ -214,7 +227,7 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({
         onChange={() => handleSectionToggle('summary')}
       >
         <AccordionSummary expandIcon={<MaterialIcon name="expand_more" />}>
-          <Box display="flex" alignItems="center" gap={1}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <MaterialIcon name="summarize" color="primary" />
             <Typography variant="h6">Import Summary</Typography>
             <SummaryChip
@@ -225,7 +238,7 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({
           </Box>
         </AccordionSummary>
         <AccordionDetails>
-          <Box display="flex" flexWrap="wrap" gap={1} mb={2}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
             {configDiff.summary.addedCount > 0 && (
               <SummaryChip
                 icon={<MaterialIcon name="add" size="small" />}
@@ -270,7 +283,7 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({
         onChange={() => handleSectionToggle('added')}
       >
         <AccordionSummary expandIcon={<MaterialIcon name="expand_more" />}>
-          <Box display="flex" alignItems="center" gap={1}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <MaterialIcon name="add" color="primary" />
             <Typography variant="h6">Added Settings</Typography>
             <SummaryChip label={configDiff.summary.addedCount} color="success" size="small" />
@@ -300,7 +313,7 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({
         onChange={() => handleSectionToggle('modified')}
       >
         <AccordionSummary expandIcon={<MaterialIcon name="expand_more" />}>
-          <Box display="flex" alignItems="center" gap={1}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <MaterialIcon name="edit" color="primary" />
             <Typography variant="h6">Modified Settings</Typography>
             <SummaryChip label={configDiff.summary.modifiedCount} color="warning" size="small" />
@@ -313,7 +326,7 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({
                 <Typography variant="body2" component="div" gutterBottom>
                   <strong>~ {key}:</strong>
                 </Typography>
-                <Box ml={2}>
+                <Box sx={{ ml: 2 }}>
                   <Typography variant="body2" color="error.main" component="div">
                     - {formatValue(old)}
                   </Typography>
@@ -338,7 +351,7 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({
         onChange={() => handleSectionToggle('removed')}
       >
         <AccordionSummary expandIcon={<MaterialIcon name="expand_more" />}>
-          <Box display="flex" alignItems="center" gap={1}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <MaterialIcon name="remove" color="error" />
             <Typography variant="h6">Removed Settings</Typography>
             <SummaryChip label={configDiff.summary.removedCount} color="error" size="small" />
@@ -365,7 +378,7 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({
   return (
     <StyledDialog open={open} onClose={onCancel} maxWidth="md" fullWidth fullScreen={isMobile}>
       <DialogTitle>
-        <Box display="flex" alignItems="center" gap={1}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <MaterialIcon name="preview" color="primary" />
           <Typography variant="h5" component="div">
             Import Configuration Preview
@@ -375,7 +388,14 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({
 
       <DialogContent dividers>
         {!configDiff ? (
-          <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              minHeight: '200px',
+            }}
+          >
             <MaterialIcon name="refresh" size="large" />
           </Box>
         ) : (

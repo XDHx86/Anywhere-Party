@@ -4,8 +4,9 @@
  * Requirements: 28.4
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import OverlayManager from './OverlayManager';
+import { Avatar, Reaction } from './types';
 import { integrationService } from '../../services/integration-service';
 import { useMaterialTheme } from '../../theme';
 import { useResponsiveDesign } from '../../hooks/useResponsiveDesign';
@@ -17,7 +18,7 @@ export interface OverlayData {
     x: number;
     y: number;
   };
-  content: any;
+  content: unknown;
   userId?: string;
   timestamp?: Date;
   duration?: number;
@@ -52,8 +53,7 @@ export const OverlayIntegration: React.FC<OverlayIntegrationProps> = ({
   const [overlays, setOverlays] = useState<OverlayData[]>([]);
   const [videoElement, setVideoElement] = useState<VideoElement | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [isVideoDetected, setIsVideoDetected] = useState(false);
-  const { theme } = useMaterialTheme();
+  useMaterialTheme();
   const responsive = useResponsiveDesign();
 
   // Connect to overlay system on mount
@@ -67,9 +67,12 @@ export const OverlayIntegration: React.FC<OverlayIntegrationProps> = ({
 
         if (connected) {
           // Check video detection status
-          const videoStatus = await integrationService.sendMessage('GET_VIDEO_DETECTION_STATUS');
+          const videoStatus = (await integrationService.sendMessage(
+            'GET_VIDEO_DETECTION_STATUS'
+          )) as
+            | { success?: boolean; videoFound?: boolean; videoElement?: VideoElement | null }
+            | undefined;
           if (videoStatus?.success) {
-            setIsVideoDetected(videoStatus.videoFound);
             if (videoStatus.videoElement) {
               setVideoElement(videoStatus.videoElement);
             }
@@ -77,9 +80,9 @@ export const OverlayIntegration: React.FC<OverlayIntegrationProps> = ({
 
           // Load existing overlays for room
           if (roomId) {
-            const overlaysResponse = await integrationService.sendMessage('GET_ROOM_OVERLAYS', {
+            const overlaysResponse = (await integrationService.sendMessage('GET_ROOM_OVERLAYS', {
               roomId,
-            });
+            })) as { success?: boolean; overlays?: OverlayData[] } | undefined;
 
             if (overlaysResponse?.success && overlaysResponse.overlays) {
               setOverlays(overlaysResponse.overlays);
@@ -97,7 +100,18 @@ export const OverlayIntegration: React.FC<OverlayIntegrationProps> = ({
 
   // Setup message listeners for overlay updates
   useEffect(() => {
-    const handleOverlayCreate = (message: any) => {
+    const handleOverlayCreate = (raw: unknown) => {
+      const message = raw as {
+        roomId?: string;
+        id: string;
+        type: OverlayData['type'];
+        position: OverlayData['position'];
+        content: unknown;
+        userId?: string;
+        timestamp?: number;
+        duration?: number;
+        zIndex?: number;
+      };
       if (message.roomId === roomId) {
         const overlay: OverlayData = {
           id: message.id,
@@ -105,7 +119,7 @@ export const OverlayIntegration: React.FC<OverlayIntegrationProps> = ({
           position: message.position,
           content: message.content,
           userId: message.userId,
-          timestamp: new Date(message.timestamp),
+          timestamp: new Date(message.timestamp ?? Date.now()),
           duration: message.duration,
           zIndex: message.zIndex,
         };
@@ -115,15 +129,18 @@ export const OverlayIntegration: React.FC<OverlayIntegrationProps> = ({
       }
     };
 
-    const handleOverlayRemove = (message: any) => {
+    const handleOverlayRemove = (raw: unknown) => {
+      const message = raw as { roomId?: string; overlayId: string };
       if (message.roomId === roomId) {
         setOverlays((prev) => prev.filter((overlay) => overlay.id !== message.overlayId));
         onOverlayRemove?.(message.overlayId);
       }
     };
 
-    const handleVideoDetection = (message: any) => {
-      setIsVideoDetected(message.videoFound);
+    const handleVideoDetection = (raw: unknown) => {
+      const message = raw as { videoFound?: boolean; videoElement?: VideoElement | null };
+      // Video-detected state is derived from `videoElement` being non-null,
+      // so only the element itself needs to be tracked.
       if (message.videoElement) {
         setVideoElement(message.videoElement);
       } else {
@@ -131,7 +148,8 @@ export const OverlayIntegration: React.FC<OverlayIntegrationProps> = ({
       }
     };
 
-    const handleAnnotationUpdate = (message: any) => {
+    const handleAnnotationUpdate = (raw: unknown) => {
+      const message = raw as { roomId?: string; annotationId: string; content: unknown };
       if (message.roomId === roomId) {
         // Update annotation overlays
         setOverlays((prev) =>
@@ -158,86 +176,6 @@ export const OverlayIntegration: React.FC<OverlayIntegrationProps> = ({
     };
   }, [roomId, onOverlayCreate, onOverlayRemove]);
 
-  // Handle creating new overlays
-  const handleCreateOverlay = useCallback(
-    async (
-      type: OverlayData['type'],
-      position: { x: number; y: number },
-      content: any,
-      options?: Partial<OverlayData>
-    ) => {
-      if (!isConnected || !roomId || !userId) {
-        return;
-      }
-
-      try {
-        const response = await integrationService.sendMessage('CREATE_OVERLAY', {
-          roomId,
-          userId,
-          type,
-          position,
-          content,
-          ...options,
-        });
-
-        if (!response?.success) {
-          console.error('Failed to create overlay:', response?.error);
-        }
-      } catch (error) {
-        console.error('Error creating overlay:', error);
-      }
-    },
-    [isConnected, roomId, userId]
-  );
-
-  // Handle removing overlays
-  const handleRemoveOverlay = useCallback(
-    async (overlayId: string) => {
-      if (!isConnected || !roomId) {
-        return;
-      }
-
-      try {
-        const response = await integrationService.sendMessage('REMOVE_OVERLAY', {
-          roomId,
-          overlayId,
-          userId,
-        });
-
-        if (!response?.success) {
-          console.error('Failed to remove overlay:', response?.error);
-        }
-      } catch (error) {
-        console.error('Error removing overlay:', error);
-      }
-    },
-    [isConnected, roomId, userId]
-  );
-
-  // Handle video element updates
-  const handleVideoUpdate = useCallback((video: HTMLVideoElement) => {
-    const bounds = video.getBoundingClientRect();
-    const videoData: VideoElement = {
-      element: video,
-      bounds,
-      url: video.src || video.currentSrc,
-      duration: video.duration,
-      currentTime: video.currentTime,
-    };
-
-    setVideoElement(videoData);
-
-    // Notify integration service of video update
-    integrationService
-      .sendMessage('VIDEO_ELEMENT_UPDATE', {
-        bounds,
-        url: videoData.url,
-        duration: videoData.duration,
-        currentTime: videoData.currentTime,
-      })
-      .catch(console.error);
-  }, []);
-
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -258,8 +196,8 @@ export const OverlayIntegration: React.FC<OverlayIntegrationProps> = ({
 
   return (
     <OverlayManager
-      avatars={overlays.filter((o) => o.type === 'avatar').map((o) => o.content as any)}
-      reactions={overlays.filter((o) => o.type === 'reaction').map((o) => o.content as any)}
+      avatars={overlays.filter((o) => o.type === 'avatar').map((o) => o.content as Avatar)}
+      reactions={overlays.filter((o) => o.type === 'reaction').map((o) => o.content as Reaction)}
       videoElement={videoElement?.element || undefined}
       responsive={responsive.isMobile}
       className={className}

@@ -12,7 +12,6 @@ import { MaterialSelect } from '../../components/cards/MaterialSelect';
 import { MaterialButton } from '../../components/cards/MaterialButton';
 import { Typography, Box, Divider, Collapse } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { useMaterialTheme } from '../../theme';
 import { MaterialIcon } from '../../components/cards/MaterialIcon';
 
 export interface AccessibilitySettingsData {
@@ -39,7 +38,10 @@ export interface AccessibilitySettingsData {
 
 export interface AccessibilityCardProps {
   data: AccessibilitySettingsData;
-  onChange: (field: keyof AccessibilitySettingsData | string, value: any) => void;
+  onChange: (
+    field: keyof AccessibilitySettingsData | string,
+    value: string | boolean | Record<string, unknown>
+  ) => void;
   className?: string;
 }
 
@@ -98,7 +100,6 @@ export const AccessibilityCard: React.FC<AccessibilityCardProps> = ({
   onChange,
   className,
 }) => {
-  const { theme } = useMaterialTheme();
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const fontSizeOptions = [
@@ -126,7 +127,7 @@ export const AccessibilityCard: React.FC<AccessibilityCardProps> = ({
 
   const handleCaptionStyleChange = (
     styleType: keyof AccessibilitySettingsData['captionStyling'],
-    value: any
+    value: string | boolean
   ) => {
     onChange('captionStyling', {
       ...data.captionStyling,
@@ -175,7 +176,7 @@ export const AccessibilityCard: React.FC<AccessibilityCardProps> = ({
         <MaterialSelect
           label="Focus Indicator Style"
           value={data.focusIndicatorStyle}
-          onChange={(e) => onChange('focusIndicatorStyle', e.target.value)}
+          onChange={(e) => onChange('focusIndicatorStyle', e.target.value as string)}
           options={focusIndicatorOptions}
           helperText="Choose how focused elements are highlighted."
           fullWidth
@@ -200,7 +201,7 @@ export const AccessibilityCard: React.FC<AccessibilityCardProps> = ({
         <MaterialSelect
           label="Font Size"
           value={data.fontSize}
-          onChange={(e) => onChange('fontSize', e.target.value)}
+          onChange={(e) => onChange('fontSize', e.target.value as string)}
           options={fontSizeOptions}
           helperText="Adjust text size throughout the interface."
           fullWidth
@@ -286,7 +287,7 @@ export const AccessibilityCard: React.FC<AccessibilityCardProps> = ({
           <MaterialSelect
             label="Caption Font Size"
             value={data.captionStyling.fontSize}
-            onChange={(e) => handleCaptionStyleChange('fontSize', e.target.value)}
+            onChange={(e) => handleCaptionStyleChange('fontSize', e.target.value as string)}
             options={fontSizeOptions}
             helperText="Adjust subtitle and caption text size."
             fullWidth

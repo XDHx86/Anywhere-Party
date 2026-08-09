@@ -34,15 +34,16 @@ export class ThemePersistenceService {
 
       // Check if result exists and has the expected structure
       if (result && typeof result === 'object' && ThemePersistenceService.STORAGE_KEY in result) {
-        const stored = result[ThemePersistenceService.STORAGE_KEY];
+        const stored = result[ThemePersistenceService.STORAGE_KEY] as
+          Partial<ThemeSettings> | undefined;
 
         if (stored && typeof stored === 'object') {
           return {
-            mode: stored.mode || 'auto',
-            customPrimaryColor: stored.customPrimaryColor || '#6200EE',
-            customSecondaryColor: stored.customSecondaryColor || '#03DAC6',
-            enableCustomColors: stored.enableCustomColors || false,
-            compactMode: stored.compactMode || false,
+            mode: stored.mode ?? 'auto',
+            customPrimaryColor: stored.customPrimaryColor ?? '#6200EE',
+            customSecondaryColor: stored.customSecondaryColor ?? '#03DAC6',
+            enableCustomColors: stored.enableCustomColors ?? false,
+            compactMode: stored.compactMode ?? false,
             animationsEnabled: stored.animationsEnabled !== false, // Default to true
           };
         }
@@ -103,9 +104,10 @@ export class ThemePersistenceService {
 
   // Listen for storage changes from other contexts
   onThemeSettingsChanged(callback: (settings: ThemeSettings) => void): () => void {
-    const handleStorageChange = (changes: any) => {
-      if (changes[ThemePersistenceService.STORAGE_KEY]) {
-        const newSettings = changes[ThemePersistenceService.STORAGE_KEY].newValue;
+    const handleStorageChange = (changes: unknown) => {
+      const changesRecord = changes as Record<string, { newValue?: ThemeSettings } | undefined>;
+      if (changesRecord[ThemePersistenceService.STORAGE_KEY]) {
+        const newSettings = changesRecord[ThemePersistenceService.STORAGE_KEY]?.newValue;
         if (newSettings) {
           callback(newSettings);
         }
@@ -119,9 +121,13 @@ export class ThemePersistenceService {
     }
 
     // Firefox storage change listener
-    if (typeof browser !== 'undefined' && browser.storage) {
-      browser.storage.onChanged.addListener(handleStorageChange);
-      return () => browser.storage.onChanged.removeListener(handleStorageChange);
+    if (typeof browser !== 'undefined' && browser.storage?.onChanged) {
+      const onChanged = browser.storage.onChanged as {
+        addListener: (cb: (changes: unknown, areaName: string) => void) => void;
+        removeListener: (cb: (changes: unknown, areaName: string) => void) => void;
+      };
+      onChanged.addListener(handleStorageChange);
+      return () => onChanged.removeListener(handleStorageChange);
     }
 
     // Fallback - no cleanup needed

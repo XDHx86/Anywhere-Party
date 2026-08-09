@@ -8,7 +8,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { ThemeProvider as MuiThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline, Fade } from '@mui/material';
 import { MaterialThemeConfig, ThemeContextValue, ThemeMode } from './types';
-import { createMaterialTheme, lightTheme, darkTheme } from './material-theme';
+import { createMaterialTheme } from './material-theme';
 import { themePersistence, ThemeSettings } from './theme-persistence';
 
 // Create theme context
@@ -255,6 +255,7 @@ export const MaterialThemeProvider: React.FC<MaterialThemeProviderProps> = ({
       mediaQuery.addEventListener('change', handleChange);
       return () => mediaQuery.removeEventListener('change', handleChange);
     }
+    return;
   }, [mode, themeSettings]);
 
   const toggleTheme = async () => {

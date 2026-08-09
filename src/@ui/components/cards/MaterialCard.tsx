@@ -13,8 +13,8 @@ import {
   SpacingSize,
   BorderRadiusSize,
 } from './types';
-import { useMaterialTheme } from '../../theme';
-import { materialAnimations, createTransition } from '../../animations/material-animations';
+import { useMaterialTheme } from '../../theme/theme-provider';
+import { createTransition } from '../../animations/material-animations';
 
 // Elevation mapping
 const elevationMap: Record<ElevationLevel, number> = {
@@ -128,12 +128,11 @@ export const MaterialCard = forwardRef<HTMLDivElement, MaterialCardProps>(
       disabled = false,
       className,
       children,
-      'data-testid': testId,
-      ...props
+      ...restProps
     },
     ref
   ) => {
-    const { theme } = useMaterialTheme();
+    useMaterialTheme();
 
     const cardProps: CardProps = {
       ref,
@@ -142,7 +141,7 @@ export const MaterialCard = forwardRef<HTMLDivElement, MaterialCardProps>(
       className,
       tabIndex: onClick && !disabled ? 0 : undefined,
       role: onClick ? 'button' : undefined,
-      ...props,
+      ...restProps,
     };
 
     return (

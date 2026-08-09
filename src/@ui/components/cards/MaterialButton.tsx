@@ -3,16 +3,12 @@
  * Button component with Material Design 3 states and styling
  */
 
-import React, { forwardRef, useState } from 'react';
+import React, { forwardRef } from 'react';
 import { Button, ButtonProps, CircularProgress } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { MaterialButtonProps } from './types';
-import { useMaterialTheme } from '../../theme';
-import {
-  materialAnimations,
-  createTransition,
-  rippleAnimation,
-} from '../../animations/material-animations';
+import { useMaterialTheme } from '../../theme/theme-provider';
+import { createTransition } from '../../animations/material-animations';
 
 // Styled button component
 const StyledButton = styled(Button, {
@@ -175,7 +171,7 @@ const StyledButton = styled(Button, {
 }));
 
 // Loading spinner component
-const LoadingSpinner = styled(CircularProgress)(({ theme }) => ({
+const LoadingSpinner = styled(CircularProgress)(() => ({
   position: 'absolute',
   top: '50%',
   left: '50%',
@@ -197,12 +193,11 @@ export const MaterialButton = forwardRef<HTMLButtonElement, MaterialButtonProps>
       disabled = false,
       className,
       children,
-      'data-testid': testId,
       ...props
     },
     ref
   ) => {
-    const { theme } = useMaterialTheme();
+    useMaterialTheme();
 
     const buttonProps: ButtonProps = {
       ref,

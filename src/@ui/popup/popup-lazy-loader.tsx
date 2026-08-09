@@ -146,7 +146,7 @@ export const PopupLazyWrapper: React.FC = () => {
 };
 
 // Lazy secondary card wrapper
-export const SecondaryCardLazy: React.FC<any> = (props) => {
+export const SecondaryCardLazy: React.FC = (props) => {
   if (!LazySecondaryCard) {
     return null;
   }
@@ -166,7 +166,7 @@ export const SecondaryCardLazy: React.FC<any> = (props) => {
 };
 
 // Lazy chat sidebar wrapper
-export const ChatSidebarLazy: React.FC<any> = (props) => {
+export const ChatSidebarLazy: React.FC = (props) => {
   if (!LazyChatSidebar) {
     return null;
   }
@@ -186,7 +186,7 @@ export const ChatSidebarLazy: React.FC<any> = (props) => {
 };
 
 // Lazy overlay manager wrapper
-export const OverlayManagerLazy: React.FC<any> = (props) => {
+export const OverlayManagerLazy: React.FC = (props) => {
   if (!LazyOverlayManager) {
     return null;
   }

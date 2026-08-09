@@ -49,7 +49,6 @@ export const useResponsiveDesign = (config: Partial<ResponsiveConfig> = {}) => {
   const isSm = useMediaQuery(theme.breakpoints.between('sm', 'md'));
   const isMd = useMediaQuery(theme.breakpoints.between('md', 'lg'));
   const isLg = useMediaQuery(theme.breakpoints.between('lg', 'xl'));
-  const isXl = useMediaQuery(theme.breakpoints.up('xl'));
 
   // Custom breakpoints for extension context
   const isMobile = useMediaQuery(`(max-width: ${finalConfig.mobileBreakpoint}px)`);

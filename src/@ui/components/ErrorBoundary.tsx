@@ -90,7 +90,7 @@ export class ErrorBoundary extends Component<Props, State> {
     };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     const { onError, componentName } = this.props;
 
     // Enhanced error logging with structured data
@@ -141,7 +141,7 @@ export class ErrorBoundary extends Component<Props, State> {
     }
   }
 
-  componentWillUnmount() {
+  override componentWillUnmount() {
     if (this.retryTimeoutId) {
       clearTimeout(this.retryTimeoutId);
     }
@@ -240,7 +240,7 @@ export class ErrorBoundary extends Component<Props, State> {
     return (
       <Accordion sx={{ mt: 2 }}>
         <AccordionSummary expandIcon={<MaterialIcon name="expand_more" size="small" />}>
-          <Typography variant="body2" fontWeight="medium">
+          <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
             Diagnostic Information
           </Typography>
         </AccordionSummary>
@@ -251,7 +251,7 @@ export class ErrorBoundary extends Component<Props, State> {
               <Typography variant="subtitle2" gutterBottom>
                 Error Details
               </Typography>
-              <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 1 }}>
+              <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap: 'wrap' }}>
                 <Chip label={`ID: ${errorId}`} size="small" variant="outlined" />
                 <Chip label={`Type: ${error.name}`} size="small" variant="outlined" />
                 <Chip label={`Retries: ${retryCount}`} size="small" variant="outlined" />
@@ -325,7 +325,7 @@ export class ErrorBoundary extends Component<Props, State> {
     );
   }
 
-  render() {
+  override render() {
     const {
       fallbackComponent: FallbackComponent,
       maxRetries = 3,
@@ -341,7 +341,7 @@ export class ErrorBoundary extends Component<Props, State> {
         return (
           <FallbackComponent
             error={error}
-            errorInfo={errorInfo!}
+            errorInfo={errorInfo ?? { componentStack: '' }}
             resetError={this.handleReset}
             showDiagnostics={showDiagnostics}
             onShowDiagnostics={this.handleShowDiagnostics}
@@ -355,14 +355,14 @@ export class ErrorBoundary extends Component<Props, State> {
       // Default fallback UI
       return (
         <Box
-          display="flex"
-          flexDirection="column"
-          alignItems="center"
-          justifyContent="center"
-          minHeight="200px"
-          padding={3}
-          textAlign="center"
           sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '200px',
+            padding: 3,
+            textAlign: 'center',
             backgroundColor: 'background.paper',
             borderRadius: 2,
             border: '1px solid',
@@ -378,7 +378,7 @@ export class ErrorBoundary extends Component<Props, State> {
             {componentName ? `${componentName} Error` : 'Something went wrong'}
           </Typography>
 
-          <Typography variant="body2" color="text.secondary" paragraph>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             A component failed to load properly. This might be due to a temporary issue.
           </Typography>
 

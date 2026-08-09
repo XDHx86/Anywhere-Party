@@ -5,21 +5,13 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Typography,
-  Collapse,
-  IconButton,
-  Switch,
-  FormControlLabel,
-  Divider,
-} from '@mui/material';
+import { Box, Typography, Collapse, IconButton, Switch, Divider } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { MaterialCard } from './MaterialCard';
 import { MaterialButton } from './MaterialButton';
 import { MaterialIcon } from './MaterialIcon';
-import { useMaterialTheme } from '../../theme';
 import { browserAPI } from '../../utils/browser-api';
+import { useMaterialTheme } from '../../theme/theme-provider';
 
 // Types
 export interface SecondaryCardProps {
@@ -41,58 +33,58 @@ interface SettingsState {
 }
 
 // Styled components
-const SecondaryContainer = styled(Box)(({ theme }) => ({
+const SecondaryContainer = styled(Box)(({ theme: _theme }) => ({
   display: 'flex',
   flexDirection: 'column',
 }));
 
-const HeaderContainer = styled(Box)(({ theme }) => ({
+const HeaderContainer = styled(Box)(({ theme: _theme }) => ({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
   cursor: 'pointer',
-  padding: theme.spacing(1, 0),
+  padding: _theme.spacing(1, 0),
   borderRadius: '8px',
-  transition: theme.transitions.create(['background-color'], {
-    duration: theme.transitions.duration.short,
+  transition: _theme.transitions.create(['background-color'], {
+    duration: _theme.transitions.duration.short,
   }),
   '&:hover': {
-    backgroundColor: theme.palette.action.hover,
+    backgroundColor: _theme.palette.action.hover,
   },
 }));
 
-const ContentContainer = styled(Box)(({ theme }) => ({
-  paddingTop: theme.spacing(2),
+const ContentContainer = styled(Box)(({ theme: _theme }) => ({
+  paddingTop: _theme.spacing(2),
 }));
 
-const SettingsSection = styled(Box)(({ theme }) => ({
+const SettingsSection = styled(Box)(({ theme: _theme }) => ({
   display: 'flex',
   flexDirection: 'column',
-  gap: theme.spacing(2),
+  gap: _theme.spacing(2),
 }));
 
-const SettingRow = styled(Box)(({ theme }) => ({
+const SettingRow = styled(Box)(({ theme: _theme }) => ({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  padding: theme.spacing(1, 0),
+  padding: _theme.spacing(1, 0),
 }));
 
-const QuickActionsGrid = styled(Box)(({ theme }) => ({
+const QuickActionsGrid = styled(Box)(({ theme: _theme }) => ({
   display: 'grid',
   gridTemplateColumns: '1fr 1fr',
-  gap: theme.spacing(1.5),
-  marginTop: theme.spacing(2),
+  gap: _theme.spacing(1.5),
+  marginTop: _theme.spacing(2),
 }));
 
 const ExpandIcon = styled(IconButton, {
   shouldForwardProp: (prop) => prop !== 'expanded',
-})<{ expanded: boolean }>(({ theme, expanded }) => ({
+})<{ expanded: boolean }>(({ theme: _theme, expanded }) => ({
   transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
-  transition: theme.transitions.create('transform', {
-    duration: theme.transitions.duration.short,
+  transition: _theme.transitions.create('transform', {
+    duration: _theme.transitions.duration.short,
   }),
-  padding: theme.spacing(0.5),
+  padding: _theme.spacing(0.5),
 }));
 
 // Secondary Card Component
@@ -120,11 +112,14 @@ export const SecondaryCard: React.FC<SecondaryCardProps> = ({
           const result = await browserAPI.storage.local.get(['popupSettings']);
           // Check if result exists and has the expected structure
           if (result && typeof result === 'object' && result.popupSettings) {
-            setSettings((prev) => ({ ...prev, ...result.popupSettings }));
+            setSettings((prev) => ({
+              ...prev,
+              ...(result.popupSettings as Partial<SettingsState>),
+            }));
           }
         }
-      } catch (error) {
-        console.warn('Failed to load settings, using defaults:', error);
+      } catch (_error) {
+        console.warn('Failed to load settings, using defaults:', _error);
       }
     };
 
@@ -145,8 +140,8 @@ export const SecondaryCard: React.FC<SecondaryCardProps> = ({
         type: 'success',
         message: 'Settings saved successfully',
       });
-    } catch (error) {
-      console.error('Failed to save settings:', error);
+    } catch (_error) {
+      console.error('Failed to save settings:', _error);
       onNotification({
         type: 'error',
         message: 'Failed to save settings',
@@ -181,7 +176,7 @@ export const SecondaryCard: React.FC<SecondaryCardProps> = ({
         type: 'success',
         message: 'Settings exported successfully',
       });
-    } catch (error) {
+    } catch {
       onNotification({
         type: 'error',
         message: 'Failed to export settings',
@@ -204,7 +199,7 @@ export const SecondaryCard: React.FC<SecondaryCardProps> = ({
         type: 'success',
         message: 'Settings reset to defaults',
       });
-    } catch (error) {
+    } catch {
       onNotification({
         type: 'error',
         message: 'Failed to reset settings',

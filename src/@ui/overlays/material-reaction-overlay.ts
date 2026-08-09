@@ -65,7 +65,11 @@ export class MaterialReactionOverlay {
       autoCleanup: true,
       respectsReducedMotion: this.options.respectsReducedMotion,
       onSurfaceCreate: (surface) => {
-        this.options.eventHandlers.onReactionShow?.(surface.id, surface.content, surface.position);
+        this.options.eventHandlers.onReactionShow?.(
+          surface.id,
+          surface.content as string,
+          surface.position
+        );
       },
       onSurfaceDestroy: (surface) => {
         this.activeReactions.delete(surface.id);

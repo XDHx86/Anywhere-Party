@@ -6,6 +6,8 @@
 import { keyframes } from '@mui/material/styles';
 
 // Material Design 3 Motion Tokens
+export type DurationToken = keyof typeof materialMotion.duration;
+
 export const materialMotion = {
   // Duration tokens
   duration: {
@@ -282,7 +284,7 @@ export const createTransition = (
 };
 
 export const createAnimation = (
-  keyframe: any,
+  keyframe: string,
   duration: keyof typeof materialMotion.duration = 'medium2',
   easing: keyof typeof materialMotion.easing = 'standard',
   fillMode: 'none' | 'forwards' | 'backwards' | 'both' = 'none',
@@ -293,7 +295,7 @@ export const createAnimation = (
 
 // Stagger animation utility for lists
 export const createStaggeredAnimation = (
-  keyframe: any,
+  keyframe: string,
   itemCount: number,
   staggerDelay: number = 50,
   baseDuration: keyof typeof materialMotion.duration = 'medium2'

@@ -257,7 +257,6 @@ export class PopupAccessibilityIntegration {
    */
   private enhanceButton(button: HTMLElement): void {
     const id = button.id;
-    const text = button.textContent?.trim() || '';
 
     switch (id) {
       case 'createRoom':
@@ -460,7 +459,7 @@ export class PopupAccessibilityIntegration {
     if (focusableElements.length === 0) return;
 
     // Focus first element
-    focusableElements[0].focus();
+    focusableElements[0]?.focus();
 
     // Handle tab navigation within modal
     modal.addEventListener('keydown', (event) => {
@@ -470,12 +469,12 @@ export class PopupAccessibilityIntegration {
 
         if (event.shiftKey) {
           if (document.activeElement === firstElement) {
-            lastElement.focus();
+            lastElement?.focus();
             event.preventDefault();
           }
         } else {
           if (document.activeElement === lastElement) {
-            firstElement.focus();
+            firstElement?.focus();
             event.preventDefault();
           }
         }

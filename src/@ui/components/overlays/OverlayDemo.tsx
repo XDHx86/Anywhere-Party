@@ -80,11 +80,11 @@ const OverlayDemo: React.FC = () => {
 
   // Add random reaction
   const addReaction = () => {
-    const emoji = sampleEmojis[Math.floor(Math.random() * sampleEmojis.length)];
+    const emoji = sampleEmojis[Math.floor(Math.random() * sampleEmojis.length)] ?? '❤️';
     const newReaction: Reaction = {
       id: `reaction-${Date.now()}`,
       emoji,
-      userId: sampleAvatars[Math.floor(Math.random() * sampleAvatars.length)].userId,
+      userId: sampleAvatars[Math.floor(Math.random() * sampleAvatars.length)]?.userId ?? '',
       timestamp: new Date(),
       videoTimestamp: Math.random() * 100,
       position: { x: 0, y: 0 }, // Will be calculated by OverlayManager
@@ -126,6 +126,7 @@ const OverlayDemo: React.FC = () => {
 
       return () => clearInterval(interval);
     }
+    return undefined;
   }, [avatars.length]);
 
   const containerStyle: React.CSSProperties = {

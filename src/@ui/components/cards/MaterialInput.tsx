@@ -7,7 +7,6 @@ import React, { forwardRef } from 'react';
 import { TextField, TextFieldProps, InputAdornment } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { MaterialInputProps } from './types';
-import { useMaterialTheme } from '../../theme';
 
 // Styled input component
 const StyledTextField = styled(TextField, {
@@ -132,17 +131,13 @@ export const MaterialInput = forwardRef<HTMLInputElement, MaterialInputProps>(
       fullWidth = false,
       className,
       inputProps,
+      color: _color,
       'data-testid': testId,
       ...props
     },
     ref
   ) => {
-    const { theme } = useMaterialTheme();
-
-    const muiVariant = variant === 'filled' ? 'filled' : 'outlined';
-
-    // Filter out props that might conflict with MUI TextField
-    const { color, ...filteredProps } = props;
+    const filteredProps = { ...props };
 
     const baseProps = {
       inputRef: ref,
@@ -152,17 +147,19 @@ export const MaterialInput = forwardRef<HTMLInputElement, MaterialInputProps>(
       helperText: error && errorText ? errorText : helperText,
       fullWidth,
       className,
-      InputProps: {
-        startAdornment: startAdornment ? (
-          <InputAdornment position="start">{startAdornment}</InputAdornment>
-        ) : undefined,
-        endAdornment: endAdornment ? (
-          <InputAdornment position="end">{endAdornment}</InputAdornment>
-        ) : undefined,
-      },
-      inputProps: {
-        'data-testid': testId,
-        ...inputProps,
+      slotProps: {
+        input: {
+          startAdornment: startAdornment ? (
+            <InputAdornment position="start">{startAdornment}</InputAdornment>
+          ) : undefined,
+          endAdornment: endAdornment ? (
+            <InputAdornment position="end">{endAdornment}</InputAdornment>
+          ) : undefined,
+        },
+        htmlInput: {
+          'data-testid': testId,
+          ...inputProps,
+        },
       },
       ...filteredProps,
     };
@@ -170,7 +167,7 @@ export const MaterialInput = forwardRef<HTMLInputElement, MaterialInputProps>(
     return (
       <StyledTextField
         {...baseProps}
-        variant={muiVariant}
+        variant={variant}
         materialVariant={variant}
         materialSize={size}
       />

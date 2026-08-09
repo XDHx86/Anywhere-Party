@@ -63,7 +63,7 @@ class BrowserCompatibilityManager {
       const match = userAgent.match(/Chrome\/(\d+)\.(\d+)/);
       if (match) {
         browserVersion = `${match[1]}.${match[2]}`;
-        majorVersion = parseInt(match[1], 10);
+        majorVersion = parseInt(match[1] ?? '0', 10);
       }
       manifestVersion = 3;
       webExtensionAPI = typeof chrome !== 'undefined' ? 'chrome' : 'none';
@@ -74,7 +74,7 @@ class BrowserCompatibilityManager {
       const match = userAgent.match(/Firefox\/(\d+)\.(\d+)/);
       if (match) {
         browserVersion = `${match[1]}.${match[2]}`;
-        majorVersion = parseInt(match[1], 10);
+        majorVersion = parseInt(match[1] ?? '0', 10);
       }
       manifestVersion = 2;
       webExtensionAPI = typeof browser !== 'undefined' ? 'browser' : 'none';
@@ -85,7 +85,7 @@ class BrowserCompatibilityManager {
       const match = userAgent.match(/Edg\/(\d+)\.(\d+)/);
       if (match) {
         browserVersion = `${match[1]}.${match[2]}`;
-        majorVersion = parseInt(match[1], 10);
+        majorVersion = parseInt(match[1] ?? '0', 10);
       }
       manifestVersion = 3;
       webExtensionAPI = typeof chrome !== 'undefined' ? 'chrome' : 'none';
@@ -96,7 +96,7 @@ class BrowserCompatibilityManager {
       const match = userAgent.match(/Version\/(\d+)\.(\d+)/);
       if (match) {
         browserVersion = `${match[1]}.${match[2]}`;
-        majorVersion = parseInt(match[1], 10);
+        majorVersion = parseInt(match[1] ?? '0', 10);
       }
       manifestVersion = 2;
       webExtensionAPI = typeof browser !== 'undefined' ? 'browser' : 'none';
@@ -187,7 +187,10 @@ class BrowserCompatibilityManager {
   private testModules(): boolean {
     try {
       // Check if import is available as a function
-      return typeof (window as any).import === 'function' || typeof eval('import') !== 'undefined';
+      return (
+        typeof (window as unknown as { import?: unknown }).import === 'function' ||
+        typeof eval('import') !== 'undefined'
+      );
     } catch {
       return false;
     }
@@ -398,10 +401,10 @@ class BrowserCompatibilityManager {
     if (typeof IntersectionObserver !== 'undefined') return;
 
     // Simple IntersectionObserver polyfill
-    (window as any).IntersectionObserver = class {
-      private callback: any;
+    (window as unknown as { IntersectionObserver?: unknown }).IntersectionObserver = class {
+      private callback: (entries: Array<{ isIntersecting: boolean }>) => void;
 
-      constructor(callback: any) {
+      constructor(callback: (entries: Array<{ isIntersecting: boolean }>) => void) {
         this.callback = callback;
       }
       observe() {
@@ -422,10 +425,10 @@ class BrowserCompatibilityManager {
     if (typeof PerformanceObserver !== 'undefined') return;
 
     // Simple PerformanceObserver polyfill
-    (window as any).PerformanceObserver = class {
-      private callback: any;
+    (window as unknown as { PerformanceObserver?: unknown }).PerformanceObserver = class {
+      private callback: (list: { getEntries: () => PerformanceEntry[] }) => void;
 
-      constructor(callback: any) {
+      constructor(callback: (list: { getEntries: () => PerformanceEntry[] }) => void) {
         this.callback = callback;
       }
       observe() {

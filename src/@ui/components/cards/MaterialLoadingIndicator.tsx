@@ -6,7 +6,6 @@
 import React from 'react';
 import { Box, CircularProgress, LinearProgress } from '@mui/material';
 import { styled, keyframes } from '@mui/material/styles';
-import { useMaterialTheme } from '../../theme';
 import { materialMotion, rotate, pulse } from '../../animations/material-animations';
 
 // Pulse animation for skeleton loading
@@ -113,7 +112,6 @@ export const MaterialLoadingIndicator: React.FC<MaterialLoadingIndicatorProps> =
   className,
   'data-testid': testId,
 }) => {
-  const { theme } = useMaterialTheme();
   const sizeValue = sizeMap[size];
 
   const renderIndicator = () => {
@@ -185,8 +183,6 @@ export const SkeletonLayout: React.FC<SkeletonLayoutProps> = ({
   className,
   'data-testid': testId,
 }) => {
-  const { theme } = useMaterialTheme();
-
   return (
     <Box className={className} data-testid={testId} sx={{ p: 2 }}>
       {avatar && (

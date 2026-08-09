@@ -24,10 +24,10 @@ export interface ConfigSchema {
     min?: number;
     max?: number;
     pattern?: RegExp;
-    enum?: any[];
-    default?: any;
+    enum?: unknown[];
+    default?: unknown;
     description?: string;
-    sanitize?: (value: any) => any;
+    sanitize?: (value: unknown) => unknown;
   };
 }
 
@@ -39,14 +39,14 @@ export const CONFIG_SCHEMA: ConfigSchema = {
     required: true,
     pattern: /^wss?:\/\/.+/,
     description: 'WebSocket URL for the signaling server',
-    sanitize: (value: string) => value.trim(),
+    sanitize: (value: unknown) => (typeof value === 'string' ? value.trim() : value),
   },
   SIGNALING_WS_PATH: {
     type: 'string',
     default: '/ws',
     pattern: /^\/.*$/,
     description: 'WebSocket path for the signaling server',
-    sanitize: (value: string) => value.trim(),
+    sanitize: (value: unknown) => (typeof value === 'string' ? value.trim() : value),
   },
   LOCAL_DEV_MODE: {
     type: 'boolean',
@@ -57,7 +57,7 @@ export const CONFIG_SCHEMA: ConfigSchema = {
     type: 'string',
     default: '',
     description: 'Default password for new rooms',
-    sanitize: (value: string) => value.trim(),
+    sanitize: (value: unknown) => (typeof value === 'string' ? value.trim() : value),
   },
 
   // Synchronization Settings
@@ -157,8 +157,10 @@ export const CONFIG_SCHEMA: ConfigSchema = {
     type: 'array',
     default: ['stun:stun.l.google.com:19302'],
     description: 'STUN servers for WebRTC connections',
-    sanitize: (value: any[]) =>
-      value.filter((url) => typeof url === 'string' && url.startsWith('stun:')),
+    sanitize: (value: unknown) =>
+      Array.isArray(value)
+        ? value.filter((url) => typeof url === 'string' && url.startsWith('stun:'))
+        : value,
   },
   TURN_SERVERS: {
     type: 'array',
@@ -171,14 +173,16 @@ export const CONFIG_SCHEMA: ConfigSchema = {
     type: 'string',
     default: '',
     description: 'OpenSubtitles API key',
-    sanitize: (value: string) => value.trim(),
+    sanitize: (value: unknown) => (typeof value === 'string' ? value.trim() : value),
   },
   DEFAULT_SUBTITLE_LANGS: {
     type: 'array',
     default: ['en'],
     description: 'Default subtitle languages (ISO 639-1 codes)',
-    sanitize: (value: any[]) =>
-      value.filter((lang) => typeof lang === 'string' && /^[a-z]{2}$/.test(lang)),
+    sanitize: (value: unknown) =>
+      Array.isArray(value)
+        ? value.filter((lang) => typeof lang === 'string' && /^[a-z]{2}$/.test(lang))
+        : value,
   },
 
   // Accessibility Settings
@@ -277,7 +281,7 @@ export const CONFIG_SCHEMA: ConfigSchema = {
 /**
  * Validate configuration object against schema
  */
-export function validateConfig(config: Record<string, any>): ValidationResult {
+export function validateConfig(config: Record<string, unknown>): ValidationResult {
   const errors: ValidationError[] = [];
   const warnings: ValidationError[] = [];
 
@@ -327,7 +331,7 @@ export function validateConfig(config: Record<string, any>): ValidationResult {
 
     // Number range validation
     if (schema.type === 'number') {
-      if (schema.min !== undefined && value < schema.min) {
+      if (schema.min !== undefined && (value as number) < schema.min) {
         errors.push({
           field: key,
           message: `Value ${value} is below minimum ${schema.min}`,
@@ -335,7 +339,7 @@ export function validateConfig(config: Record<string, any>): ValidationResult {
           severity: 'error',
         });
       }
-      if (schema.max !== undefined && value > schema.max) {
+      if (schema.max !== undefined && (value as number) > schema.max) {
         errors.push({
           field: key,
           message: `Value ${value} is above maximum ${schema.max}`,
@@ -346,7 +350,7 @@ export function validateConfig(config: Record<string, any>): ValidationResult {
     }
 
     // String pattern validation
-    if (schema.type === 'string' && schema.pattern && !schema.pattern.test(value)) {
+    if (schema.type === 'string' && schema.pattern && !schema.pattern.test(value as string)) {
       errors.push({
         field: key,
         message: `Value does not match required pattern: ${value}`,
@@ -386,8 +390,8 @@ export function validateConfig(config: Record<string, any>): ValidationResult {
 /**
  * Sanitize configuration object
  */
-export function sanitizeConfig(config: Record<string, any>): Record<string, any> {
-  const sanitized: Record<string, any> = {};
+export function sanitizeConfig(config: Record<string, unknown>): Record<string, unknown> {
+  const sanitized: Record<string, unknown> = {};
 
   Object.entries(config).forEach(([key, value]) => {
     const schema = CONFIG_SCHEMA[key];
@@ -410,8 +414,8 @@ export function sanitizeConfig(config: Record<string, any>): Record<string, any>
 /**
  * Get default configuration
  */
-export function getDefaultConfig(): Record<string, any> {
-  const defaults: Record<string, any> = {};
+export function getDefaultConfig(): Record<string, unknown> {
+  const defaults: Record<string, unknown> = {};
 
   Object.entries(CONFIG_SCHEMA).forEach(([key, schema]) => {
     if (schema.default !== undefined) {
@@ -426,11 +430,11 @@ export function getDefaultConfig(): Record<string, any> {
  * Create configuration diff
  */
 export function createConfigDiff(
-  oldConfig: Record<string, any>,
-  newConfig: Record<string, any>
+  oldConfig: Record<string, unknown>,
+  newConfig: Record<string, unknown>
 ): {
-  added: Record<string, any>;
-  modified: Record<string, { old: any; new: any }>;
+  added: Record<string, unknown>;
+  modified: Record<string, { old: unknown; new: unknown }>;
   removed: string[];
   summary: {
     totalChanges: number;
@@ -439,8 +443,8 @@ export function createConfigDiff(
     removedCount: number;
   };
 } {
-  const added: Record<string, any> = {};
-  const modified: Record<string, { old: any; new: any }> = {};
+  const added: Record<string, unknown> = {};
+  const modified: Record<string, { old: unknown; new: unknown }> = {};
   const removed: string[] = [];
 
   // Find added and modified
@@ -480,9 +484,9 @@ export function createConfigDiff(
  * Merge configurations with validation
  */
 export function mergeConfigs(
-  baseConfig: Record<string, any>,
-  newConfig: Record<string, any>
-): { merged: Record<string, any>; validation: ValidationResult } {
+  baseConfig: Record<string, unknown>,
+  newConfig: Record<string, unknown>
+): { merged: Record<string, unknown>; validation: ValidationResult } {
   const sanitized = sanitizeConfig(newConfig);
   const merged = { ...baseConfig, ...sanitized };
   const validation = validateConfig(merged);
@@ -493,7 +497,7 @@ export function mergeConfigs(
 /**
  * Validate all settings data structure
  */
-export function validateAllSettings(settings: any): ValidationResult {
+export function validateAllSettings(settings: unknown): ValidationResult {
   const errors: ValidationError[] = [];
   const warnings: ValidationError[] = [];
 
@@ -507,10 +511,12 @@ export function validateAllSettings(settings: any): ValidationResult {
     return { isValid: false, errors, warnings };
   }
 
+  const settingsRecord = settings as Record<string, unknown>;
+
   // Validate required sections
   const requiredSections = ['general', 'accessibility', 'appearance', 'about', 'apiKeys'];
   for (const section of requiredSections) {
-    if (!settings[section]) {
+    if (!settingsRecord[section]) {
       errors.push({
         field: section,
         message: `Required section missing: ${section}`,
@@ -521,8 +527,8 @@ export function validateAllSettings(settings: any): ValidationResult {
   }
 
   // Validate each section if it exists
-  if (settings.general) {
-    const generalValidation = validateConfig(settings.general);
+  if (settingsRecord.general) {
+    const generalValidation = validateConfig(settingsRecord.general as Record<string, unknown>);
     errors.push(...generalValidation.errors.map((e) => ({ ...e, field: `general.${e.field}` })));
     warnings.push(
       ...generalValidation.warnings.map((w) => ({ ...w, field: `general.${w.field}` }))

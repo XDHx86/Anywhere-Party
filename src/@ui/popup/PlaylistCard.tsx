@@ -12,7 +12,6 @@ import {
   List,
   ListItem,
   ListItemText,
-  ListItemSecondaryAction,
   Button,
   TextField,
   Dialog,
@@ -102,7 +101,10 @@ export const PlaylistCard: React.FC<PlaylistCardProps> = ({ isHost, onAction }) 
     (index: number) => {
       if (index === 0) return;
       const newItems = [...items];
-      [newItems[index - 1], newItems[index]] = [newItems[index], newItems[index - 1]];
+      const item = newItems[index];
+      const above = newItems[index - 1];
+      if (item === undefined || above === undefined) return;
+      [newItems[index - 1], newItems[index]] = [item, above];
       const itemIds = newItems.map((i) => i.id);
       onAction('REORDER_PLAYLIST', { itemIds, newIndex: index - 1 });
       setItems(newItems);
@@ -114,7 +116,10 @@ export const PlaylistCard: React.FC<PlaylistCardProps> = ({ isHost, onAction }) 
     (index: number) => {
       if (index >= items.length - 1) return;
       const newItems = [...items];
-      [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]];
+      const item = newItems[index];
+      const below = newItems[index + 1];
+      if (item === undefined || below === undefined) return;
+      [newItems[index], newItems[index + 1]] = [below, item];
       const itemIds = newItems.map((i) => i.id);
       onAction('REORDER_PLAYLIST', { itemIds, newIndex: index });
       setItems(newItems);
@@ -221,7 +226,7 @@ export const PlaylistCard: React.FC<PlaylistCardProps> = ({ isHost, onAction }) 
                       </Typography>
                     </Box>
                   }
-                  primaryTypographyProps={{ variant: 'body2', noWrap: true }}
+                  slotProps={{ primary: { variant: 'body2', noWrap: true } }}
                 />
               </ListItem>
             ))}

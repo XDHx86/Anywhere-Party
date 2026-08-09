@@ -36,6 +36,14 @@ export interface MainCardProps {
   'data-testid'?: string;
 }
 
+// Runtime message response shape (background script responses)
+interface RuntimeResponse {
+  success: boolean;
+  error?: string;
+  roomId?: string;
+  [key: string]: unknown;
+}
+
 // Styled components
 const MainContainer = styled(Box)(({ theme }) => ({
   display: 'flex',
@@ -73,7 +81,7 @@ const RoomInfoContainer = styled(Box)(({ theme }) => ({
   border: `1px solid ${theme.palette.divider}`,
 }));
 
-const RoomInfoItem = styled(Box)(({ theme }) => ({
+const RoomInfoItem = styled(Box)(() => ({
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
@@ -140,11 +148,11 @@ export const MainCard: React.FC<MainCardProps> = ({
       onLoading('createRoom', true);
 
       // Send message to background script
-      const response = await browserAPI.runtime.sendMessage({
+      const response = (await browserAPI.runtime.sendMessage({
         type: 'CREATE_ROOM',
         data: createRoomForm,
         timestamp: Date.now(),
-      });
+      })) as RuntimeResponse;
 
       if (response.success) {
         onButtonStateChange('createRoom', 'success');
@@ -172,11 +180,11 @@ export const MainCard: React.FC<MainCardProps> = ({
       onButtonStateChange('joinRoom', 'loading');
       onLoading('joinRoom', true);
 
-      const response = await browserAPI.runtime.sendMessage({
+      const response = (await browserAPI.runtime.sendMessage({
         type: 'JOIN_ROOM',
         data: joinRoomForm,
         timestamp: Date.now(),
-      });
+      })) as RuntimeResponse;
 
       if (response.success) {
         onButtonStateChange('joinRoom', 'success');
@@ -204,10 +212,10 @@ export const MainCard: React.FC<MainCardProps> = ({
       onButtonStateChange('leaveRoom', 'loading');
       onLoading('leaveRoom', true);
 
-      const response = await browserAPI.runtime.sendMessage({
+      const response = (await browserAPI.runtime.sendMessage({
         type: 'LEAVE_ROOM',
         timestamp: Date.now(),
-      });
+      })) as RuntimeResponse;
 
       if (response.success) {
         onButtonStateChange('leaveRoom', 'success');
@@ -239,10 +247,10 @@ export const MainCard: React.FC<MainCardProps> = ({
       onButtonStateChange('startRoom', 'loading');
       onLoading('startRoom', true);
 
-      const response = await browserAPI.runtime.sendMessage({
+      const response = (await browserAPI.runtime.sendMessage({
         type: 'START_ROOM',
         timestamp: Date.now(),
-      });
+      })) as RuntimeResponse;
 
       if (response.success) {
         onButtonStateChange('startRoom', 'success');
@@ -267,7 +275,7 @@ export const MainCard: React.FC<MainCardProps> = ({
   // Render different views
   const renderMainView = () => (
     <MainContainer>
-      <Box display="flex" alignItems="center" justifyContent="space-between">
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Typography
           variant="h6"
           component="h2"
@@ -332,7 +340,7 @@ export const MainCard: React.FC<MainCardProps> = ({
 
   const renderCreateRoomView = () => (
     <FormContainer>
-      <Box display="flex" alignItems="center" gap={2}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
         <MaterialButton
           variant="text"
           size="small"
@@ -387,7 +395,7 @@ export const MainCard: React.FC<MainCardProps> = ({
             maxParticipants: parseInt(e.target.value) || 10,
           }))
         }
-        inputProps={{ min: 2, max: 50 }}
+        slotProps={{ htmlInput: { min: 2, max: 50 } }}
         fullWidth
         variant="outlined"
         size="small"
@@ -410,7 +418,7 @@ export const MainCard: React.FC<MainCardProps> = ({
 
   const renderJoinRoomView = () => (
     <FormContainer>
-      <Box display="flex" alignItems="center" gap={2}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
         <MaterialButton
           variant="text"
           size="small"
@@ -464,7 +472,7 @@ export const MainCard: React.FC<MainCardProps> = ({
 
   const renderRoomView = () => (
     <MainContainer>
-      <Box display="flex" alignItems="center" justifyContent="space-between">
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Typography variant="h6" component="h2">
           Room: {roomInfo.name || roomInfo.id}
         </Typography>
@@ -478,7 +486,7 @@ export const MainCard: React.FC<MainCardProps> = ({
           <Typography variant="body2" color="text.secondary">
             Room ID
           </Typography>
-          <Typography variant="body2" fontFamily="monospace">
+          <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
             {roomInfo.id}
           </Typography>
         </RoomInfoItem>

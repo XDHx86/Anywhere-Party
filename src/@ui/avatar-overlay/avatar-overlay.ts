@@ -77,13 +77,13 @@ export class AvatarOverlay {
       maxAvatars: this.options.maxAvatars,
       respectsReducedMotion: true,
       eventHandlers: {
-        onAvatarMove: (avatarId: string, position: { x: number; y: number }) => {
+        onAvatarMove: (avatarId: string, _position: { x: number; y: number }) => {
           const avatar = this.avatars.get(avatarId);
           if (avatar && this.options.onAvatarMove) {
             this.options.onAvatarMove(avatar);
           }
         },
-        onAvatarUpdate: (avatarId: string, data: any) => {
+        onAvatarUpdate: (avatarId: string, _data: unknown) => {
           const avatar = this.avatars.get(avatarId);
           if (avatar && this.options.onAvatarMove) {
             this.options.onAvatarMove(avatar);
@@ -354,9 +354,9 @@ export class AvatarOverlay {
       if (!parent) return false;
 
       // Try to access parent's style to check for cross-origin restrictions
-      parent.style.position;
+      void parent.style.position;
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -375,7 +375,10 @@ export class AvatarOverlay {
       overflow: hidden;
     `;
 
-    const parent = videoElement.parentElement!;
+    const parent = videoElement.parentElement;
+    if (!parent) {
+      throw new Error('Cannot create overlay container: video element has no parent');
+    }
     const parentStyle = window.getComputedStyle(parent);
     if (parentStyle.position === 'static') {
       parent.style.position = 'relative';
@@ -490,6 +493,7 @@ export class AvatarOverlay {
     if (event.touches.length !== 1) return;
 
     const touch = event.touches[0];
+    if (!touch) return;
     const mouseEvent = new MouseEvent('mousedown', {
       clientX: touch.clientX,
       clientY: touch.clientY,
@@ -503,6 +507,7 @@ export class AvatarOverlay {
     if (event.touches.length !== 1) return;
 
     const touch = event.touches[0];
+    if (!touch) return;
     const mouseEvent = new MouseEvent('mousemove', {
       clientX: touch.clientX,
       clientY: touch.clientY,
@@ -793,17 +798,18 @@ export class AvatarOverlay {
   }
 
   private loadAvatarImage(avatar: Avatar): void {
-    if (!avatar.imageUrl || this.imageCache.has(avatar.imageUrl)) return;
+    const imageUrl = avatar.imageUrl;
+    if (!imageUrl || this.imageCache.has(imageUrl)) return;
 
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      this.imageCache.set(avatar.imageUrl!, img);
+      this.imageCache.set(imageUrl, img);
     };
     img.onerror = () => {
-      console.warn('Failed to load avatar image:', avatar.imageUrl);
+      console.warn('Failed to load avatar image:', imageUrl);
     };
-    img.src = avatar.imageUrl;
+    img.src = imageUrl;
   }
 
   private getAvatarColor(userId: string): string {
@@ -825,7 +831,7 @@ export class AvatarOverlay {
       hash = userId.charCodeAt(i) + ((hash << 5) - hash);
     }
 
-    return colors[Math.abs(hash) % colors.length];
+    return colors[Math.abs(hash) % colors.length] ?? '#FF6B6B';
   }
 
   private getAnimationEmoji(animationKey: string): string {

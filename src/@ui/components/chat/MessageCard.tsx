@@ -7,7 +7,6 @@ import React, { memo } from 'react';
 import { styled } from '@mui/material/styles';
 import { Box, Typography, Chip } from '@mui/material';
 import { MaterialCard } from '../cards/MaterialCard';
-import { MaterialIcon } from '../cards/MaterialIcon';
 import { ReactionButtons } from './ReactionButtons';
 import { MessageCardProps } from './types';
 import { useMaterialTheme } from '../../theme';
@@ -123,7 +122,7 @@ const ReactionChip = styled(Chip)(({ theme }) => ({
 
 export const MessageCard = memo<MessageCardProps>(
   ({ message, onReaction, onRemoveReaction, currentUserId, className, 'data-testid': testId }) => {
-    const { theme } = useMaterialTheme();
+    useMaterialTheme();
 
     const formatTimestamp = (timestamp: Date) => {
       const now = new Date();
@@ -148,10 +147,9 @@ export const MessageCard = memo<MessageCardProps>(
     // Group reactions by emoji
     const groupedReactions = message.reactions.reduce(
       (acc, reaction) => {
-        if (!acc[reaction.emoji]) {
-          acc[reaction.emoji] = [];
-        }
-        acc[reaction.emoji].push(reaction);
+        const existing = acc[reaction.emoji] ?? [];
+        existing.push(reaction);
+        acc[reaction.emoji] = existing;
         return acc;
       },
       {} as Record<string, typeof message.reactions>
@@ -188,7 +186,9 @@ export const MessageCard = memo<MessageCardProps>(
                     size="small"
                     variant={userReaction ? 'filled' : 'outlined'}
                     color={userReaction ? 'primary' : 'default'}
-                    onClick={() => handleReactionClick(userReaction?.id || reactions[0].id, emoji)}
+                    onClick={() =>
+                      handleReactionClick(userReaction?.id || reactions[0]?.id || '', emoji)
+                    }
                     clickable
                   />
                 );

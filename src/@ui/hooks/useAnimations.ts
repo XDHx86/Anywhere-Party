@@ -198,6 +198,7 @@ export const useIntersectionAnimation = (threshold: number = 0.1, rootMargin: st
 
     const observer = new IntersectionObserver(
       ([entry]) => {
+        if (!entry) return;
         if (entry.isIntersecting && !hasAnimated) {
           setIsVisible(true);
           setHasAnimated(true);

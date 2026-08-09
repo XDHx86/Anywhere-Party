@@ -3,7 +3,7 @@
  * Material Design 3 reaction indicator with Material motion and timing
  */
 
-import React, { forwardRef, useState, useEffect, useCallback } from 'react';
+import React, { forwardRef, useState, useEffect } from 'react';
 import { ReactionIndicatorProps } from './types';
 import { useMaterialTheme } from '../../theme/theme-provider';
 import { materialMotion, createTransition } from '../../animations/material-animations';
@@ -20,8 +20,6 @@ const ReactionIndicator = forwardRef<HTMLDivElement, ReactionIndicatorProps>(
       reactionId,
       emoji,
       userId,
-      timestamp,
-      videoTimestamp,
       position = { x: 0, y: 0 },
       size = 'medium',
       duration = 3000,
@@ -94,6 +92,7 @@ const ReactionIndicator = forwardRef<HTMLDivElement, ReactionIndicatorProps>(
 
         return () => clearInterval(floatInterval);
       }
+      return undefined;
     }, [animationPhase]);
 
     // Get animation styles based on phase
@@ -169,14 +168,6 @@ const ReactionIndicator = forwardRef<HTMLDivElement, ReactionIndicatorProps>(
       border: `1px solid ${theme.palette.outline}60`, // 38% opacity
       ...getAnimationStyles(),
     };
-
-    // Pulse animation for emphasis
-    const pulseKeyframes = `
-    @keyframes reactionPulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.1); }
-    }
-  `;
 
     const shouldPulse = animationPhase === 'display' && size === 'large';
 

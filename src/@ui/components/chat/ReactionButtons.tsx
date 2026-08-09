@@ -147,7 +147,7 @@ export const ReactionButtons = memo<ReactionButtonsProps>(
 
     return (
       <ClickAwayListener onClickAway={handleClickAway}>
-        <Box position="relative">
+        <Box sx={{ position: 'relative' }}>
           <ReactionContainer className={`reaction-buttons ${className || ''}`} data-testid={testId}>
             {/* Quick reaction buttons */}
             {quickReactions.map((emoji) => {

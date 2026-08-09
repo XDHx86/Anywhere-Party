@@ -87,9 +87,20 @@ export class ReactFallbackHandler {
    */
   checkReactDependencies(): { available: boolean; missing: string[] } {
     const dependencies = [
-      { name: 'React', check: () => (window as any).React !== undefined },
-      { name: 'ReactDOM', check: () => (window as any).ReactDOM !== undefined },
-      { name: 'createRoot', check: () => (window as any).ReactDOM?.createRoot === 'function' },
+      {
+        name: 'React',
+        check: () => (window as unknown as { React?: unknown }).React !== undefined,
+      },
+      {
+        name: 'ReactDOM',
+        check: () => (window as unknown as { ReactDOM?: unknown }).ReactDOM !== undefined,
+      },
+      {
+        name: 'createRoot',
+        check: () =>
+          (window as unknown as { ReactDOM?: { createRoot?: unknown } }).ReactDOM?.createRoot ===
+          'function',
+      },
     ];
 
     const missing: string[] = [];
@@ -99,7 +110,7 @@ export class ReactFallbackHandler {
         if (!dep.check()) {
           missing.push(dep.name);
         }
-      } catch (error) {
+      } catch {
         missing.push(dep.name);
       }
     });
@@ -154,7 +165,11 @@ export class ReactFallbackHandler {
     // Get memory info if available
     let memoryInfo;
     if ('memory' in performance) {
-      const memory = (performance as any).memory;
+      const memory = (
+        performance as unknown as {
+          memory: { usedJSHeapSize: number; totalJSHeapSize: number; jsHeapSizeLimit: number };
+        }
+      ).memory;
       memoryInfo = {
         used: memory.usedJSHeapSize,
         total: memory.totalJSHeapSize,
@@ -304,7 +319,7 @@ export function setupGlobalErrorHandlers(): void {
 // Declare global types
 declare global {
   interface Window {
-    React?: any;
-    ReactDOM?: any;
+    React?: unknown;
+    ReactDOM?: unknown;
   }
 }

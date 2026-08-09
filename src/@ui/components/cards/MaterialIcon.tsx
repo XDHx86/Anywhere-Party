@@ -8,6 +8,7 @@ import { Icon, SvgIcon } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { MaterialIconProps } from './types';
 import { useMaterialTheme } from '../../theme';
+import { MaterialThemeConfig } from '../../theme/types';
 import { assetSystem, AssetLoadResult } from '../../assets/asset-system';
 
 // Size mapping
@@ -18,7 +19,7 @@ const sizeMap = {
 };
 
 // Color mapping for theme colors
-const getIconColor = (color: MaterialIconProps['color'], theme: any) => {
+const getIconColor = (color: MaterialIconProps['color'], theme: MaterialThemeConfig) => {
   switch (color) {
     case 'primary':
       return theme.palette.primary.main;
@@ -132,7 +133,7 @@ export const MaterialIcon = forwardRef<HTMLElement, MaterialIconProps>(
             setLoadResult(result);
             setIsLoading(false);
           }
-        } catch (error) {
+        } catch {
           if (mounted) {
             setLoadResult({ success: true, method: 'fallback' });
             setIsLoading(false);

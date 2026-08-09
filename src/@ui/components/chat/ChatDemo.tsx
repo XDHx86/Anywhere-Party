@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { Box, Button } from '@mui/material';
+import { Box } from '@mui/material';
 import { ChatSidebar, ChatMessage, Reaction } from './index';
 import { MaterialButton } from '../cards/MaterialButton';
 

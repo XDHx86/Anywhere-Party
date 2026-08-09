@@ -38,6 +38,7 @@ class OptimizedAssetSystem {
   private loadAttempts = 0;
   private cacheHits = 0;
   private failures = 0;
+  private lazyObserver?: IntersectionObserver;
 
   // Critical assets that should be preloaded
   private criticalAssets = ['play', 'pause', 'settings', 'users', 'chat', 'mic', 'close'];
@@ -108,7 +109,7 @@ class OptimizedAssetSystem {
     );
 
     // Store observer for later use
-    (this as any).lazyObserver = observer;
+    this.lazyObserver = observer;
   }
 
   /**
@@ -164,8 +165,9 @@ class OptimizedAssetSystem {
     this.loadAttempts++;
 
     // Check if already loading
-    if (this.loadingPromises.has(iconName)) {
-      return this.loadingPromises.get(iconName)!;
+    const existingLoading = this.loadingPromises.get(iconName);
+    if (existingLoading) {
+      return existingLoading;
     }
 
     // Check cache first
@@ -248,7 +250,7 @@ class OptimizedAssetSystem {
         size: fallbackResult.size,
         cached: false,
       };
-    } catch (error) {
+    } catch {
       this.failures++;
 
       // Always provide fallback even on error
@@ -301,7 +303,7 @@ class OptimizedAssetSystem {
         data: optimizedSVG,
         size: optimizedSVG.length,
       };
-    } catch (error) {
+    } catch {
       return { success: false, data: '', size: 0 };
     }
   }
@@ -329,7 +331,7 @@ class OptimizedAssetSystem {
         data: fontIcon,
         size: fontIcon.length,
       };
-    } catch (error) {
+    } catch {
       return { success: false, data: '', size: 0 };
     }
   }
@@ -358,7 +360,7 @@ class OptimizedAssetSystem {
         // Timeout for performance
         setTimeout(() => resolve(false), 1000);
       });
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -382,7 +384,7 @@ class OptimizedAssetSystem {
       document.body.removeChild(testElement);
 
       return fontFamily.includes('Font Awesome');
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -475,9 +477,9 @@ class OptimizedAssetSystem {
    * Enable lazy loading for an element
    */
   public enableLazyLoading(element: HTMLElement, iconName: string): void {
-    if ((this as any).lazyObserver && this.lazyAssets.includes(iconName)) {
+    if (this.lazyObserver && this.lazyAssets.includes(iconName)) {
       element.dataset.iconName = iconName;
-      (this as any).lazyObserver.observe(element);
+      this.lazyObserver.observe(element);
     }
   }
 

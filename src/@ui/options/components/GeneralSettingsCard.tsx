@@ -11,7 +11,6 @@ import { MaterialSwitch } from '../../components/cards/MaterialSwitch';
 import { MaterialSelect } from '../../components/cards/MaterialSelect';
 import { Typography, Box, Divider } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { useMaterialTheme } from '../../theme';
 
 export interface GeneralSettingsData {
   signalingServer: string;
@@ -28,7 +27,7 @@ export interface GeneralSettingsData {
 
 export interface GeneralSettingsCardProps {
   data: GeneralSettingsData;
-  onChange: (field: keyof GeneralSettingsData, value: any) => void;
+  onChange: (field: keyof GeneralSettingsData, value: string | number | boolean) => void;
   className?: string;
 }
 
@@ -62,8 +61,6 @@ export const GeneralSettingsCard: React.FC<GeneralSettingsCardProps> = ({
   onChange,
   className,
 }) => {
-  const { theme } = useMaterialTheme();
-
   const syncToleranceOptions = [
     { value: '50', label: '50ms (Very Strict)' },
     { value: '100', label: '100ms (Strict)' },
@@ -211,7 +208,7 @@ export const GeneralSettingsCard: React.FC<GeneralSettingsCardProps> = ({
           value={data.videoDetectPoll?.toString() || ''}
           onChange={(e) => {
             const value = e.target.value;
-            onChange('videoDetectPoll', value ? parseInt(value) || undefined : undefined);
+            onChange('videoDetectPoll', value ? parseInt(value) || 0 : 0);
           }}
           helperText="Optional fallback polling for video detection. Leave empty to disable."
           placeholder="Disabled (uses MutationObserver only)"

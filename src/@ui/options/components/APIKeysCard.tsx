@@ -23,7 +23,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField,
   Chip,
   Link,
 } from '@mui/material';
@@ -37,47 +36,53 @@ import {
   APIKeyConfig,
   APIKeyValidationResult,
 } from '../../../@core/api-keys/api-key-manager';
+import type { ApiKeysSettings } from '../services/settings-service';
 
-const StyledCard = styled(MaterialCard)(({ theme }) => ({
+const StyledCard = styled(MaterialCard, {
+  shouldForwardProp: (prop) =>
+    prop !== 'materialVariant' && prop !== 'rounded' && prop !== 'padding',
+})(({ theme }) => ({
   marginBottom: theme.spacing(2),
 }));
 
-const ServiceItem = styled(ListItem)(({ theme }) => ({
+const ServiceItem = styled(ListItem, {
+  shouldForwardProp: (_prop) => true,
+})(({ theme }) => ({
   borderRadius: '8px',
   marginBottom: theme.spacing(1),
   backgroundColor: theme.palette.background.default,
   border: `1px solid ${theme.palette.divider}`,
 }));
 
-const StatusChip = styled(Chip)<{ status: 'valid' | 'invalid' | 'unknown' | 'testing' }>(
-  ({ theme, status }) => ({
-    fontWeight: 500,
-    ...(status === 'valid' && {
-      backgroundColor: theme.palette.success.light,
-      color: theme.palette.success.dark,
-    }),
-    ...(status === 'invalid' && {
-      backgroundColor: theme.palette.error.light,
-      color: theme.palette.error.dark,
-    }),
-    ...(status === 'testing' && {
-      backgroundColor: theme.palette.warning.light,
-      color: theme.palette.warning.dark,
-    }),
-    ...(status === 'unknown' && {
-      backgroundColor: theme.palette.grey[200],
-      color: theme.palette.grey[700],
-    }),
-  })
-);
+const StatusChip = styled(Chip, {
+  shouldForwardProp: (prop) => prop !== 'status',
+})<{ status: 'valid' | 'invalid' | 'unknown' | 'testing' }>(({ theme, status }) => ({
+  fontWeight: 500,
+  ...(status === 'valid' && {
+    backgroundColor: theme.palette.success.light,
+    color: theme.palette.success.dark,
+  }),
+  ...(status === 'invalid' && {
+    backgroundColor: theme.palette.error.light,
+    color: theme.palette.error.dark,
+  }),
+  ...(status === 'testing' && {
+    backgroundColor: theme.palette.warning.light,
+    color: theme.palette.warning.dark,
+  }),
+  ...(status === 'unknown' && {
+    backgroundColor: theme.palette.grey[200],
+    color: theme.palette.grey[700],
+  }),
+}));
 
 interface APIKeyInfo extends Omit<APIKeyConfig, 'key'> {
   hasKey: boolean;
 }
 
 interface APIKeysCardProps {
-  data: Record<string, any>;
-  onChange: (field: string, value: any) => void;
+  data: ApiKeysSettings;
+  onChange: (field: string, value: string) => void;
 }
 
 // Supported API services
@@ -100,7 +105,7 @@ const API_SERVICES = [
   },
 ];
 
-export const APIKeysCard: React.FC<APIKeysCardProps> = ({ data, onChange }) => {
+export const APIKeysCard: React.FC<APIKeysCardProps> = ({ data: _data, onChange: _onChange }) => {
   const [apiKeyInfos, setApiKeyInfos] = useState<Record<string, APIKeyInfo>>({});
   const [validationResults, setValidationResults] = useState<
     Record<string, APIKeyValidationResult>
@@ -288,8 +293,8 @@ export const APIKeysCard: React.FC<APIKeysCardProps> = ({ data, onChange }) => {
 
   return (
     <StyledCard>
-      <Box p={3}>
-        <Box display="flex" alignItems="center" gap={1} mb={2}>
+      <Box sx={{ p: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
           <MaterialIcon name="key" color="primary" />
           <Typography variant="h6">API Keys</Typography>
         </Box>
@@ -315,8 +320,8 @@ export const APIKeysCard: React.FC<APIKeysCardProps> = ({ data, onChange }) => {
 
                   <ListItemText
                     primary={
-                      <Box display="flex" alignItems="center" gap={1}>
-                        <Typography variant="subtitle1" fontWeight={500}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
                           {service.name}
                         </Typography>
                         {getStatusChip(service.id)}
@@ -328,7 +333,7 @@ export const APIKeysCard: React.FC<APIKeysCardProps> = ({ data, onChange }) => {
                           {service.description}
                         </Typography>
                         {info?.hasKey && (
-                          <Box display="flex" gap={2} mt={1}>
+                          <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
                             <Typography variant="caption" color="text.secondary">
                               Added: {formatDate(info.createdAt)}
                             </Typography>
@@ -340,7 +345,11 @@ export const APIKeysCard: React.FC<APIKeysCardProps> = ({ data, onChange }) => {
                           </Box>
                         )}
                         {validation && !validation.isValid && validation.error && (
-                          <Typography variant="caption" color="error.main" display="block" mt={0.5}>
+                          <Typography
+                            variant="caption"
+                            color="error.main"
+                            sx={{ display: 'block', mt: 0.5 }}
+                          >
                             Error: {validation.error}
                           </Typography>
                         )}
@@ -349,7 +358,7 @@ export const APIKeysCard: React.FC<APIKeysCardProps> = ({ data, onChange }) => {
                   />
 
                   <ListItemSecondaryAction>
-                    <Box display="flex" gap={1}>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
                       {info?.hasKey ? (
                         <>
                           <IconButton
@@ -391,7 +400,7 @@ export const APIKeysCard: React.FC<APIKeysCardProps> = ({ data, onChange }) => {
 
         <Accordion sx={{ mt: 3 }}>
           <AccordionSummary expandIcon={<MaterialIcon name="expand_more" />}>
-            <Box display="flex" alignItems="center" gap={1}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <MaterialIcon name="help" color="primary" size="small" />
               <Typography variant="subtitle2">How to get API keys</Typography>
             </Box>
@@ -399,11 +408,11 @@ export const APIKeysCard: React.FC<APIKeysCardProps> = ({ data, onChange }) => {
           <AccordionDetails>
             <Box>
               {API_SERVICES.map((service) => (
-                <Box key={service.id} mb={2}>
+                <Box key={service.id} sx={{ mb: 2 }}>
                   <Typography variant="subtitle2" gutterBottom>
                     {service.name}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" paragraph>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                     {service.instructions}
                   </Typography>
                   <Link
@@ -424,18 +433,18 @@ export const APIKeysCard: React.FC<APIKeysCardProps> = ({ data, onChange }) => {
       {/* Add/Edit API Key Dialog */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>
-          <Box display="flex" alignItems="center" gap={1}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <MaterialIcon name="key" color="primary" />
             <Typography variant="h6">Add API Key - {selectedServiceInfo?.name}</Typography>
           </Box>
         </DialogTitle>
 
         <DialogContent>
-          <Box mb={2}>
-            <Typography variant="body2" color="text.secondary" paragraph>
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               {selectedServiceInfo?.description}
             </Typography>
-            <Typography variant="body2" color="text.secondary" paragraph>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               {selectedServiceInfo?.instructions}
             </Typography>
             {selectedServiceInfo?.website && (
