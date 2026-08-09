@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+reports/
+
+.eslintrc.js
+commitlint.config.js
+postcss.config.js
+webpack.config.js
+
+**/*.test.ts
+**/*.test.tsx
+src/test-setup.ts
+
+scripts/**/*.js
+server/**/*.js
