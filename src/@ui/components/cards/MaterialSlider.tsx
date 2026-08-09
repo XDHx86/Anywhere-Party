@@ -192,7 +192,7 @@ export const MaterialSlider = forwardRef<HTMLSpanElement, MaterialSliderProps>(
     },
     ref
   ) => {
-    const { theme } = useMaterialTheme();
+    useMaterialTheme();
 
     const displayValue = Array.isArray(value) ? value.join(' - ') : value;
     const formattedValue = unit ? `${displayValue}${unit}` : displayValue;

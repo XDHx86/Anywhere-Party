@@ -170,7 +170,7 @@ class BrowserInitializationManager {
   /**
    * Test WebExtension API availability
    */
-  private async testWebExtensionAPI(capabilities: BrowserCapabilities): Promise<boolean> {
+  private async testWebExtensionAPI(_capabilities: BrowserCapabilities): Promise<boolean> {
     try {
       const browserAPI = getBrowserAPI();
       const manifest = browserAPI.runtime.getManifest();
@@ -185,7 +185,7 @@ class BrowserInitializationManager {
   /**
    * Test background script communication
    */
-  private async testBackgroundScript(capabilities: BrowserCapabilities): Promise<boolean> {
+  private async testBackgroundScript(_capabilities: BrowserCapabilities): Promise<boolean> {
     try {
       const browserAPI = getBrowserAPI();
 
@@ -195,7 +195,7 @@ class BrowserInitializationManager {
         new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 1000)),
       ]);
 
-      return response && typeof response === 'object';
+      return typeof response === 'object' && response !== null;
     } catch (error) {
       console.warn('Background script test failed:', error);
       return false;
@@ -224,7 +224,7 @@ class BrowserInitializationManager {
   /**
    * Test storage API
    */
-  private async testStorageAPI(capabilities: BrowserCapabilities): Promise<boolean> {
+  private async testStorageAPI(_capabilities: BrowserCapabilities): Promise<boolean> {
     try {
       const browserAPI = getBrowserAPI();
 
@@ -238,7 +238,8 @@ class BrowserInitializationManager {
       // Clean up test data
       await browserAPI.storage.local.set({ [testKey]: undefined });
 
-      return result && result[testKey] && result[testKey].timestamp === testValue.timestamp;
+      const stored = result[testKey] as { timestamp?: number } | undefined;
+      return stored?.timestamp === testValue.timestamp;
     } catch (error) {
       console.warn('Storage API test failed:', error);
       return false;
@@ -248,7 +249,7 @@ class BrowserInitializationManager {
   /**
    * Test messaging API
    */
-  private async testMessagingAPI(capabilities: BrowserCapabilities): Promise<boolean> {
+  private async testMessagingAPI(_capabilities: BrowserCapabilities): Promise<boolean> {
     try {
       const browserAPI = getBrowserAPI();
 
@@ -327,7 +328,7 @@ class BrowserInitializationManager {
   /**
    * Apply Safari-specific fixes
    */
-  private applySafariSpecificFixes(capabilities: BrowserCapabilities): void {
+  private applySafariSpecificFixes(_capabilities: BrowserCapabilities): void {
     console.log('🔧 Applying Safari-specific fixes');
 
     // Safari has limited WebExtension support
@@ -409,11 +410,15 @@ class BrowserInitializationManager {
     // Firefox-specific performance monitoring
     if (typeof browser !== 'undefined' && browser.runtime) {
       // Monitor memory usage in Firefox
-      if ((performance as any).memory) {
-        const memoryInfo = (performance as any).memory;
+      const memoryApi = (
+        performance as unknown as {
+          memory?: { usedJSHeapSize: number; totalJSHeapSize: number };
+        }
+      ).memory;
+      if (memoryApi) {
         console.log('Firefox memory usage:', {
-          used: memoryInfo.usedJSHeapSize,
-          total: memoryInfo.totalJSHeapSize,
+          used: memoryApi.usedJSHeapSize,
+          total: memoryApi.totalJSHeapSize,
         });
       }
     }

@@ -54,7 +54,7 @@ interface VirtualScrollState {
   containerHeight: number;
   startIndex: number;
   endIndex: number;
-  visibleItems: any[];
+  visibleItems: unknown[];
 }
 
 export const VirtualScroll = memo<VirtualScrollProps>(

@@ -3,10 +3,9 @@
  * Implements Material Design 3 tab navigation with smooth transitions
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { Tabs, Tab, TabsProps } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { useMaterialTheme } from '../../theme';
 import { createTransition } from '../../animations/material-animations';
 
 export interface MaterialTabsProps {
@@ -84,9 +83,9 @@ export const MaterialTabs: React.FC<MaterialTabsProps> = ({
   onTabChange,
   variant = 'standard',
   className,
-  'data-testid': testId,
+  // 'data-testid': testId, // unused
 }) => {
-  const { theme } = useMaterialTheme();
+  // const { theme } = useMaterialTheme(); // unused
 
   const handleTabChange = useCallback(
     (_event: React.SyntheticEvent, newValue: string) => {

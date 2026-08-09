@@ -185,13 +185,15 @@ export const MaterialSelect = forwardRef<HTMLDivElement, MaterialSelectProps>(
           labelId={label ? `${testId}-label` : undefined}
           label={label}
           MenuProps={{
-            PaperProps: {
-              sx: {
-                borderRadius: '12px',
-                boxShadow: theme.shadows[8],
-                marginTop: '4px',
-                '& .MuiList-root': {
-                  padding: '8px',
+            slotProps: {
+              paper: {
+                sx: {
+                  borderRadius: '12px',
+                  boxShadow: theme.shadows[8],
+                  marginTop: '4px',
+                  '& .MuiList-root': {
+                    padding: '8px',
+                  },
                 },
               },
             },

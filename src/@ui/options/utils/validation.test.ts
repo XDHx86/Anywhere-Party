@@ -12,7 +12,6 @@ import {
   createConfigDiff,
   mergeConfigs,
   CONFIG_SCHEMA,
-  ValidationResult,
 } from './validation';
 
 describe('Configuration Validation', () => {

@@ -20,7 +20,7 @@ interface DashboardData {
   healthMetrics: HealthMetrics;
   recentBugs: RuntimeBugEvent[];
   recentFeedback: UserFeedback[];
-  alerts: any[];
+  alerts: { severity: string; message: string; type: string; timestamp: number }[];
 }
 
 export const MonitoringDashboard: React.FC<MonitoringDashboardProps> = ({ className = '' }) => {

@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Container, Alert, Snackbar, Fade, useMediaQuery } from '@mui/material';
+import { Box, Container, Alert, Snackbar, Fade } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { MaterialTabs } from '../components/cards/MaterialTabs';
 import { MaterialButton } from '../components/cards/MaterialButton';
@@ -19,7 +19,13 @@ import { AboutCard } from './components/AboutCard';
 import { APIKeysCard } from './components/APIKeysCard';
 import { SchedulingCard } from './components/SchedulingCard';
 import { ImportPreviewModal, ConfigDiff } from './components/ImportPreviewModal';
-import { SettingsService, SettingsData, ConfigFormat } from './services/settings-service';
+import {
+  SettingsService,
+  SettingsData,
+  ConfigFormat,
+  AboutSettings,
+  AccessibilitySettings,
+} from './services/settings-service';
 import {
   ValidationResult,
   createConfigDiff,
@@ -28,11 +34,7 @@ import {
 } from './utils/validation';
 import { useMaterialTheme } from '../theme';
 import { ThemeMode } from '../theme/types';
-import {
-  useResponsiveDesign,
-  useResponsiveGrid,
-  useTouchOptimization,
-} from '../hooks/useResponsiveDesign';
+import { useResponsiveDesign, useTouchOptimization } from '../hooks/useResponsiveDesign';
 import { integrationService } from '../services/integration-service';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { LoadingIndicator } from '../components/LoadingIndicator';
@@ -156,8 +158,109 @@ interface Notification {
   autoHide?: boolean;
 }
 
+// Default settings used when loading fails or during import
+const createDefaultSettings = (): SettingsData => ({
+  general: {
+    signalingServer: '',
+    signalingWsPath: '/ws',
+    localDevMode: false,
+    roomDefaultPassword: '',
+    syncTolerance: 300,
+    syncTimeout: 5000,
+    heartbeatInterval: 2000,
+    reconnectInterval: 5000,
+    roomStateTtl: 300000,
+    videoDetectPoll: undefined,
+  },
+  apiKeys: {
+    opensubtitles: '',
+  },
+  accessibility: {
+    keyboardNavigationEnabled: true,
+    screenReaderEnabled: false,
+    highContrastMode: false,
+    fontSize: 'medium',
+    reducedMotion: false,
+    focusIndicatorStyle: 'default',
+    customColors: {
+      background: '#ffffff',
+      foreground: '#000000',
+      accent: '#6200EE',
+      border: '#cccccc',
+    },
+    captionStyling: {
+      fontSize: 'medium',
+      backgroundColor: '#000000',
+      textColor: '#ffffff',
+      outline: false,
+    },
+    audioDescriptions: false,
+  },
+  appearance: {
+    themeMode: 'auto',
+    accentColor: '#6200EE',
+    customPrimaryColor: '#6200EE',
+    customSecondaryColor: '#03DAC6',
+    enableCustomColors: false,
+    compactMode: false,
+    animationsEnabled: true,
+  },
+  about: {
+    version: '1.0.0',
+    buildDate: new Date().toISOString(),
+    changelogUrl: '#',
+    repositoryUrl: '#',
+    supportUrl: '#',
+  },
+});
+
+// Map a flat imported config (CONFIG_SCHEMA keys) onto a SettingsData structure
+const buildImportedSettings = (
+  config: Record<string, unknown>,
+  currentAbout?: AboutSettings
+): SettingsData => {
+  const defaults = createDefaultSettings();
+  return {
+    general: {
+      signalingServer: (config.SIGNALING_SERVER as string) ?? defaults.general.signalingServer,
+      signalingWsPath: (config.SIGNALING_WS_PATH as string) ?? defaults.general.signalingWsPath,
+      localDevMode: (config.LOCAL_DEV_MODE as boolean) ?? defaults.general.localDevMode,
+      roomDefaultPassword:
+        (config.ROOM_DEFAULT_PASSWORD as string) ?? defaults.general.roomDefaultPassword,
+      syncTolerance: (config.SYNC_TOLERANCE_MS as number) ?? defaults.general.syncTolerance,
+      syncTimeout: (config.SYNC_TIMEOUT_MS as number) ?? defaults.general.syncTimeout,
+      heartbeatInterval:
+        (config.HEARTBEAT_INTERVAL_MS as number) ?? defaults.general.heartbeatInterval,
+      reconnectInterval:
+        (config.RECONNECT_INTERVAL_MS as number) ?? defaults.general.reconnectInterval,
+      roomStateTtl: (config.ROOM_STATE_TTL_MS as number) ?? defaults.general.roomStateTtl,
+      videoDetectPoll: config.VIDEO_DETECT_POLL_MS as number | undefined,
+    },
+    apiKeys: {
+      opensubtitles: (config.OPENSUBTITLES_KEY as string) ?? defaults.apiKeys.opensubtitles,
+    },
+    accessibility: {
+      ...defaults.accessibility,
+      keyboardNavigationEnabled:
+        (config.KEYBOARD_NAVIGATION_ENABLED as boolean) ??
+        defaults.accessibility.keyboardNavigationEnabled,
+      screenReaderEnabled:
+        (config.SCREEN_READER_ENABLED as boolean) ?? defaults.accessibility.screenReaderEnabled,
+      highContrastMode:
+        (config.HIGH_CONTRAST_MODE as boolean) ?? defaults.accessibility.highContrastMode,
+      reducedMotion: (config.REDUCED_MOTION as boolean) ?? defaults.accessibility.reducedMotion,
+      fontSize: ((config.FONT_SIZE as string) ??
+        defaults.accessibility.fontSize) as AccessibilitySettings['fontSize'],
+      focusIndicatorStyle: ((config.FOCUS_INDICATOR_STYLE as string) ??
+        defaults.accessibility.focusIndicatorStyle) as AccessibilitySettings['focusIndicatorStyle'],
+    },
+    appearance: defaults.appearance,
+    about: currentAbout ?? defaults.about,
+  };
+};
+
 export const OptionsApp: React.FC = () => {
-  const { theme, setTheme } = useMaterialTheme();
+  const { setTheme } = useMaterialTheme();
   const [activeTab, setActiveTab] = useState('general');
   const [settings, setSettings] = useState<SettingsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -207,8 +310,7 @@ export const OptionsApp: React.FC = () => {
 
   // Responsive design hooks
   const responsive = useResponsiveDesign();
-  const { getContainerMaxWidth } = useResponsiveGrid();
-  const { isTouchDevice, getTouchTargetSize } = useTouchOptimization();
+  const { getTouchTargetSize } = useTouchOptimization();
 
   // Tab configuration
   const tabs = [
@@ -252,7 +354,7 @@ export const OptionsApp: React.FC = () => {
 
   // Enhanced error handler for components
   const handleComponentError = useCallback(
-    (error: Error, errorInfo: React.ErrorInfo) => {
+    (error: Error, _errorInfo: React.ErrorInfo) => {
       diagnosticLogger.logComponentError('OptionsApp', error);
       showNotification('A component failed to load. Please try refreshing.', 'error');
     },
@@ -326,16 +428,7 @@ export const OptionsApp: React.FC = () => {
           showNotification('Failed to load settings - using defaults', 'error');
 
           // Set default settings if loading fails
-          setSettings({
-            general: {},
-            apiKeys: {},
-            accessibility: {},
-            appearance: {},
-            about: {
-              version: '1.0.0',
-              buildDate: new Date().toISOString(),
-            },
-          });
+          setSettings(createDefaultSettings());
         }
 
         loadingManager.updateOperationProgress(
@@ -371,16 +464,7 @@ export const OptionsApp: React.FC = () => {
 
         // Set loading to false and provide default settings
         setLoading(false);
-        setSettings({
-          general: {},
-          accessibility: {},
-          appearance: {},
-          about: {
-            version: '1.0.0',
-            buildDate: new Date().toISOString(),
-          },
-          apiKeys: {},
-        });
+        setSettings(createDefaultSettings());
       } finally {
         loadingManager.setOperationLoading('options-initialization', false);
       }
@@ -400,44 +484,19 @@ export const OptionsApp: React.FC = () => {
 
       // Add timeout protection for settings loading
       const loadPromise = settingsService.loadSettings();
-      const timeoutPromise = new Promise((_, reject) =>
+      const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('Settings loading timeout')), 10000)
       );
 
       const data = await Promise.race([loadPromise, timeoutPromise]);
-      setSettings(data as any);
+      setSettings(data);
       setIsDirty(false);
     } catch (error) {
       console.error('Failed to load settings:', error);
       showNotification('Failed to load settings. Using defaults.', 'error');
 
       // Set comprehensive default settings to prevent UI from being completely broken
-      setSettings({
-        general: {
-          autoConnect: true,
-          defaultRoomName: '',
-          enableNotifications: true,
-        },
-        apiKeys: {
-          openSubtitles: '',
-        },
-        accessibility: {
-          highContrast: false,
-          largeText: false,
-          reducedMotion: false,
-        },
-        appearance: {
-          theme: 'auto',
-          compactMode: false,
-        },
-        about: {
-          version: '1.0.0',
-          buildDate: new Date().toISOString(),
-          changelogUrl: '',
-          repositoryUrl: '',
-          supportUrl: '',
-        },
-      });
+      setSettings(createDefaultSettings());
     } finally {
       setLoading(false);
     }
@@ -456,7 +515,11 @@ export const OptionsApp: React.FC = () => {
   };
 
   const handleSettingsChange = useCallback(
-    (section: keyof SettingsData, field: string, value: any) => {
+    (
+      section: keyof SettingsData,
+      field: string,
+      value: string | number | boolean | Record<string, unknown>
+    ) => {
       if (!settings) return;
 
       setSettings((prev) => {
@@ -502,7 +565,7 @@ export const OptionsApp: React.FC = () => {
           });
         }
       }
-    } catch (error) {
+    } catch {
       showNotification('Error saving settings', 'error');
     } finally {
       setSaving(false);
@@ -525,7 +588,7 @@ export const OptionsApp: React.FC = () => {
       } else {
         showNotification(result.error || 'Failed to reset settings', 'error');
       }
-    } catch (error) {
+    } catch {
       showNotification('Error resetting settings', 'error');
     }
   };
@@ -540,7 +603,7 @@ export const OptionsApp: React.FC = () => {
       } else {
         showNotification(result.error || 'Failed to export settings', 'error');
       }
-    } catch (error) {
+    } catch {
       showNotification('Error exporting settings', 'error');
     }
   };
@@ -556,7 +619,7 @@ export const OptionsApp: React.FC = () => {
       else if (extension === 'ini') format = 'ini';
 
       // Parse and validate the imported configuration
-      let importedConfig: Record<string, any>;
+      let importedConfig: Record<string, unknown>;
 
       try {
         if (format === 'json') {
@@ -579,7 +642,7 @@ export const OptionsApp: React.FC = () => {
           }
           return;
         }
-      } catch (parseError) {
+      } catch {
         showNotification('Invalid configuration format', 'error');
         return;
       }
@@ -605,13 +668,7 @@ export const OptionsApp: React.FC = () => {
       // Show preview modal
       setImportConfigDiff(diff);
       setImportValidation(validation);
-      setPendingImportData({
-        general: sanitized,
-        apiKeys: {},
-        accessibility: {},
-        appearance: {},
-        about: settings?.about || {},
-      });
+      setPendingImportData(buildImportedSettings(sanitized, settings?.about));
       setImportPreviewOpen(true);
     } catch (error) {
       console.error('Import error:', error);
@@ -636,7 +693,7 @@ export const OptionsApp: React.FC = () => {
         const warningMessage = `Imported with warnings: ${importValidation.warnings.map((w) => w.message).join(', ')}`;
         showNotification(warningMessage, 'warning');
       }
-    } catch (error) {
+    } catch {
       showNotification('Error applying imported settings', 'error');
     } finally {
       // Clear pending data
@@ -745,7 +802,7 @@ export const OptionsApp: React.FC = () => {
     <OptionsContainer isMobile={responsive.isMobile} isTablet={responsive.isTablet}>
       <HeaderSection isMobile={responsive.isMobile}>
         <MaterialIcon name="settings" size={responsive.isMobile ? 36 : 48} color="primary" />
-        <Box mt={responsive.isMobile ? 1 : 2}>
+        <Box sx={{ mt: responsive.isMobile ? 1 : 2 }}>
           <h1>Watch Party Settings</h1>
           <p>Configure your watch party extension preferences</p>
         </Box>

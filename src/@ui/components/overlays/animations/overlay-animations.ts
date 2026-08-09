@@ -179,7 +179,7 @@ export const tooltipSlideOut = keyframes`
 
 // Stagger animation utilities
 export const createStaggeredOverlayAnimation = (
-  keyframe: any,
+  keyframe: unknown,
   itemCount: number,
   staggerDelay: number = 100,
   baseDuration: keyof typeof materialMotion.duration = 'medium3'

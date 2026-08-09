@@ -146,7 +146,7 @@ export const MaterialSwitch = forwardRef<HTMLButtonElement, MaterialSwitchProps>
     },
     ref
   ) => {
-    const { theme } = useMaterialTheme();
+    useMaterialTheme();
 
     const switchElement = (
       <StyledSwitch
@@ -154,8 +154,10 @@ export const MaterialSwitch = forwardRef<HTMLButtonElement, MaterialSwitchProps>
         ref={ref}
         size={size}
         disabled={disabled}
-        inputProps={{
-          'aria-label': label || 'Switch',
+        slotProps={{
+          input: {
+            'aria-label': label || 'Switch',
+          },
         }}
         data-testid={testId}
       />

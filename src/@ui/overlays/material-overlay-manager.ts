@@ -260,7 +260,7 @@ export class MaterialOverlayManager {
     enabled: boolean;
     injected: boolean;
     activeCount: number;
-    stats: any;
+    stats: unknown;
   } {
     return {
       enabled: this.integrationConfig.reactionOverlay.enabled,
@@ -282,7 +282,7 @@ export class MaterialOverlayManager {
     enabled: boolean;
     injected: boolean;
     activeCount: number;
-    stats: any;
+    stats: unknown;
   } {
     return {
       enabled: this.integrationConfig.avatarOverlay.enabled,

@@ -110,6 +110,7 @@ export const FeedbackMessage: React.FC<FeedbackProps> = ({
       const timer = setTimeout(onClose, duration);
       return () => clearTimeout(timer);
     }
+    return;
   }, [show, autoClose, onClose, duration]);
 
   return (
@@ -149,7 +150,7 @@ export interface ResponsiveContainerProps {
 export const ResponsiveContainer: React.FC<ResponsiveContainerProps> = ({
   children,
   className = '',
-  breakpoint = 'md',
+  breakpoint: _breakpoint = 'md',
   minWidth = 320,
   maxWidth = 800,
 }) => {

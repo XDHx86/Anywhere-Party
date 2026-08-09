@@ -7,7 +7,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { ChatSidebar } from './ChatSidebar';
 import { integrationService } from '../../services/integration-service';
-import { useResponsiveDesign } from '../../hooks/useResponsiveDesign';
 
 export interface ChatMessage {
   id: string;
@@ -25,6 +24,28 @@ export interface Reaction {
   userId: string;
   userName: string;
   timestamp: Date;
+}
+
+interface ChatMessageEvent {
+  roomId?: string;
+  id: string;
+  userId: string;
+  userName: string;
+  content: string;
+  timestamp: string | number | Date;
+  reactions?: Reaction[];
+  type?: string;
+}
+
+interface ReactionEvent {
+  roomId?: string;
+  messageId: string;
+  reactions: Reaction[];
+}
+
+interface ChatHistoryEvent {
+  roomId?: string;
+  messages?: ChatMessage[];
 }
 
 export interface ChatIntegrationProps {
@@ -47,7 +68,6 @@ export const ChatIntegration: React.FC<ChatIntegrationProps> = ({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const responsive = useResponsiveDesign();
 
   // Connect to chat system on mount
   useEffect(() => {
@@ -66,9 +86,9 @@ export const ChatIntegration: React.FC<ChatIntegrationProps> = ({
           });
 
           // Load chat history
-          const historyResponse = await integrationService.sendMessage('CHAT_GET_HISTORY', {
+          const historyResponse = (await integrationService.sendMessage('CHAT_GET_HISTORY', {
             roomId,
-          });
+          })) as { success?: boolean; messages?: ChatMessage[] } | undefined;
 
           if (historyResponse?.success && historyResponse.messages) {
             setMessages(historyResponse.messages);
@@ -87,7 +107,8 @@ export const ChatIntegration: React.FC<ChatIntegrationProps> = ({
 
   // Setup message listeners
   useEffect(() => {
-    const handleChatMessage = (message: any) => {
+    const handleChatMessage = (raw: unknown) => {
+      const message = raw as ChatMessageEvent;
       if (message.roomId === roomId) {
         const chatMessage: ChatMessage = {
           id: message.id,
@@ -96,14 +117,15 @@ export const ChatIntegration: React.FC<ChatIntegrationProps> = ({
           content: message.content,
           timestamp: new Date(message.timestamp),
           reactions: message.reactions || [],
-          type: message.type || 'text',
+          type: message.type === 'sent' ? 'sent' : 'received',
         };
 
         setMessages((prev) => [...prev, chatMessage]);
       }
     };
 
-    const handleReactionUpdate = (message: any) => {
+    const handleReactionUpdate = (raw: unknown) => {
+      const message = raw as ReactionEvent;
       if (message.roomId === roomId) {
         setMessages((prev) =>
           prev.map((msg) =>
@@ -113,7 +135,8 @@ export const ChatIntegration: React.FC<ChatIntegrationProps> = ({
       }
     };
 
-    const handleChatHistory = (message: any) => {
+    const handleChatHistory = (raw: unknown) => {
+      const message = raw as ChatHistoryEvent;
       if (message.roomId === roomId && message.messages) {
         setMessages(message.messages);
       }
@@ -139,13 +162,13 @@ export const ChatIntegration: React.FC<ChatIntegrationProps> = ({
       }
 
       try {
-        const response = await integrationService.sendMessage('CHAT_SEND_MESSAGE', {
+        const response = (await integrationService.sendMessage('CHAT_SEND_MESSAGE', {
           roomId,
           userId,
           userName,
           content: content.trim(),
           type: 'text',
-        });
+        })) as { success?: boolean; error?: string } | undefined;
 
         if (response?.success) {
           // Message will be added via the message listener
@@ -168,13 +191,13 @@ export const ChatIntegration: React.FC<ChatIntegrationProps> = ({
       }
 
       try {
-        const response = await integrationService.sendMessage('CHAT_ADD_REACTION', {
+        const response = (await integrationService.sendMessage('CHAT_ADD_REACTION', {
           roomId,
           messageId,
           userId,
           userName,
           emoji,
-        });
+        })) as { success?: boolean; error?: string } | undefined;
 
         if (response?.success) {
           // Reaction will be updated via the reaction listener

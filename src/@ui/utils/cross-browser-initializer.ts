@@ -82,7 +82,7 @@ class CrossBrowserInitializer {
 
       // Step 4: Aggregate results
       const result = this.aggregateResults(
-        capabilities.name as any,
+        capabilities.name,
         capabilities.version,
         capabilities.manifestVersion,
         initialization,
@@ -231,8 +231,10 @@ class CrossBrowserInitializer {
   private isWebRTCSupported(): boolean {
     return (
       typeof RTCPeerConnection !== 'undefined' ||
-      typeof (window as any).webkitRTCPeerConnection !== 'undefined' ||
-      typeof (window as any).mozRTCPeerConnection !== 'undefined'
+      typeof (window as unknown as { webkitRTCPeerConnection?: unknown })
+        .webkitRTCPeerConnection !== 'undefined' ||
+      typeof (window as unknown as { mozRTCPeerConnection?: unknown }).mozRTCPeerConnection !==
+        'undefined'
     );
   }
 
@@ -244,7 +246,13 @@ class CrossBrowserInitializer {
     version: string,
     warnings: CompatibilityWarning[],
     errors: string[],
-    supportedFeatures: any
+    supportedFeatures: {
+      serviceWorker?: boolean;
+      backgroundScript?: boolean;
+      webRTC?: boolean;
+      storage?: boolean;
+      messaging?: boolean;
+    }
   ): string[] {
     const recommendations: string[] = [];
 
@@ -413,7 +421,6 @@ class CrossBrowserInitializer {
   private optimizeDOMOperations(): void {
     // Use document fragments for batch DOM updates
     const originalAppendChild = Element.prototype.appendChild;
-    const batchedOperations = new WeakMap();
 
     Element.prototype.appendChild = function <T extends Node>(child: T): T {
       // Batch DOM operations when possible
@@ -424,7 +431,7 @@ class CrossBrowserInitializer {
   /**
    * Setup performance monitoring
    */
-  private setupPerformanceMonitoring(result: CrossBrowserInitializationResult): void {
+  private setupPerformanceMonitoring(_result: CrossBrowserInitializationResult): void {
     // Monitor extension performance
     const observer = new PerformanceObserver((list) => {
       const entries = list.getEntries();

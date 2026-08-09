@@ -6,7 +6,6 @@
 import React, { memo, useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { styled } from '@mui/material/styles';
 import { Box, Typography, IconButton, Tooltip, Divider, Fade } from '@mui/material';
-import { MaterialCard } from '../cards/MaterialCard';
 import { MaterialIcon } from '../cards/MaterialIcon';
 import { MessageCard } from './MessageCard';
 import { InputBar } from './InputBar';
@@ -71,7 +70,7 @@ const CloseButton = styled(IconButton)(({ theme }) => ({
   },
 }));
 
-const MessagesContainer = styled(Box)(({ theme }) => ({
+const MessagesContainer = styled(Box)(() => ({
   flex: 1,
   display: 'flex',
   flexDirection: 'column',
@@ -151,7 +150,7 @@ export const ChatSidebar = memo<ChatSidebarProps>(
     className,
     'data-testid': testId,
   }) => {
-    const { theme } = useMaterialTheme();
+    useMaterialTheme();
     const [isTyping, setIsTyping] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -162,7 +161,7 @@ export const ChatSidebar = memo<ChatSidebarProps>(
 
     // Optimized message rendering with React.memo
     const renderMessage = useCallback(
-      (message: ChatMessage, index: number) => (
+      (message: ChatMessage, _index: number) => (
         <MessageCard
           key={message.id}
           message={message}
@@ -188,6 +187,7 @@ export const ChatSidebar = memo<ChatSidebarProps>(
         const timeoutId = setTimeout(scrollToBottom, 100);
         return () => clearTimeout(timeoutId);
       }
+      return undefined;
     }, [messages.length, isOpen, scrollToBottom]);
 
     // Handle message sending with optimistic updates
@@ -214,6 +214,7 @@ export const ChatSidebar = memo<ChatSidebarProps>(
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
       }
+      return undefined;
     }, [isOpen, onClose]);
 
     return (

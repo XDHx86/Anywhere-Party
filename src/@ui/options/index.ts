@@ -6,36 +6,18 @@
  * The new Material Design 3 options page is in options-react.tsx
  */
 
-import { ExtensionConfig, AccessibilitySettings } from '../../@core/browser-bridge/types';
-import { ValidationResult } from '../../@core/config/config-validator';
+import {
+  ExtensionConfig,
+  AccessibilitySettings,
+  TurnServer,
+} from '../../@core/browser-bridge/types';
+import { ValidationError, ValidationWarning } from '../../@core/config/config-validator';
 
 // Export new components and services
 export { OptionsApp } from './OptionsApp';
 export { SettingsService } from './services/settings-service';
 export * from './components';
 export * from './utils/validation';
-
-interface ConfigFormData {
-  SIGNALING_SERVER: string;
-  SIGNALING_WS_PATH: string;
-  LOCAL_DEV_MODE: boolean;
-  ROOM_DEFAULT_PASSWORD: string;
-  SYNC_TOLERANCE_MS: number;
-  SYNC_TIMEOUT_MS: number;
-  HEARTBEAT_INTERVAL_MS: number;
-  ANNOTATION_RENDER_INTERVAL_MS: number;
-  RECONNECT_INTERVAL_MS: number;
-  ROOM_STATE_TTL_MS: number;
-  VIDEO_DETECT_POLL_MS?: number;
-  STUN_SERVERS: string[];
-  TURN_SERVERS: any[];
-  OPENSUBTITLES_KEY: string;
-  DEFAULT_SUBTITLE_LANGS: string[];
-  FEATURE_FLAGS: Record<string, boolean>;
-  TELEMETRY_ENABLED: boolean;
-  // Accessibility settings
-  ACCESSIBILITY_SETTINGS?: AccessibilitySettings;
-}
 
 class EnhancedOptionsPage {
   private form: HTMLFormElement;
@@ -170,7 +152,7 @@ class EnhancedOptionsPage {
     });
   }
 
-  private populateTurnServers(servers: any[]) {
+  private populateTurnServers(servers: TurnServer[]) {
     const container = document.getElementById('turnServersContainer');
     if (!container) return;
 
@@ -200,7 +182,7 @@ class EnhancedOptionsPage {
     container.appendChild(row);
   }
 
-  private addTurnServerRow(container: HTMLElement, server: any, index: number) {
+  private addTurnServerRow(container: HTMLElement, server: TurnServer, index: number) {
     const urls = Array.isArray(server.urls) ? server.urls[0] : server.urls;
     const row = document.createElement('div');
     row.className = 'turn-server-item';
@@ -350,8 +332,8 @@ class EnhancedOptionsPage {
     collapsibleHeaders.forEach((header) => {
       header.addEventListener('click', () => {
         const section = header.closest('.collapsible-section');
-        const content = header.getAttribute('aria-controls');
-        const contentElement = document.getElementById(content!);
+        const contentId = header.getAttribute('aria-controls');
+        const contentElement = contentId ? document.getElementById(contentId) : null;
 
         if (section && contentElement) {
           const isExpanded = section.classList.contains('expanded');
@@ -421,28 +403,32 @@ class EnhancedOptionsPage {
 
     // Collect STUN servers
     const stunServers: string[] = [];
-    document.querySelectorAll('[data-stun-index]').forEach((input: any) => {
-      if (input.value.trim()) {
-        stunServers.push(input.value.trim());
+    document.querySelectorAll('[data-stun-index]').forEach((input) => {
+      const stunInput = input as HTMLInputElement;
+      if (stunInput.value.trim()) {
+        stunServers.push(stunInput.value.trim());
       }
     });
 
     // Collect TURN servers
-    const turnServers: any[] = [];
+    const turnServers: TurnServer[] = [];
     const turnGroups = new Map();
     document
       .querySelectorAll('[data-turn-urls], [data-turn-username], [data-turn-credential]')
-      .forEach((input: any) => {
+      .forEach((input) => {
+        const turnInput = input as HTMLInputElement;
         const index =
-          input.dataset.turnUrls || input.dataset.turnUsername || input.dataset.turnCredential;
+          turnInput.dataset.turnUrls ||
+          turnInput.dataset.turnUsername ||
+          turnInput.dataset.turnCredential;
         if (!turnGroups.has(index)) {
           turnGroups.set(index, {});
         }
         const server = turnGroups.get(index);
 
-        if (input.dataset.turnUrls !== undefined) server.urls = input.value;
-        if (input.dataset.turnUsername !== undefined) server.username = input.value;
-        if (input.dataset.turnCredential !== undefined) server.credential = input.value;
+        if (turnInput.dataset.turnUrls !== undefined) server.urls = turnInput.value;
+        if (turnInput.dataset.turnUsername !== undefined) server.username = turnInput.value;
+        if (turnInput.dataset.turnCredential !== undefined) server.credential = turnInput.value;
       });
     turnGroups.forEach((server) => {
       if (server.urls) turnServers.push(server);
@@ -450,9 +436,10 @@ class EnhancedOptionsPage {
 
     // Collect subtitle languages
     const subtitleLangs: string[] = [];
-    document.querySelectorAll('[data-lang-input]').forEach((input: any) => {
-      if (input.value.trim()) {
-        subtitleLangs.push(input.value.trim());
+    document.querySelectorAll('[data-lang-input]').forEach((input) => {
+      const langInput = input as HTMLInputElement;
+      if (langInput.value.trim()) {
+        subtitleLangs.push(langInput.value.trim());
       }
     });
 
@@ -546,9 +533,7 @@ class EnhancedOptionsPage {
   private async handleExport() {
     try {
       const format = (document.getElementById('configFormat') as HTMLSelectElement).value as
-        | 'json'
-        | 'env'
-        | 'ini';
+        'json' | 'env' | 'ini';
       const response = await chrome.runtime.sendMessage({
         type: 'EXPORT_CONFIG',
         format,
@@ -572,9 +557,7 @@ class EnhancedOptionsPage {
   private async handleImport() {
     try {
       const format = (document.getElementById('configFormat') as HTMLSelectElement).value as
-        | 'json'
-        | 'env'
-        | 'ini';
+        'json' | 'env' | 'ini';
       const content = (document.getElementById('configData') as HTMLTextAreaElement).value;
 
       if (!content.trim()) {
@@ -594,7 +577,7 @@ class EnhancedOptionsPage {
         // Show validation warnings if any
         if (response.validation && response.validation.warnings.length > 0) {
           const warningMessages = response.validation.warnings
-            .map((w: any) => `${w.field}: ${w.message}`)
+            .map((w: ValidationWarning) => `${w.field}: ${w.message}`)
             .join('; ');
           this.showStatus(`Import successful with warnings: ${warningMessages}`, 'warning');
         }
@@ -604,7 +587,7 @@ class EnhancedOptionsPage {
         let errorMessage = 'Failed to import configuration';
         if (response.validation && response.validation.errors.length > 0) {
           const errorMessages = response.validation.errors
-            .map((e: any) => `${e.field}: ${e.message}`)
+            .map((e: ValidationError) => `${e.field}: ${e.message}`)
             .join('; ');
           errorMessage += `: ${errorMessages}`;
         } else if (response.error) {

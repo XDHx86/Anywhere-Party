@@ -25,7 +25,7 @@ export interface MaterialSurface {
   elevation: 'level1' | 'level2' | 'level3' | 'level4' | 'level5';
   cornerRadius: 'medium' | 'large';
   translucent: boolean;
-  content: any;
+  content: unknown;
   duration: number;
   size: number;
   showIndicators: boolean;

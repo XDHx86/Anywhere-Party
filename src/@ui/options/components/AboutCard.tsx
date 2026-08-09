@@ -7,9 +7,8 @@
 import React from 'react';
 import { MaterialCard } from '../../components/cards/MaterialCard';
 import { MaterialButton } from '../../components/cards/MaterialButton';
-import { Typography, Box, Divider, Link } from '@mui/material';
+import { Typography, Box, Divider } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { useMaterialTheme } from '../../theme';
 import { MaterialIcon } from '../../components/cards/MaterialIcon';
 
 export interface AboutCardProps {
@@ -129,8 +128,6 @@ export const AboutCard: React.FC<AboutCardProps> = ({
   supportUrl = '#',
   className,
 }) => {
-  const { theme } = useMaterialTheme();
-
   const features = [
     'Synchronized video playback',
     'Real-time voice chat',
@@ -164,7 +161,7 @@ export const AboutCard: React.FC<AboutCardProps> = ({
       <LogoContainer>
         <LogoIcon>WP</LogoIcon>
         <Box>
-          <Typography variant="h6" fontWeight={600}>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
             Watch Party Extension
           </Typography>
           <Typography variant="body2" color="text.secondary">
@@ -199,7 +196,7 @@ export const AboutCard: React.FC<AboutCardProps> = ({
       <StyledDivider />
 
       {/* Features */}
-      <Typography variant="h6" fontWeight={500} sx={{ mb: 2 }}>
+      <Typography variant="h6" sx={{ fontWeight: 500, mb: 2 }}>
         Features
       </Typography>
 
@@ -215,7 +212,7 @@ export const AboutCard: React.FC<AboutCardProps> = ({
       <StyledDivider />
 
       {/* Links */}
-      <Typography variant="h6" fontWeight={500} sx={{ mb: 2 }}>
+      <Typography variant="h6" sx={{ fontWeight: 500, mb: 2 }}>
         Links & Support
       </Typography>
 
@@ -223,7 +220,7 @@ export const AboutCard: React.FC<AboutCardProps> = ({
         <LinkItem>
           <MaterialIcon name="history" size="medium" color="primary" />
           <Box sx={{ flex: 1 }}>
-            <Typography variant="body2" fontWeight={500}>
+            <Typography variant="body2" sx={{ fontWeight: 500 }}>
               Changelog
             </Typography>
             <Typography variant="caption" color="text.secondary">
@@ -243,7 +240,7 @@ export const AboutCard: React.FC<AboutCardProps> = ({
         <LinkItem>
           <MaterialIcon name="code" size="medium" color="primary" />
           <Box sx={{ flex: 1 }}>
-            <Typography variant="body2" fontWeight={500}>
+            <Typography variant="body2" sx={{ fontWeight: 500 }}>
               Source Code
             </Typography>
             <Typography variant="caption" color="text.secondary">
@@ -263,7 +260,7 @@ export const AboutCard: React.FC<AboutCardProps> = ({
         <LinkItem>
           <MaterialIcon name="help" size="medium" color="primary" />
           <Box sx={{ flex: 1 }}>
-            <Typography variant="body2" fontWeight={500}>
+            <Typography variant="body2" sx={{ fontWeight: 500 }}>
               Support & Help
             </Typography>
             <Typography variant="caption" color="text.secondary">

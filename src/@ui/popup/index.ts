@@ -6,6 +6,15 @@
 import { RoomOptions, ParticipantInfo } from '../../@core/signaling/message-types';
 import { ConnectionState } from '../../@core/signaling/signaling-client';
 import { ChatMessage, ReactionType } from '../../@core/chat/types';
+import { DrawingTool } from '../../@core/annotation-layer/types';
+import {
+  SubtitleEngine,
+  SubtitleTrack,
+  SubtitleStyle,
+  SubtitleUserPreferences,
+  SubtitleSearchOptions,
+  OpenSubtitlesSearchResult,
+} from '../../@core/subtitle-engine/types';
 import { AnnotationToolbar } from '../components/annotation-toolbar';
 import { SubtitleManager } from '../components/subtitle-manager';
 import { PopupAccessibilityIntegration } from './accessibility-integration';
@@ -25,6 +34,23 @@ interface RoomState {
   isHost: boolean;
   currentUserId: string;
   chatMessages: ChatMessage[];
+}
+
+interface ServerMessage {
+  type: string;
+  roomId?: string;
+  participants?: ParticipantInfo[];
+  hostId?: string;
+  newHostId?: string;
+  participantName?: string;
+  kickedUserId?: string;
+  error?: { message: string };
+  // Chat/reaction payload fields
+  id?: string;
+  userId?: string;
+  message?: string;
+  timestamp?: number;
+  reactionType?: ReactionType;
 }
 
 class PopupUI {
@@ -636,7 +662,7 @@ class PopupUI {
   private extractRoomIdFromLink(input: string): string {
     // Handle invitation links like "https://example.com/room/ABC123" or just "ABC123"
     const match = input.match(/(?:\/room\/|^)([A-Za-z0-9_-]+)(?:\?|$|\/)/);
-    return match ? match[1] : input;
+    return match?.[1] ?? input;
   }
 
   private generateInvitationLink(roomId: string): string {
@@ -666,7 +692,7 @@ class PopupUI {
         } else {
           throw new Error('Copy operation failed');
         }
-      } catch (fallbackError) {
+      } catch {
         throw new Error('Unable to copy link - please select and copy manually');
       }
     }
@@ -845,10 +871,11 @@ class PopupUI {
   }
 
   private async showTransferHostDialog(): Promise<void> {
-    if (!this.currentState) return;
+    const currentState = this.currentState;
+    if (!currentState) return;
 
-    const participants = this.currentState.participants.filter(
-      (p) => p.id !== this.currentState!.currentUserId && p.role !== 'host'
+    const participants = currentState.participants.filter(
+      (p) => p.id !== currentState.currentUserId && p.role !== 'host'
     );
 
     if (participants.length === 0) {
@@ -863,8 +890,9 @@ class PopupUI {
 
     if (choice) {
       const index = parseInt(choice) - 1;
-      if (index >= 0 && index < participants.length) {
-        await this.transferHost(participants[index].id);
+      const participant = participants[index];
+      if (index >= 0 && participant) {
+        await this.transferHost(participant.id);
       }
     }
   }
@@ -945,14 +973,14 @@ class PopupUI {
     }
   }
 
-  private handleServerMessage(message: any): void {
+  private handleServerMessage(message: ServerMessage): void {
     const currentUserId = this.getCurrentUserId();
 
     switch (message.type) {
       case 'ROOM_CREATED':
         this.currentState = {
-          roomId: message.roomId,
-          participants: message.participants,
+          roomId: message.roomId ?? '',
+          participants: message.participants ?? [],
           isHost: message.hostId === currentUserId,
           currentUserId,
           chatMessages: [],
@@ -962,8 +990,8 @@ class PopupUI {
 
       case 'ROOM_JOINED':
         this.currentState = {
-          roomId: message.roomId,
-          participants: message.participants,
+          roomId: message.roomId ?? '',
+          participants: message.participants ?? [],
           isHost: message.hostId === currentUserId,
           currentUserId,
           chatMessages: [],
@@ -973,7 +1001,7 @@ class PopupUI {
 
       case 'PARTICIPANT_JOINED':
         if (this.currentState) {
-          this.currentState.participants = message.participants;
+          this.currentState.participants = message.participants ?? [];
           this.updateParticipantsList();
           this.accessibilityIntegration.announceParticipantChange(
             'joined the room',
@@ -983,7 +1011,7 @@ class PopupUI {
         break;
       case 'PARTICIPANT_LEFT':
         if (this.currentState) {
-          this.currentState.participants = message.participants;
+          this.currentState.participants = message.participants ?? [];
           this.updateParticipantsList();
           this.accessibilityIntegration.announceParticipantChange(
             'left the room',
@@ -995,7 +1023,7 @@ class PopupUI {
       case 'HOST_TRANSFERRED':
         if (this.currentState) {
           this.currentState.isHost = message.newHostId === currentUserId;
-          this.currentState.participants = message.participants;
+          this.currentState.participants = message.participants ?? [];
           this.updateRoomInfo();
         }
         break;
@@ -1009,7 +1037,7 @@ class PopupUI {
             this.showMainMenu();
           } else {
             // Someone else was kicked
-            this.currentState.participants = message.participants;
+            this.currentState.participants = message.participants ?? [];
             this.updateParticipantsList();
           }
         }
@@ -1024,7 +1052,7 @@ class PopupUI {
         break;
 
       case 'ERROR':
-        alert('Error: ' + message.error.message);
+        alert('Error: ' + (message.error?.message ?? 'Unknown error'));
         break;
     }
   }
@@ -1207,14 +1235,14 @@ class PopupUI {
     this.updateButtonStates();
   }
 
-  private handleChatMessage(message: any): void {
+  private handleChatMessage(message: ServerMessage): void {
     if (!this.currentState) return;
 
     const chatMessage: ChatMessage = {
       id: message.id || `${Date.now()}_${Math.random()}`,
-      userId: message.userId,
-      userName: this.getParticipantName(message.userId),
-      message: message.message,
+      userId: message.userId ?? '',
+      userName: this.getParticipantName(message.userId ?? ''),
+      message: message.message ?? '',
       timestamp: message.timestamp || Date.now(),
       type: 'text',
     };
@@ -1227,7 +1255,7 @@ class PopupUI {
     );
   }
 
-  private handleReaction(message: any): void {
+  private handleReaction(message: ServerMessage): void {
     // Reactions are handled by the content script overlay
     // We could show a notification here if desired
     console.log('Reaction received:', message.reactionType, 'from', message.userId);
@@ -1319,7 +1347,7 @@ class PopupUI {
           this.connectionStatus = response.status;
           this.updateConnectionStatus();
         }
-      } catch (error) {
+      } catch {
         // Ignore polling errors
       }
     }, 5000);
@@ -1429,7 +1457,7 @@ class PopupUI {
     }
   }
 
-  private displayOpenSubtitlesResults(results: any[]): void {
+  private displayOpenSubtitlesResults(results: OpenSubtitlesSearchResult[]): void {
     const resultsContainer = document.getElementById('subtitleSearchResults');
     if (!resultsContainer) return;
 
@@ -1456,7 +1484,7 @@ class PopupUI {
     resultsContainer.classList.remove('hidden');
   }
 
-  private async downloadOpenSubtitlesResult(result: any): Promise<void> {
+  private async downloadOpenSubtitlesResult(result: OpenSubtitlesSearchResult): Promise<void> {
     try {
       const response = await chrome.runtime.sendMessage({
         type: 'DOWNLOAD_OPENSUBTITLES',
@@ -1501,9 +1529,9 @@ class PopupUI {
       // Create a mock subtitle engine for the popup
       // In a real implementation, this would communicate with the content script
       const mockSubtitleEngine = {
-        getUserTracks: (userId: string) => [],
-        getAvailableLanguages: (userId: string) => [],
-        getUserPreferences: (userId: string) => ({
+        getUserTracks: (_userId: string): SubtitleTrack[] => [],
+        getAvailableLanguages: (_userId: string): string[] => [],
+        getUserPreferences: (userId: string): SubtitleUserPreferences => ({
           userId,
           preferredLanguages: ['en'],
           defaultStyle: {
@@ -1529,7 +1557,7 @@ class PopupUI {
           autoDownloadMissing: false,
           maxSimultaneousTracks: 3,
         }),
-        updateUserPreferences: (userId: string, preferences: any) => {
+        updateUserPreferences: (userId: string, preferences: Partial<SubtitleUserPreferences>) => {
           // Send to content script
           chrome.runtime.sendMessage({
             type: 'UPDATE_USER_PREFERENCES',
@@ -1537,7 +1565,7 @@ class PopupUI {
             preferences,
           });
         },
-        applySubtitleStyle: (element: HTMLElement, style: any) => {
+        applySubtitleStyle: (element: HTMLElement, style: SubtitleStyle) => {
           // Apply basic styling for preview
           element.style.cssText = `
             background: ${style.backgroundColor};
@@ -1577,7 +1605,7 @@ class PopupUI {
             priority,
           });
         },
-        updateTrackStyle: (trackId: string, style: any) => {
+        updateTrackStyle: (trackId: string, style: Partial<SubtitleStyle>) => {
           chrome.runtime.sendMessage({
             type: 'UPDATE_SUBTITLE_STYLE',
             trackId,
@@ -1611,20 +1639,23 @@ class PopupUI {
             userId,
           });
         },
-        searchOpenSubtitles: (options: any) => {
+        searchOpenSubtitles: (options: SubtitleSearchOptions) => {
           return chrome.runtime.sendMessage({
             type: 'SEARCH_OPENSUBTITLES',
             searchOptions: options,
           });
         },
-        downloadFromOpenSubtitles: (result: any, userId: string) => {
+        downloadFromOpenSubtitles: (result: OpenSubtitlesSearchResult, userId: string) => {
           return chrome.runtime.sendMessage({
             type: 'DOWNLOAD_OPENSUBTITLES',
             result,
             userId,
           });
         },
-        autoDownloadSubtitles: (userId: string, videoInfo: any) => {
+        autoDownloadSubtitles: (
+          userId: string,
+          videoInfo: { title?: string; imdbId?: string; hash?: string }
+        ) => {
           return chrome.runtime.sendMessage({
             type: 'AUTO_DOWNLOAD_SUBTITLES',
             userId,
@@ -1635,7 +1666,7 @@ class PopupUI {
 
       this.subtitleManager = new SubtitleManager({
         userId: this.getCurrentUserId(),
-        subtitleEngine: mockSubtitleEngine as any,
+        subtitleEngine: mockSubtitleEngine as unknown as SubtitleEngine,
         container,
         onTrackAdded: (track) => {
           console.log('Track added:', track);
@@ -1654,7 +1685,7 @@ class PopupUI {
     this.subtitleManager.show();
   }
 
-  private displaySubtitleTracks(tracks: any[]): void {
+  private displaySubtitleTracks(tracks: SubtitleTrack[]): void {
     const tracksContainer = document.getElementById('subtitleTracks');
     if (!tracksContainer) return;
 
@@ -1789,7 +1820,7 @@ class PopupUI {
     console.log('Annotation toolbar initialized');
   }
 
-  private async handleToolChange(tool: any): Promise<void> {
+  private async handleToolChange(tool: Partial<DrawingTool>): Promise<void> {
     try {
       await chrome.runtime.sendMessage({
         type: 'SET_ANNOTATION_TOOL',

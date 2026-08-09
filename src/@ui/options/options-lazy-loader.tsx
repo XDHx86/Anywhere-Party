@@ -183,7 +183,7 @@ export const OptionsLazyWrapper: React.FC = () => {
 };
 
 // Lazy settings components
-export const GeneralSettingsLazy: React.FC<any> = (props) => {
+export const GeneralSettingsLazy: React.FC<Record<string, unknown>> = (props) => {
   if (!LazyGeneralSettings) {
     return <OptionsLoadingFallback componentName="General Settings" />;
   }
@@ -206,7 +206,7 @@ export const GeneralSettingsLazy: React.FC<any> = (props) => {
   );
 };
 
-export const AdvancedSettingsLazy: React.FC<any> = (props) => {
+export const AdvancedSettingsLazy: React.FC<Record<string, unknown>> = (props) => {
   if (!LazyAdvancedSettings) {
     return <OptionsLoadingFallback componentName="Advanced Settings" />;
   }
@@ -229,7 +229,7 @@ export const AdvancedSettingsLazy: React.FC<any> = (props) => {
   );
 };
 
-export const PrivacySettingsLazy: React.FC<any> = (props) => {
+export const PrivacySettingsLazy: React.FC<Record<string, unknown>> = (props) => {
   if (!LazyPrivacySettings) {
     return <OptionsLoadingFallback componentName="Privacy Settings" />;
   }
@@ -252,7 +252,7 @@ export const PrivacySettingsLazy: React.FC<any> = (props) => {
   );
 };
 
-export const AccessibilitySettingsLazy: React.FC<any> = (props) => {
+export const AccessibilitySettingsLazy: React.FC<Record<string, unknown>> = (props) => {
   if (!LazyAccessibilitySettings) {
     return <OptionsLoadingFallback componentName="Accessibility Settings" />;
   }

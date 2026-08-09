@@ -5,7 +5,6 @@
  */
 
 import { getDiagnosticLogger } from './diagnostic-logger';
-import { getBrowserAPI } from './browser-api';
 
 export interface ChromeCompatibilityResult {
   manifestVersion: number;
@@ -180,7 +179,7 @@ class ChromeCompatibilityManager {
   /**
    * Handle service worker messages
    */
-  private handleServiceWorkerMessage(message: any): void {
+  private handleServiceWorkerMessage(message: Record<string, unknown>): void {
     switch (message.type) {
       case 'SW_ACTIVATED':
         console.log('Service Worker activated');
@@ -191,8 +190,11 @@ class ChromeCompatibilityManager {
         this.notifyServiceWorkerUpdate();
         break;
       case 'SW_ERROR':
-        console.error('Service Worker error:', message.error);
-        this.diagnosticLogger.logComponentError('ServiceWorker', new Error(message.error));
+        console.error('Service Worker error:', (message as { error?: string }).error);
+        this.diagnosticLogger.logComponentError(
+          'ServiceWorker',
+          new Error((message as { error?: string }).error ?? 'Service Worker error')
+        );
         break;
       default:
         console.log('Unknown service worker message:', message);
@@ -297,7 +299,9 @@ class ChromeCompatibilityManager {
       await chrome.storage.local.set({ [testKey]: testValue });
       const result = await chrome.storage.local.get(testKey);
 
-      if (result[testKey]?.timestamp === testValue.timestamp) {
+      if (
+        (result[testKey] as { timestamp?: number } | undefined)?.timestamp === testValue.timestamp
+      ) {
         console.log('Chrome storage API working correctly');
 
         // Clean up test data
@@ -329,6 +333,7 @@ class ChromeCompatibilityManager {
           // Handle specific storage changes
           Object.keys(changes).forEach((key) => {
             const change = changes[key];
+            if (!change) return;
             console.log(
               `Storage key "${key}" changed from`,
               change.oldValue,
@@ -397,7 +402,7 @@ class ChromeCompatibilityManager {
     // Try to re-establish connection with background script
     setTimeout(() => {
       try {
-        chrome.runtime.sendMessage({ type: 'CONTEXT_RECOVERY_TEST' }, (response) => {
+        chrome.runtime.sendMessage({ type: 'CONTEXT_RECOVERY_TEST' }, (_response) => {
           if (chrome.runtime.lastError) {
             console.error('Context recovery failed, suggesting page reload');
             this.suggestPageReload();
@@ -493,21 +498,25 @@ class ChromeCompatibilityManager {
    */
   private setupMemoryOptimizations(): void {
     // Periodic garbage collection hint
-    if ((window as any).gc) {
+    if ((window as unknown as { gc?: () => void }).gc) {
       setInterval(() => {
         try {
-          (window as any).gc();
-        } catch (error) {
+          (window as unknown as { gc?: () => void }).gc?.();
+        } catch {
           // gc() is not always available
         }
       }, 300000); // Every 5 minutes
     }
 
     // Monitor memory usage
-    if ((performance as any).memory) {
+    const memoryApi = (
+      performance as unknown as {
+        memory?: { usedJSHeapSize: number; jsHeapSizeLimit: number };
+      }
+    ).memory;
+    if (memoryApi) {
       setInterval(() => {
-        const memory = (performance as any).memory;
-        const usagePercent = (memory.usedJSHeapSize / memory.jsHeapSizeLimit) * 100;
+        const usagePercent = (memoryApi.usedJSHeapSize / memoryApi.jsHeapSizeLimit) * 100;
 
         if (usagePercent > 80) {
           console.warn('High memory usage detected:', usagePercent.toFixed(1) + '%');
@@ -525,13 +534,17 @@ class ChromeCompatibilityManager {
    */
   private setupNetworkOptimizations(): void {
     // Implement request batching for extension messages
-    const messageQueue: any[] = [];
+    const messageQueue: Array<{
+      message: Record<string, unknown>;
+      callback?: (response: unknown) => void;
+    }> = [];
     let batchTimeout: NodeJS.Timeout | null = null;
 
     const originalSendMessage = chrome.runtime.sendMessage;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (chrome.runtime as any).sendMessage = (
-      message: any,
-      responseCallback?: (response: any) => void
+      message: Record<string, unknown>,
+      responseCallback?: (response: unknown) => void
     ) => {
       // Batch non-urgent messages
       if (message.type && !message.urgent) {
@@ -559,7 +572,10 @@ class ChromeCompatibilityManager {
    * Process batched messages
    */
   private processBatchedMessages(
-    messages: Array<{ message: any; callback?: (response: any) => void }>
+    messages: Array<{
+      message: Record<string, unknown>;
+      callback?: (response: unknown) => void;
+    }>
   ): void {
     if (messages.length === 0) return;
 
@@ -569,7 +585,7 @@ class ChromeCompatibilityManager {
       timestamp: Date.now(),
     };
 
-    chrome.runtime.sendMessage(batchMessage, (responses: any) => {
+    chrome.runtime.sendMessage(batchMessage, (responses: unknown) => {
       if (Array.isArray(responses)) {
         responses.forEach((response, index) => {
           const callback = messages[index]?.callback;

@@ -5,7 +5,7 @@
  */
 
 import { getDiagnosticLogger } from './diagnostic-logger';
-import { getBrowserAPI } from './browser-api';
+import type { BrowserLikePort } from './browser-api';
 
 export interface FirefoxCompatibilityResult {
   manifestVersion: number;
@@ -22,8 +22,8 @@ class FirefoxCompatibilityManager {
   private diagnosticLogger = getDiagnosticLogger();
   private isInitialized = false;
   private compatibilityResult: FirefoxCompatibilityResult | null = null;
-  private backgroundScriptPort: any = null;
-  private messageListeners: Set<(message: any) => void> = new Set();
+  private backgroundScriptPort: BrowserLikePort | null = null;
+  private messageListeners: Set<(message: unknown) => void> = new Set();
 
   /**
    * Initialize Firefox-specific compatibility fixes
@@ -115,7 +115,7 @@ class FirefoxCompatibilityManager {
    */
   private getManifestVersion(): number {
     try {
-      const manifest = browser.runtime.getManifest();
+      const manifest = browser.runtime.getManifest() as { manifest_version?: number };
       return manifest.manifest_version || 2;
     } catch (error) {
       console.warn('Failed to get manifest version:', error);
@@ -137,7 +137,8 @@ class FirefoxCompatibilityManager {
       // Firefox uses promises for runtime.sendMessage
       const response = await browser.runtime.sendMessage(testMessage);
 
-      if (response && response.success) {
+      const parsedResponse = response as { success?: boolean } | null;
+      if (parsedResponse && parsedResponse.success) {
         console.log('Firefox background script communication established');
 
         // Setup background script messaging
@@ -163,17 +164,20 @@ class FirefoxCompatibilityManager {
   private setupBackgroundScriptMessaging(): void {
     try {
       // Firefox uses browser.runtime.onMessage
-      browser.runtime.onMessage.addListener((message: any, sender: any, sendResponse: any) => {
-        console.log('Firefox background message received:', message);
+      browser.runtime.onMessage.addListener(
+        (message: unknown, sender: unknown, sendResponse: (response?: unknown) => void) => {
+          console.log('Firefox background message received:', message);
 
-        // Handle background script messages
-        if (message && message.type) {
-          this.handleBackgroundScriptMessage(message, sender, sendResponse);
+          // Handle background script messages
+          const msg = message as { type?: string } | null;
+          if (msg && msg.type) {
+            this.handleBackgroundScriptMessage(msg, sender, sendResponse);
+          }
+
+          // Return true to indicate async response (Firefox requirement)
+          return true;
         }
-
-        // Return true to indicate async response (Firefox requirement)
-        return true;
-      });
+      );
 
       // Setup connection-based messaging
       this.setupConnectionBasedMessaging();
@@ -190,7 +194,7 @@ class FirefoxCompatibilityManager {
       // Create persistent connection to background script
       this.backgroundScriptPort = browser.runtime.connect({ name: 'firefox-popup-connection' });
 
-      this.backgroundScriptPort.onMessage.addListener((message: any) => {
+      this.backgroundScriptPort.onMessage.addListener((message: unknown) => {
         console.log('Firefox port message received:', message);
         this.handlePortMessage(message);
       });
@@ -214,30 +218,31 @@ class FirefoxCompatibilityManager {
    * Handle background script messages
    */
   private handleBackgroundScriptMessage(
-    message: any,
-    sender: any,
-    sendResponse: (response: any) => void
+    message: unknown,
+    sender: unknown,
+    sendResponse: (response: unknown) => void
   ): void {
-    switch (message.type) {
+    const msg = message as { type?: string; error?: string; changes?: unknown };
+    switch (msg.type) {
       case 'FIREFOX_BACKGROUND_READY':
         console.log('Firefox background script ready');
         sendResponse({ success: true, timestamp: Date.now() });
         break;
 
       case 'FIREFOX_BACKGROUND_ERROR':
-        console.error('Firefox background script error:', message.error);
-        this.diagnosticLogger.logComponentError('FirefoxBackground', new Error(message.error));
-        sendResponse({ success: false, error: message.error });
+        console.error('Firefox background script error:', msg.error);
+        this.diagnosticLogger.logComponentError('FirefoxBackground', new Error(msg.error));
+        sendResponse({ success: false, error: msg.error });
         break;
 
       case 'FIREFOX_STORAGE_CHANGED':
-        console.log('Firefox storage changed:', message.changes);
-        this.handleStorageChange(message.changes);
+        console.log('Firefox storage changed:', msg.changes);
+        this.handleStorageChange(msg.changes);
         sendResponse({ success: true });
         break;
 
       default:
-        console.log('Unknown Firefox background message:', message);
+        console.log('Unknown Firefox background message:', msg);
         sendResponse({ success: false, error: 'Unknown message type' });
     }
   }
@@ -245,18 +250,19 @@ class FirefoxCompatibilityManager {
   /**
    * Handle port messages
    */
-  private handlePortMessage(message: any): void {
-    switch (message.type) {
+  private handlePortMessage(message: unknown): void {
+    const msg = message as { type?: string; error?: string };
+    switch (msg.type) {
       case 'FIREFOX_PORT_READY':
         console.log('Firefox port connection ready');
         break;
 
       case 'FIREFOX_PORT_ERROR':
-        console.error('Firefox port error:', message.error);
+        console.error('Firefox port error:', msg.error);
         break;
 
       default:
-        console.log('Unknown Firefox port message:', message);
+        console.log('Unknown Firefox port message:', msg);
     }
   }
 
@@ -286,8 +292,8 @@ class FirefoxCompatibilityManager {
         console.log('Firefox browserAction API available');
 
         // Setup browser action click handler
-        browser.browserAction.onClicked?.addListener((tab: any) => {
-          console.log('Firefox browserAction clicked on tab:', tab.id);
+        browser.browserAction.onClicked?.addListener((tab: unknown) => {
+          console.log('Firefox browserAction clicked on tab:', (tab as { id?: number }).id);
         });
 
         // Setup browser action badge and title
@@ -359,7 +365,10 @@ class FirefoxCompatibilityManager {
       const testValue = { timestamp: Date.now() };
 
       await browser.storage.local.set({ [testKey]: testValue });
-      const result = await browser.storage.local.get(testKey);
+      const result = (await browser.storage.local.get(testKey)) as Record<
+        string,
+        { timestamp?: number } | undefined
+      >;
 
       if (result[testKey]?.timestamp === testValue.timestamp) {
         console.log('Firefox storage API working correctly');
@@ -386,7 +395,7 @@ class FirefoxCompatibilityManager {
    */
   private setupStorageChangeListener(): void {
     if (browser.storage && browser.storage.onChanged) {
-      browser.storage.onChanged.addListener((changes: any, areaName: any) => {
+      browser.storage.onChanged.addListener((changes: unknown, areaName: unknown) => {
         if (areaName === 'local') {
           console.log('Firefox storage changes detected:', changes);
           this.handleStorageChange(changes);
@@ -398,9 +407,10 @@ class FirefoxCompatibilityManager {
   /**
    * Handle storage changes
    */
-  private handleStorageChange(changes: any): void {
-    Object.keys(changes).forEach((key) => {
-      const change = changes[key];
+  private handleStorageChange(changes: unknown): void {
+    const changeMap = (changes ?? {}) as Record<string, unknown>;
+    Object.keys(changeMap).forEach((key) => {
+      const change = changeMap[key] as { oldValue?: unknown; newValue?: unknown };
       console.log(
         `Firefox storage key "${key}" changed from`,
         change.oldValue,
@@ -426,7 +436,7 @@ class FirefoxCompatibilityManager {
       const missingAPIs: string[] = [];
 
       requiredAPIs.forEach((api) => {
-        if (!(browser as any)[api]) {
+        if (!(browser as unknown as Record<string, unknown>)[api]) {
           missingAPIs.push(api);
         }
       });
@@ -455,7 +465,7 @@ class FirefoxCompatibilityManager {
     // Firefox WebExtension APIs use promises, so we need to handle rejections
     const originalSendMessage = browser.runtime.sendMessage;
 
-    browser.runtime.sendMessage = async (message: any) => {
+    browser.runtime.sendMessage = async (message: unknown) => {
       try {
         return await originalSendMessage.call(browser.runtime, message);
       } catch (error) {
@@ -496,9 +506,12 @@ class FirefoxCompatibilityManager {
    */
   private setupFirefoxMemoryManagement(): void {
     // Firefox memory management optimizations
-    if ((performance as any).memory) {
+    if ((performance as unknown as Record<string, unknown>).memory) {
       setInterval(() => {
-        const memory = (performance as any).memory;
+        const memory = (performance as unknown as Record<string, unknown>).memory as {
+          usedJSHeapSize: number;
+          jsHeapSizeLimit: number;
+        };
         const usagePercent = (memory.usedJSHeapSize / memory.jsHeapSizeLimit) * 100;
 
         if (usagePercent > 75) {
@@ -520,10 +533,11 @@ class FirefoxCompatibilityManager {
       this.messageListeners.clear();
 
       // Force garbage collection if available
-      if ((window as any).Components && (window as any).Components.utils) {
+      const ffWindow = window as unknown as { Components?: { utils?: { forceGC(): void } } };
+      if (ffWindow.Components && ffWindow.Components.utils) {
         try {
-          (window as any).Components.utils.forceGC();
-        } catch (error) {
+          ffWindow.Components.utils.forceGC();
+        } catch {
           // Components.utils may not be available in all contexts
         }
       }
@@ -687,9 +701,9 @@ class FirefoxCompatibilityManager {
   private applyFirefoxPolyfills(): void {
     // Polyfill for Chrome-style callback APIs if needed
     if (typeof chrome === 'undefined') {
-      (window as any).chrome = {
+      (window as unknown as { chrome: Record<string, unknown> }).chrome = {
         runtime: {
-          sendMessage: (message: any, callback?: (response: any) => void) => {
+          sendMessage: (message: unknown, callback?: (response: unknown) => void) => {
             browser.runtime.sendMessage(message).then(callback).catch(console.error);
           },
           onMessage: browser.runtime.onMessage,
@@ -706,7 +720,7 @@ class FirefoxCompatibilityManager {
   private setupFirefoxEventHandlers(): void {
     // Handle Firefox extension updates
     if (browser.runtime && browser.runtime.onUpdateAvailable) {
-      browser.runtime.onUpdateAvailable.addListener((details: any) => {
+      browser.runtime.onUpdateAvailable.addListener((details: unknown) => {
         console.log('Firefox extension update available:', details);
         // Notify user about available update
       });
@@ -714,16 +728,18 @@ class FirefoxCompatibilityManager {
 
     // Handle Firefox extension installation
     if (browser.runtime && browser.runtime.onInstalled) {
-      browser.runtime.onInstalled.addListener((details: any) => {
+      browser.runtime.onInstalled.addListener((details: unknown) => {
         console.log('Firefox extension installed/updated:', details);
       });
     }
 
     // Handle Firefox tab updates
     if (browser.tabs && browser.tabs.onUpdated) {
-      browser.tabs.onUpdated.addListener((tabId: any, changeInfo: any, tab: any) => {
-        if (changeInfo.status === 'complete' && tab.url) {
-          console.log('Firefox tab updated:', tabId, tab.url);
+      browser.tabs.onUpdated.addListener((tabId: unknown, changeInfo: unknown, tab: unknown) => {
+        const info = changeInfo as { status?: string };
+        const tabInfo = tab as { url?: string };
+        if (info.status === 'complete' && tabInfo.url) {
+          console.log('Firefox tab updated:', tabId, tabInfo.url);
         }
       });
     }
@@ -732,27 +748,28 @@ class FirefoxCompatibilityManager {
   /**
    * Send message to background script
    */
-  async sendBackgroundMessage(message: any): Promise<any> {
+  async sendBackgroundMessage(message: unknown): Promise<unknown> {
     try {
-      if (this.backgroundScriptPort) {
+      const port = this.backgroundScriptPort;
+      if (port) {
         // Use port-based messaging
         return new Promise((resolve, reject) => {
           const messageId = Date.now().toString();
-          const messageWithId = { ...message, messageId };
+          const messageWithId = { ...(message as Record<string, unknown>), messageId };
 
-          const responseHandler = (response: any) => {
-            if (response.messageId === messageId) {
-              this.backgroundScriptPort.onMessage.removeListener(responseHandler);
+          const responseHandler = (response: unknown) => {
+            if ((response as { messageId?: string }).messageId === messageId) {
+              port.onMessage.removeListener(responseHandler);
               resolve(response);
             }
           };
 
-          this.backgroundScriptPort.onMessage.addListener(responseHandler);
-          this.backgroundScriptPort.postMessage(messageWithId);
+          port.onMessage.addListener(responseHandler);
+          port.postMessage(messageWithId);
 
           // Timeout after 5 seconds
           setTimeout(() => {
-            this.backgroundScriptPort.onMessage.removeListener(responseHandler);
+            port.onMessage.removeListener(responseHandler);
             reject(new Error('Firefox background message timeout'));
           }, 5000);
         });

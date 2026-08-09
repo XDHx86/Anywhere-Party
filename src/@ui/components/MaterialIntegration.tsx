@@ -9,7 +9,6 @@ import { MaterialThemeProvider } from '../theme';
 import { ChatIntegration } from './chat/ChatIntegration';
 import { OverlayIntegration } from './overlays/OverlayIntegration';
 import { integrationService } from '../services/integration-service';
-import { useResponsiveDesign } from '../hooks/useResponsiveDesign';
 
 export interface MaterialIntegrationProps {
   children: React.ReactNode;
@@ -18,7 +17,7 @@ export interface MaterialIntegrationProps {
   userName?: string;
   enableChat?: boolean;
   enableOverlays?: boolean;
-  onIntegrationStatusChange?: (status: any) => void;
+  onIntegrationStatusChange?: (status: IntegrationStatus) => void;
 }
 
 export interface IntegrationStatus {
@@ -47,8 +46,6 @@ export const MaterialIntegration: React.FC<MaterialIntegrationProps> = ({
     lastSync: null,
     errors: [],
   });
-
-  const responsive = useResponsiveDesign();
 
   // Initialize integration on mount
   useEffect(() => {
@@ -93,20 +90,12 @@ export const MaterialIntegration: React.FC<MaterialIntegrationProps> = ({
           ...prev,
           errors: [...prev.errors, errorMessage],
         }));
+        return undefined;
       }
     };
 
     initializeIntegration();
   }, [onIntegrationStatusChange]);
-
-  // Handle integration errors
-  const handleIntegrationError = useCallback((error: string, component: string) => {
-    console.error(`Integration error in ${component}:`, error);
-    setIntegrationStatus((prev) => ({
-      ...prev,
-      errors: [...prev.errors, `${component}: ${error}`],
-    }));
-  }, []);
 
   // Handle chat connection status
   const handleChatStatusChange = useCallback((connected: boolean) => {
@@ -144,11 +133,11 @@ export const MaterialIntegration: React.FC<MaterialIntegrationProps> = ({
           roomId={roomId}
           userId={userId}
           userName={userName}
-          onMessageSend={(message) => {
+          onMessageSend={(_message) => {
             // Handle message send success
             handleChatStatusChange(true);
           }}
-          onReactionAdd={(messageId, emoji) => {
+          onReactionAdd={(_messageId, _emoji) => {
             // Handle reaction add success
             handleChatStatusChange(true);
           }}
@@ -161,11 +150,11 @@ export const MaterialIntegration: React.FC<MaterialIntegrationProps> = ({
           roomId={roomId}
           userId={userId}
           enabled={enableOverlays}
-          onOverlayCreate={(overlay) => {
+          onOverlayCreate={(_overlay) => {
             // Handle overlay create success
             handleOverlayStatusChange(true, true);
           }}
-          onOverlayRemove={(overlayId) => {
+          onOverlayRemove={(_overlayId) => {
             // Handle overlay remove success
             handleOverlayStatusChange(true, integrationStatus.videoDetected);
           }}

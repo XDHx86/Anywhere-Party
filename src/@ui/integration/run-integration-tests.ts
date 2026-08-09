@@ -76,7 +76,7 @@ class IntegrationTestRunner {
       console.log(
         `✅ ${name}: ${testResult.passed}/${testResult.total} tests passed (${duration}ms)`
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       const duration = Date.now() - this.startTime;
       const testResult: TestResult = {
         name,
@@ -88,7 +88,7 @@ class IntegrationTestRunner {
       };
       this.results.push(testResult);
       console.log(`❌ ${name}: Failed to run tests`);
-      console.error(error.message);
+      console.error(error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -97,8 +97,8 @@ class IntegrationTestRunner {
     const testMatch = output.match(/Tests\s+(\d+)\s+passed\s+\((\d+)\)/);
     const failMatch = output.match(/(\d+)\s+failed/);
 
-    const passed = testMatch ? parseInt(testMatch[1]) : 0;
-    const failed = failMatch ? parseInt(failMatch[1]) : 0;
+    const passed = testMatch ? parseInt(testMatch[1] ?? '0') : 0;
+    const failed = failMatch ? parseInt(failMatch[1] ?? '0') : 0;
     const total = passed + failed;
 
     return {

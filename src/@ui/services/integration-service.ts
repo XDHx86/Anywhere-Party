@@ -40,7 +40,7 @@ export class IntegrationService {
   private static instance: IntegrationService;
   private config: IntegrationConfig;
   private components: ComponentIntegration;
-  private messageHandlers: Map<string, (message: any) => void>;
+  private messageHandlers: Map<string, (message: unknown) => void>;
 
   private constructor() {
     this.config = {
@@ -87,10 +87,10 @@ export class IntegrationService {
   private async initializeIntegration(): Promise<void> {
     try {
       // Test connection to background script
-      const response = await browserAPI.runtime.sendMessage({
+      const response = (await browserAPI.runtime.sendMessage({
         type: 'INTEGRATION_HANDSHAKE',
         timestamp: Date.now(),
-      });
+      })) as { success?: boolean } | undefined;
 
       if (response?.success) {
         this.config.backgroundScriptConnected = true;
@@ -104,17 +104,24 @@ export class IntegrationService {
 
   // Setup message listeners for cross-component communication
   private setupMessageListeners(): void {
-    const handleMessage = (message: any) => {
-      const handler = this.messageHandlers.get(message.type);
+    const handleMessage = (message: unknown) => {
+      const msg = message as {
+        type?: string;
+        active?: boolean;
+        videoFound?: boolean;
+        overlays?: string[];
+        connected?: boolean;
+      };
+      const handler = msg.type ? this.messageHandlers.get(msg.type) : undefined;
       if (handler) {
         handler(message);
       }
 
       // Handle system-wide messages
-      switch (message.type) {
+      switch (msg.type) {
         case 'VIDEO_DETECTION_STATUS':
-          this.config.videoDetectionActive = message.active;
-          this.components.overlays.videoElementDetected = message.videoFound;
+          this.config.videoDetectionActive = msg.active ?? false;
+          this.components.overlays.videoElementDetected = msg.videoFound ?? false;
           break;
 
         case 'CHAT_MESSAGE':
@@ -123,13 +130,13 @@ export class IntegrationService {
           break;
 
         case 'OVERLAY_STATUS':
-          this.components.overlays.activeOverlays = message.overlays;
-          this.config.overlaySystemActive = message.overlays.length > 0;
+          this.components.overlays.activeOverlays = msg.overlays ?? [];
+          this.config.overlaySystemActive = (msg.overlays?.length ?? 0) > 0;
           break;
 
         case 'REAL_TIME_CONNECTION':
-          this.config.realTimeMessagingConnected = message.connected;
-          this.config.chatSystemConnected = message.connected;
+          this.config.realTimeMessagingConnected = msg.connected ?? false;
+          this.config.chatSystemConnected = msg.connected ?? false;
           break;
       }
     };
@@ -140,10 +147,10 @@ export class IntegrationService {
   // Connect popup with background script functionality
   public async connectPopup(): Promise<boolean> {
     try {
-      const response = await browserAPI.runtime.sendMessage({
+      const response = (await browserAPI.runtime.sendMessage({
         type: 'POPUP_CONNECT',
         timestamp: Date.now(),
-      });
+      })) as { success?: boolean } | undefined;
 
       if (response?.success) {
         this.components.popup.connected = true;
@@ -164,10 +171,10 @@ export class IntegrationService {
       // Sync theme settings
       await this.syncThemeSettings();
 
-      const response = await browserAPI.runtime.sendMessage({
+      const response = (await browserAPI.runtime.sendMessage({
         type: 'OPTIONS_CONNECT',
         timestamp: Date.now(),
-      });
+      })) as { success?: boolean } | undefined;
 
       if (response?.success) {
         this.components.options.connected = true;
@@ -185,10 +192,10 @@ export class IntegrationService {
   // Connect chat interface with real-time messaging
   public async connectChatInterface(): Promise<boolean> {
     try {
-      const response = await browserAPI.runtime.sendMessage({
+      const response = (await browserAPI.runtime.sendMessage({
         type: 'CHAT_CONNECT',
         timestamp: Date.now(),
-      });
+      })) as { success?: boolean } | undefined;
 
       if (response?.success) {
         this.components.chat.connected = true;
@@ -207,23 +214,23 @@ export class IntegrationService {
   // Connect overlay components with video detection and annotation systems
   public async connectOverlayComponents(): Promise<boolean> {
     try {
-      const response = await browserAPI.runtime.sendMessage({
+      const response = (await browserAPI.runtime.sendMessage({
         type: 'OVERLAY_CONNECT',
         timestamp: Date.now(),
-      });
+      })) as { success?: boolean } | undefined;
 
       if (response?.success) {
         this.components.overlays.connected = true;
         this.config.overlaySystemActive = true;
 
         // Check if video detection is active
-        const videoStatus = await browserAPI.runtime.sendMessage({
+        const videoStatus = (await browserAPI.runtime.sendMessage({
           type: 'GET_VIDEO_DETECTION_STATUS',
-        });
+        })) as { active?: boolean; videoFound?: boolean } | undefined;
 
         if (videoStatus?.active) {
           this.config.videoDetectionActive = true;
-          this.components.overlays.videoElementDetected = videoStatus.videoFound;
+          this.components.overlays.videoElementDetected = videoStatus.videoFound ?? false;
         }
 
         return true;
@@ -260,13 +267,15 @@ export class IntegrationService {
   // Sync with background script state
   private async syncWithBackgroundScript(): Promise<void> {
     try {
-      const response = await browserAPI.runtime.sendMessage({
+      const response = (await browserAPI.runtime.sendMessage({
         type: 'GET_SYSTEM_STATUS',
-      });
+      })) as
+        | { success?: boolean; config?: IntegrationConfig; components?: ComponentIntegration }
+        | undefined;
 
       if (response?.success) {
-        this.config = { ...this.config, ...response.config };
-        this.components = { ...this.components, ...response.components };
+        this.config = { ...this.config, ...(response.config ?? {}) };
+        this.components = { ...this.components, ...(response.components ?? {}) };
       }
     } catch (error) {
       console.error('Failed to sync with background script:', error);
@@ -274,7 +283,7 @@ export class IntegrationService {
   }
 
   // Register message handler for specific message type
-  public registerMessageHandler(type: string, handler: (message: any) => void): void {
+  public registerMessageHandler(type: string, handler: (message: unknown) => void): void {
     this.messageHandlers.set(type, handler);
   }
 
@@ -284,11 +293,11 @@ export class IntegrationService {
   }
 
   // Send message to background script
-  public async sendMessage(type: string, data?: any): Promise<any> {
+  public async sendMessage(type: string, data?: unknown): Promise<unknown> {
     try {
       return await browserAPI.runtime.sendMessage({
         type,
-        ...data,
+        ...((data ?? {}) as Record<string, unknown>),
         timestamp: Date.now(),
       });
     } catch (error) {

@@ -145,13 +145,15 @@ export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
   return (
     <Fade in={true}>
       <Box
-        display="flex"
-        flexDirection="column"
-        alignItems="center"
-        justifyContent="center"
-        minHeight={minHeight}
-        padding={3}
-        textAlign="center"
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: minHeight,
+          padding: 3,
+          textAlign: 'center',
+        }}
         role={accessible ? 'status' : undefined}
         aria-live={accessible ? 'polite' : undefined}
         aria-label={accessible ? `Loading: ${currentOperation}` : undefined}
@@ -232,7 +234,7 @@ export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
           <Typography
             variant="body2"
             color="text.secondary"
-            paragraph
+            sx={{ mb: 1 }}
             aria-live={accessible ? 'polite' : undefined}
           >
             {currentOperation}
@@ -244,9 +246,7 @@ export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
           <Stack
             direction="row"
             spacing={2}
-            alignItems="center"
-            flexWrap="wrap"
-            justifyContent="center"
+            sx={{ alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}
           >
             {showProgress && progressValue > 0 && (
               <Chip

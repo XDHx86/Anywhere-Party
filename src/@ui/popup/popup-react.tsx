@@ -5,7 +5,6 @@
 
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { PopupApp } from './PopupApp';
 import { MaterialThemeProvider } from '../theme/theme-provider';
@@ -26,11 +25,11 @@ class ErrorBoundary extends React.Component<
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('Popup React error:', error, errorInfo);
   }
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       return (
         <div className="error-container">
@@ -128,7 +127,7 @@ window.hideLoadingFallback = function () {
 };
 
 // Retry function for error button
-(window as any).retryLoad = function () {
+(window as unknown as { retryLoad: () => void }).retryLoad = function () {
   window.location.reload();
 };
 
@@ -246,8 +245,14 @@ if (document.readyState === 'loading') {
 }
 
 // Handle hot module replacement in development
-if (typeof module !== 'undefined' && (module as any).hot) {
-  (module as any).hot.accept('./PopupApp', () => {
-    initializePopupApp();
-  });
+if (
+  typeof module !== 'undefined' &&
+  (module as unknown as { hot?: { accept: (path: string, cb: () => void) => void } }).hot
+) {
+  (module as unknown as { hot: { accept: (path: string, cb: () => void) => void } }).hot.accept(
+    './PopupApp',
+    () => {
+      initializePopupApp();
+    }
+  );
 }

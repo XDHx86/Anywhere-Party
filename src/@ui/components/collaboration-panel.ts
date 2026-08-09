@@ -476,7 +476,7 @@ export class CollaborationPanel {
     this.container.querySelectorAll('.tab-btn').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         const target = e.currentTarget as HTMLElement;
-        const tabName = target.dataset.tab as any;
+        const tabName = target.dataset.tab as 'polls' | 'bookmarks' | 'whiteboard' | 'export';
         this.switchTab(tabName);
       });
     });
@@ -1049,7 +1049,7 @@ export class CollaborationPanel {
 
     container.innerHTML = '';
 
-    results.forEach((result: any) => {
+    results.forEach((result) => {
       const itemElement = document.createElement('div');
       itemElement.className = 'item-card';
       itemElement.innerHTML = `

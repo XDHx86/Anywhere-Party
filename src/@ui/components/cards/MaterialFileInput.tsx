@@ -140,7 +140,7 @@ export const MaterialFileInput = forwardRef<HTMLInputElement, MaterialFileInputP
     },
     ref
   ) => {
-    const { theme } = useMaterialTheme();
+    useMaterialTheme();
     const inputRef = useRef<HTMLInputElement>(null);
     const [isDragOver, setIsDragOver] = useState(false);
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -171,6 +171,7 @@ export const MaterialFileInput = forwardRef<HTMLInputElement, MaterialFileInputP
         // Read file content if callback provided
         if (onFileContent && validFiles.length > 0) {
           const file = validFiles[0];
+          if (!file) return;
           const reader = new FileReader();
           reader.onload = (e) => {
             const content = e.target?.result as string;
@@ -238,7 +239,7 @@ export const MaterialFileInput = forwardRef<HTMLInputElement, MaterialFileInputP
             </FileIcon>
 
             <Box>
-              <Typography variant="body2" fontWeight={500} sx={{ mb: 0.5 }}>
+              <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>
                 {isDragOver ? 'Drop files here' : 'Choose files or drag and drop'}
               </Typography>
               <Typography variant="caption" color="text.secondary">

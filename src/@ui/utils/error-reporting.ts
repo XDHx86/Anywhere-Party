@@ -20,7 +20,7 @@ export interface ErrorReport {
   context: {
     url: string;
     userAgent: string;
-    browserInfo: any;
+    browserInfo: unknown;
     sessionId: string;
     userId?: string;
   };
@@ -129,7 +129,12 @@ class ErrorReportingService {
       this.isReporting = true;
 
       // Send to background script for processing
-      const response = await this.sendMessage('SUBMIT_ERROR_REPORT', { report });
+      const response = (await this.sendMessage('SUBMIT_ERROR_REPORT', { report })) as
+        | {
+            success?: boolean;
+            error?: string;
+          }
+        | undefined;
 
       if (response?.success) {
         console.log('✅ Error report submitted successfully:', report.id);
@@ -260,10 +265,10 @@ class ErrorReportingService {
     }
   }
 
-  private async sendMessage(type: string, data: any): Promise<any> {
+  private async sendMessage(type: string, data: unknown): Promise<unknown> {
     if (typeof chrome !== 'undefined' && chrome.runtime) {
       try {
-        return await chrome.runtime.sendMessage({ type, ...data });
+        return await chrome.runtime.sendMessage({ type, ...(data as Record<string, unknown>) });
       } catch (error) {
         console.warn('Background script not available:', error);
         return { success: false, error: 'Background script not available' };

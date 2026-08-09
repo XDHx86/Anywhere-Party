@@ -121,6 +121,7 @@ const useFocusTrap = (enabled: boolean, containerRef: React.RefObject<HTMLElemen
         document.removeEventListener('keydown', handleKeyDown);
       };
     }
+    return undefined;
   }, [enabled, handleKeyDown, updateFocusableElements]);
 
   return {
@@ -141,7 +142,7 @@ const useKeyboardNavigation = (containerRef: React.RefObject<HTMLElement | null>
           }
           break;
 
-        case 'F6':
+        case 'F6': {
           // Cycle through main regions
           event.preventDefault();
           const regions = containerRef.current?.querySelectorAll(
@@ -165,6 +166,7 @@ const useKeyboardNavigation = (containerRef: React.RefObject<HTMLElement | null>
             }
           }
           break;
+        }
 
         case 'Home':
           if (event.ctrlKey) {
@@ -222,6 +224,7 @@ export const PopupAccessibility: React.FC<AccessibilityProps> = ({
       }, 100);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [autoFocus, focusFirst]);
 
   // Announce message function
