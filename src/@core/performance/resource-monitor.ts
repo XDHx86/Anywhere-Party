@@ -15,7 +15,10 @@ export class ResourceMonitor {
   // Resource tracking
   private trackedTimers = new Set<number>();
   private trackedIntervals = new Set<number>();
-  private trackedEventListeners = new Map<EventTarget, Map<string, Function[]>>();
+  private trackedEventListeners = new Map<
+    EventTarget,
+    Map<string, Array<(...args: unknown[]) => void>>
+  >();
   private trackedWebSockets = new Set<WebSocket>();
 
   constructor(
@@ -277,8 +280,9 @@ export class ResourceMonitor {
         if (metrics.memoryUsage > 75 * 1024 * 1024) {
           // 75MB
           // Force garbage collection if available (Chrome DevTools)
-          if ('gc' in window && typeof (window as any).gc === 'function') {
-            (window as any).gc();
+          const windowWithGc = window as Window & { gc?: () => void };
+          if (typeof windowWithGc.gc === 'function') {
+            windowWithGc.gc();
           }
 
           // Clear caches
@@ -292,37 +296,37 @@ export class ResourceMonitor {
   private interceptResourceCreation(): void {
     // Intercept setTimeout
     const originalSetTimeout = window.setTimeout;
-    (window as any).setTimeout = (handler: TimerHandler, timeout?: number, ...args: any[]) => {
+    window.setTimeout = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) => {
       const id = originalSetTimeout(handler, timeout, ...args);
       this.trackedTimers.add(id);
       return id;
-    };
+    }) as unknown as typeof window.setTimeout;
 
     // Intercept setInterval
     const originalSetInterval = window.setInterval;
-    (window as any).setInterval = (handler: TimerHandler, timeout?: number, ...args: any[]) => {
+    window.setInterval = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) => {
       const id = originalSetInterval(handler, timeout, ...args);
       this.trackedIntervals.add(id);
       return id;
-    };
+    }) as unknown as typeof window.setInterval;
 
     // Intercept clearTimeout
     const originalClearTimeout = window.clearTimeout;
-    (window as any).clearTimeout = (id?: number) => {
+    window.clearTimeout = ((id?: number) => {
       if (id !== undefined) {
         this.trackedTimers.delete(id);
         originalClearTimeout(id);
       }
-    };
+    }) as unknown as typeof window.clearTimeout;
 
     // Intercept clearInterval
     const originalClearInterval = window.clearInterval;
-    (window as any).clearInterval = (id?: number) => {
+    window.clearInterval = ((id?: number) => {
       if (id !== undefined) {
         this.trackedIntervals.delete(id);
         originalClearInterval(id);
       }
-    };
+    }) as unknown as typeof window.clearInterval;
   }
 
   private async runCleanupTasks(): Promise<void> {
@@ -353,8 +357,8 @@ export class ResourceMonitor {
 
   private getMemoryUsage(): number {
     // Use performance.memory if available (Chrome)
-    if ('memory' in performance) {
-      const memory = (performance as any).memory;
+    const memory = (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory;
+    if (memory) {
       return memory.usedJSHeapSize || 0;
     }
 

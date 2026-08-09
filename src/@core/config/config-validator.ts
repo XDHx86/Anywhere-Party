@@ -14,13 +14,13 @@ export interface ValidationResult {
 export interface ValidationError {
   field: string;
   message: string;
-  value?: any;
+  value?: unknown;
 }
 
 export interface ValidationWarning {
   field: string;
   message: string;
-  value?: any;
+  value?: unknown;
 }
 
 export class ConfigValidator {
@@ -29,68 +29,72 @@ export class ConfigValidator {
    */
   static validate(config: Partial<ExtensionConfig>): ValidationResult {
     const errors: ValidationError[] = [];
-    const warnings: ValidationWarning[] = [];
+    const _warnings: ValidationWarning[] = [];
 
     // Validate server configuration
     if (config.SIGNALING_SERVER !== undefined) {
-      this.validateSignalingServer(config.SIGNALING_SERVER, errors, warnings);
+      this.validateSignalingServer(config.SIGNALING_SERVER, errors, _warnings);
     }
 
     if (config.SIGNALING_WS_PATH !== undefined) {
-      this.validateSignalingWsPath(config.SIGNALING_WS_PATH, errors, warnings);
+      this.validateSignalingWsPath(config.SIGNALING_WS_PATH, errors, _warnings);
     }
 
     // Validate WebRTC servers
     if (config.STUN_SERVERS !== undefined) {
-      this.validateStunServers(config.STUN_SERVERS, errors, warnings);
+      this.validateStunServers(config.STUN_SERVERS, errors, _warnings);
     }
 
     if (config.TURN_SERVERS !== undefined) {
-      this.validateTurnServers(config.TURN_SERVERS, errors, warnings);
+      this.validateTurnServers(config.TURN_SERVERS, errors, _warnings);
     }
 
     // Validate API keys
     if (config.OPENSUBTITLES_KEY !== undefined) {
-      this.validateOpenSubtitlesKey(config.OPENSUBTITLES_KEY, errors, warnings);
+      this.validateOpenSubtitlesKey(config.OPENSUBTITLES_KEY, errors, _warnings);
     }
 
     // Validate language settings
     if (config.DEFAULT_SUBTITLE_LANGS !== undefined) {
-      this.validateSubtitleLanguages(config.DEFAULT_SUBTITLE_LANGS, errors, warnings);
+      this.validateSubtitleLanguages(config.DEFAULT_SUBTITLE_LANGS, errors, _warnings);
     }
 
     // Validate timing parameters
     if (config.SYNC_TOLERANCE_MS !== undefined) {
-      this.validateSyncTolerance(config.SYNC_TOLERANCE_MS, errors, warnings);
+      this.validateSyncTolerance(config.SYNC_TOLERANCE_MS, errors, _warnings);
     }
 
     if (config.SYNC_TIMEOUT_MS !== undefined) {
-      this.validateSyncTimeout(config.SYNC_TIMEOUT_MS, errors, warnings);
+      this.validateSyncTimeout(config.SYNC_TIMEOUT_MS, errors, _warnings);
     }
 
     if (config.HEARTBEAT_INTERVAL_MS !== undefined) {
-      this.validateHeartbeatInterval(config.HEARTBEAT_INTERVAL_MS, errors, warnings);
+      this.validateHeartbeatInterval(config.HEARTBEAT_INTERVAL_MS, errors, _warnings);
     }
 
     if (config.ANNOTATION_RENDER_INTERVAL_MS !== undefined) {
-      this.validateAnnotationRenderInterval(config.ANNOTATION_RENDER_INTERVAL_MS, errors, warnings);
+      this.validateAnnotationRenderInterval(
+        config.ANNOTATION_RENDER_INTERVAL_MS,
+        errors,
+        _warnings
+      );
     }
 
     if (config.RECONNECT_INTERVAL_MS !== undefined) {
-      this.validateReconnectInterval(config.RECONNECT_INTERVAL_MS, errors, warnings);
+      this.validateReconnectInterval(config.RECONNECT_INTERVAL_MS, errors, _warnings);
     }
 
     if (config.ROOM_STATE_TTL_MS !== undefined) {
-      this.validateRoomStateTtl(config.ROOM_STATE_TTL_MS, errors, warnings);
+      this.validateRoomStateTtl(config.ROOM_STATE_TTL_MS, errors, _warnings);
     }
 
     if (config.VIDEO_DETECT_POLL_MS !== undefined) {
-      this.validateVideoDetectPoll(config.VIDEO_DETECT_POLL_MS, errors, warnings);
+      this.validateVideoDetectPoll(config.VIDEO_DETECT_POLL_MS, errors, _warnings);
     }
 
     // Validate feature flags
     if (config.FEATURE_FLAGS !== undefined) {
-      this.validateFeatureFlags(config.FEATURE_FLAGS, errors, warnings);
+      this.validateFeatureFlags(config.FEATURE_FLAGS, errors, _warnings);
     }
 
     // Validate boolean flags
@@ -108,7 +112,7 @@ export class ConfigValidator {
     }
 
     if (config.OAUTH_PROVIDERS !== undefined) {
-      this.validateOAuthProviders(config.OAUTH_PROVIDERS, errors, warnings);
+      this.validateOAuthProviders(config.OAUTH_PROVIDERS, errors, _warnings);
     }
 
     if (config.ALLOW_ANONYMOUS_USERS !== undefined) {
@@ -120,7 +124,7 @@ export class ConfigValidator {
     }
 
     if (config.ENCRYPTION_KEY_SIZE !== undefined) {
-      this.validateEncryptionKeySize(config.ENCRYPTION_KEY_SIZE, errors, warnings);
+      this.validateEncryptionKeySize(config.ENCRYPTION_KEY_SIZE, errors, _warnings);
     }
 
     if (config.DATA_RETENTION_ENABLED !== undefined) {
@@ -132,7 +136,7 @@ export class ConfigValidator {
         'CHAT_RETENTION_DAYS',
         config.CHAT_RETENTION_DAYS,
         errors,
-        warnings
+        _warnings
       );
     }
 
@@ -141,7 +145,7 @@ export class ConfigValidator {
         'ROOM_HISTORY_RETENTION_DAYS',
         config.ROOM_HISTORY_RETENTION_DAYS,
         errors,
-        warnings
+        _warnings
       );
     }
 
@@ -158,7 +162,7 @@ export class ConfigValidator {
         'RECORDING_RETENTION_DAYS',
         config.RECORDING_RETENTION_DAYS,
         errors,
-        warnings
+        _warnings
       );
     }
 
@@ -169,7 +173,7 @@ export class ConfigValidator {
     return {
       isValid: errors.length === 0,
       errors,
-      warnings,
+      warnings: _warnings,
     };
   }
 
@@ -178,14 +182,14 @@ export class ConfigValidator {
    */
   static validateImportedConfig(content: string, format: 'json' | 'env' | 'ini'): ValidationResult {
     const errors: ValidationError[] = [];
-    const warnings: ValidationWarning[] = [];
+    const _warnings: ValidationWarning[] = [];
 
     if (!content || content.trim().length === 0) {
       errors.push({
         field: 'content',
         message: 'Configuration content cannot be empty',
       });
-      return { isValid: false, errors, warnings };
+      return { isValid: false, errors, warnings: _warnings };
     }
 
     let parsedConfig: Partial<ExtensionConfig>;
@@ -206,14 +210,14 @@ export class ConfigValidator {
             field: 'format',
             message: `Unsupported format: ${format}`,
           });
-          return { isValid: false, errors, warnings };
+          return { isValid: false, errors, warnings: _warnings };
       }
     } catch (error) {
       errors.push({
         field: 'content',
         message: `Failed to parse ${format.toUpperCase()} content: ${error instanceof Error ? error.message : 'Unknown error'}`,
       });
-      return { isValid: false, errors, warnings };
+      return { isValid: false, errors, warnings: _warnings };
     }
 
     // Validate the parsed configuration
@@ -285,7 +289,7 @@ export class ConfigValidator {
 
     Object.keys(config).forEach((key) => {
       if (!errorFields.has(key) && config[key as keyof ExtensionConfig] !== undefined) {
-        (result as any)[key] = config[key as keyof ExtensionConfig];
+        (result as Record<string, unknown>)[key] = config[key as keyof ExtensionConfig];
       }
     });
 
@@ -295,7 +299,7 @@ export class ConfigValidator {
   private static validateSignalingServer(
     value: string,
     errors: ValidationError[],
-    warnings: ValidationWarning[]
+    _warnings: ValidationWarning[]
   ): void {
     if (typeof value !== 'string') {
       errors.push({
@@ -332,7 +336,7 @@ export class ConfigValidator {
           value,
         });
       }
-    } catch (error) {
+    } catch {
       errors.push({
         field: 'SIGNALING_SERVER',
         message: 'Invalid URL format for signaling server',
@@ -344,7 +348,7 @@ export class ConfigValidator {
   private static validateSignalingWsPath(
     value: string,
     errors: ValidationError[],
-    warnings: ValidationWarning[]
+    _warnings: ValidationWarning[]
   ): void {
     if (typeof value !== 'string') {
       errors.push({
@@ -356,7 +360,7 @@ export class ConfigValidator {
     }
 
     if (value.length > 0 && !value.startsWith('/')) {
-      warnings.push({
+      _warnings.push({
         field: 'SIGNALING_WS_PATH',
         message: 'WebSocket path should start with "/" if not empty',
         value,
@@ -367,7 +371,7 @@ export class ConfigValidator {
   private static validateStunServers(
     value: string[],
     errors: ValidationError[],
-    warnings: ValidationWarning[]
+    _warnings: ValidationWarning[]
   ): void {
     if (!Array.isArray(value)) {
       errors.push({
@@ -379,7 +383,7 @@ export class ConfigValidator {
     }
 
     if (value.length === 0) {
-      warnings.push({
+      _warnings.push({
         field: 'STUN_SERVERS',
         message: 'No STUN servers configured - WebRTC connections may fail behind NAT',
         value,
@@ -410,7 +414,7 @@ export class ConfigValidator {
   private static validateTurnServers(
     value: TurnServer[],
     errors: ValidationError[],
-    warnings: ValidationWarning[]
+    _warnings: ValidationWarning[]
   ): void {
     if (!Array.isArray(value)) {
       errors.push({
@@ -474,7 +478,7 @@ export class ConfigValidator {
       }
 
       if (server.urls && !server.username && !server.credential) {
-        warnings.push({
+        _warnings.push({
           field: `TURN_SERVERS[${index}]`,
           message: 'TURN server configured without credentials - may not work properly',
           value: server,
@@ -486,7 +490,7 @@ export class ConfigValidator {
   private static validateOpenSubtitlesKey(
     value: string,
     errors: ValidationError[],
-    warnings: ValidationWarning[]
+    _warnings: ValidationWarning[]
   ): void {
     if (typeof value !== 'string') {
       errors.push({
@@ -498,7 +502,7 @@ export class ConfigValidator {
     }
 
     if (value.length > 0 && value.length < 10) {
-      warnings.push({
+      _warnings.push({
         field: 'OPENSUBTITLES_KEY',
         message: 'OpenSubtitles API key seems too short - verify it is correct',
         value,
@@ -509,7 +513,7 @@ export class ConfigValidator {
   private static validateSubtitleLanguages(
     value: string[],
     errors: ValidationError[],
-    warnings: ValidationWarning[]
+    _warnings: ValidationWarning[]
   ): void {
     if (!Array.isArray(value)) {
       errors.push({
@@ -521,7 +525,7 @@ export class ConfigValidator {
     }
 
     if (value.length === 0) {
-      warnings.push({
+      _warnings.push({
         field: 'DEFAULT_SUBTITLE_LANGS',
         message: 'No default subtitle languages configured',
         value,
@@ -538,7 +542,7 @@ export class ConfigValidator {
           value: lang,
         });
       } else if (!validLanguageCodes.test(lang)) {
-        warnings.push({
+        _warnings.push({
           field: `DEFAULT_SUBTITLE_LANGS[${index}]`,
           message: 'Language code should follow ISO 639-1 format (e.g., "en", "es", "en-US")',
           value: lang,
@@ -808,9 +812,9 @@ export class ConfigValidator {
   }
 
   private static validateOAuthProviders(
-    value: Record<string, any>,
+    value: Record<string, unknown>,
     errors: ValidationError[],
-    warnings: ValidationWarning[]
+    _warnings: ValidationWarning[]
   ): void {
     if (typeof value !== 'object' || value === null) {
       errors.push({
@@ -833,41 +837,43 @@ export class ConfigValidator {
         return;
       }
 
+      const providerConfig = provider as Record<string, unknown>;
+
       // Validate required fields
       const requiredFields = ['name', 'clientId', 'authUrl', 'tokenUrl', 'scope', 'redirectUri'];
       requiredFields.forEach((field) => {
-        if (!provider[field]) {
+        if (!providerConfig[field]) {
           errors.push({
             field: `OAUTH_PROVIDERS.${providerName}.${field}`,
             message: `OAuth provider ${field} is required`,
-            value: provider[field],
+            value: providerConfig[field],
           });
         }
       });
 
       // Validate URLs
-      if (provider.authUrl && !this.isValidUrl(provider.authUrl)) {
+      if (providerConfig.authUrl && !this.isValidUrl(String(providerConfig.authUrl))) {
         errors.push({
           field: `OAUTH_PROVIDERS.${providerName}.authUrl`,
           message: 'OAuth auth URL must be a valid URL',
-          value: provider.authUrl,
+          value: providerConfig.authUrl,
         });
       }
 
-      if (provider.tokenUrl && !this.isValidUrl(provider.tokenUrl)) {
+      if (providerConfig.tokenUrl && !this.isValidUrl(String(providerConfig.tokenUrl))) {
         errors.push({
           field: `OAUTH_PROVIDERS.${providerName}.tokenUrl`,
           message: 'OAuth token URL must be a valid URL',
-          value: provider.tokenUrl,
+          value: providerConfig.tokenUrl,
         });
       }
 
       // Validate scope array
-      if (provider.scope && !Array.isArray(provider.scope)) {
+      if (providerConfig.scope && !Array.isArray(providerConfig.scope)) {
         errors.push({
           field: `OAUTH_PROVIDERS.${providerName}.scope`,
           message: 'OAuth scope must be an array',
-          value: provider.scope,
+          value: providerConfig.scope,
         });
       }
     });
@@ -958,7 +964,7 @@ export class ConfigValidator {
   }
 
   private static parseEnvContent(content: string): Partial<ExtensionConfig> {
-    const config: any = {};
+    const config: Record<string, unknown> = {};
     const lines = content.split('\n').filter((line) => line.trim() && !line.startsWith('#'));
 
     for (const line of lines) {
@@ -982,11 +988,11 @@ export class ConfigValidator {
       }
     }
 
-    return config;
+    return config as Partial<ExtensionConfig>;
   }
 
   private static parseIniContent(content: string): Partial<ExtensionConfig> {
-    const config: any = {};
+    const config: Record<string, unknown> = {};
     const lines = content
       .split('\n')
       .filter((line) => line.trim() && !line.startsWith('[') && !line.startsWith(';'));
@@ -1012,6 +1018,6 @@ export class ConfigValidator {
       }
     }
 
-    return config;
+    return config as Partial<ExtensionConfig>;
   }
 }

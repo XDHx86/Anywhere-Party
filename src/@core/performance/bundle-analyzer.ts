@@ -92,7 +92,10 @@ class BundleAnalyzer {
     if (!this.loadTimes.has(bundleName)) {
       this.loadTimes.set(bundleName, []);
     }
-    this.loadTimes.get(bundleName)!.push(loadTime);
+    const times = this.loadTimes.get(bundleName);
+    if (times) {
+      times.push(loadTime);
+    }
 
     // Update or create bundle info
     const existingBundle = this.bundles.get(bundleName);
@@ -119,7 +122,7 @@ class BundleAnalyzer {
 
   private extractBundleName(url: string): string {
     const parts = url.split('/');
-    const filename = parts[parts.length - 1];
+    const filename = parts[parts.length - 1] ?? '';
 
     // Remove hash and extension
     return filename.replace(/\.[a-f0-9]{8,}\./g, '.').replace(/\.(js|css)$/, '');
@@ -150,22 +153,23 @@ class BundleAnalyzer {
 
   private monitorWebpackChunks(): void {
     // Monitor webpack chunk loading if __webpack_require__ is available
-    if (typeof window !== 'undefined' && (window as any).__webpack_require__) {
-      const webpackRequire = (window as any).__webpack_require__;
+    const webpackWindow = window as unknown as Record<string, unknown>;
+    if (typeof window !== 'undefined' && webpackWindow.__webpack_require__) {
+      const webpackRequire = webpackWindow.__webpack_require__ as Record<string, unknown>;
 
       // Hook into chunk loading
-      if (webpackRequire.e) {
-        const originalEnsure = webpackRequire.e;
+      if (typeof webpackRequire.e === 'function') {
+        const originalEnsure = webpackRequire.e as (chunkId: string) => Promise<unknown>;
         webpackRequire.e = (chunkId: string) => {
           const startTime = performance.now();
 
           return originalEnsure(chunkId).then(
-            (result: any) => {
+            (result: unknown) => {
               const loadTime = performance.now() - startTime;
               this.recordChunkLoad(chunkId, loadTime, true);
               return result;
             },
-            (error: any) => {
+            (error: unknown) => {
               const loadTime = performance.now() - startTime;
               this.recordChunkLoad(chunkId, loadTime, false);
               throw error;

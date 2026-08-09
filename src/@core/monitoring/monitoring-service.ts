@@ -19,7 +19,7 @@ export interface RuntimeBugEvent {
   component: string;
   operation: string;
   errorMessage: string;
-  context: Record<string, any>;
+  context: Record<string, unknown>;
   timestamp: number;
   userId: string;
   roomId?: string;
@@ -53,6 +53,14 @@ export interface AlertConfig {
   criticalErrorThreshold: number; // count per hour
   responseTimeThreshold: number; // milliseconds
   userFeedbackThreshold: number; // negative feedback count
+}
+
+export interface MonitoringAlert {
+  type: string;
+  message: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  timestamp: number;
+  event?: RuntimeBugEvent;
 }
 
 export interface UserFeedback {
@@ -215,17 +223,13 @@ export class MonitoringService {
    */
   async trackSuccess(
     operationType:
-      | 'icon_load'
-      | 'api_call'
-      | 'room_creation'
-      | 'state_persistence'
-      | 'video_detection',
+      'icon_load' | 'api_call' | 'room_creation' | 'state_persistence' | 'video_detection',
     responseTime?: number
   ): Promise<void> {
     if (!this.isEnabled) return;
 
     try {
-      this.updateCountersForBug(operationType as any, true);
+      this.updateCountersForBug(operationType, true);
 
       if (responseTime !== undefined) {
         this.counters.totalResponseTime += responseTime;
@@ -251,7 +255,7 @@ export class MonitoringService {
   async getRuntimeBugHistory(limit: number = 100): Promise<RuntimeBugEvent[]> {
     try {
       const result = await this.browserBridge.storage.local.get('runtimeBugHistory');
-      const history = result.runtimeBugHistory || [];
+      const history = (result.runtimeBugHistory as RuntimeBugEvent[] | undefined) ?? [];
       return history.slice(-limit);
     } catch (error) {
       this.loggingManager.error(
@@ -314,7 +318,7 @@ export class MonitoringService {
   async getUserFeedbackHistory(limit: number = 50): Promise<UserFeedback[]> {
     try {
       const result = await this.browserBridge.storage.local.get('userFeedbackHistory');
-      const history = result.userFeedbackHistory || [];
+      const history = (result.userFeedbackHistory as UserFeedback[] | undefined) ?? [];
       return history.slice(-limit);
     } catch (error) {
       this.loggingManager.error(
@@ -334,7 +338,7 @@ export class MonitoringService {
     healthMetrics: HealthMetrics;
     runtimeBugs: RuntimeBugEvent[];
     userFeedback: UserFeedback[];
-    alertHistory: any[];
+    alertHistory: MonitoringAlert[];
   }> {
     try {
       const [runtimeBugs, userFeedback, alertHistory] = await Promise.all([
@@ -410,7 +414,7 @@ export class MonitoringService {
       }
 
       if (result.monitoringEnabled !== undefined) {
-        this.isEnabled = result.monitoringEnabled;
+        this.isEnabled = result.monitoringEnabled as boolean;
       }
 
       if (result.monitoringCounters) {
@@ -545,7 +549,7 @@ export class MonitoringService {
   private async storeRuntimeBugEvent(event: RuntimeBugEvent): Promise<void> {
     try {
       const result = await this.browserBridge.storage.local.get('runtimeBugHistory');
-      const history = result.runtimeBugHistory || [];
+      const history = (result.runtimeBugHistory as RuntimeBugEvent[] | undefined) ?? [];
 
       history.push(event);
 
@@ -563,7 +567,7 @@ export class MonitoringService {
   private async storeFeedback(feedback: UserFeedback): Promise<void> {
     try {
       const result = await this.browserBridge.storage.local.get('userFeedbackHistory');
-      const history = result.userFeedbackHistory || [];
+      const history = (result.userFeedbackHistory as UserFeedback[] | undefined) ?? [];
 
       history.push(feedback);
 
@@ -581,7 +585,7 @@ export class MonitoringService {
 
   private async checkAlerts(event: RuntimeBugEvent): Promise<void> {
     try {
-      const alerts = [];
+      const alerts: MonitoringAlert[] = [];
 
       // Check for critical errors
       if (event.severity === 'critical') {
@@ -634,7 +638,7 @@ export class MonitoringService {
 
   private async checkPeriodicAlerts(): Promise<void> {
     try {
-      const alerts = [];
+      const alerts: MonitoringAlert[] = [];
 
       // Check response time threshold
       if (this.healthMetrics.averageResponseTime > this.alertConfig.responseTimeThreshold) {
@@ -679,7 +683,7 @@ export class MonitoringService {
       );
 
       if (negativeFeedback.length >= this.alertConfig.userFeedbackThreshold) {
-        const alert = {
+        const alert: MonitoringAlert = {
           type: 'negative_feedback_threshold',
           message: `Received ${negativeFeedback.length} high-severity bug reports in the last 24 hours`,
           severity: 'high',
@@ -696,10 +700,10 @@ export class MonitoringService {
     }
   }
 
-  private async storeAlerts(alerts: any[]): Promise<void> {
+  private async storeAlerts(alerts: MonitoringAlert[]): Promise<void> {
     try {
       const result = await this.browserBridge.storage.local.get('alertHistory');
-      const history = result.alertHistory || [];
+      const history = (result.alertHistory as MonitoringAlert[] | undefined) ?? [];
 
       history.push(...alerts);
 
@@ -714,10 +718,10 @@ export class MonitoringService {
     }
   }
 
-  private async getAlertHistory(): Promise<any[]> {
+  private async getAlertHistory(): Promise<MonitoringAlert[]> {
     try {
       const result = await this.browserBridge.storage.local.get('alertHistory');
-      return result.alertHistory || [];
+      return (result.alertHistory as MonitoringAlert[] | undefined) ?? [];
     } catch (error) {
       console.error('Failed to get alert history:', error);
       return [];
@@ -738,10 +742,10 @@ export class MonitoringService {
 
   private extractBrowserVersion(userAgent: string): string {
     const chromeMatch = userAgent.match(/Chrome\/(\d+\.\d+\.\d+\.\d+)/);
-    if (chromeMatch) return chromeMatch[1];
+    if (chromeMatch) return chromeMatch[1] ?? 'unknown';
 
     const firefoxMatch = userAgent.match(/Firefox\/(\d+\.\d+)/);
-    if (firefoxMatch) return firefoxMatch[1];
+    if (firefoxMatch) return firefoxMatch[1] ?? 'unknown';
 
     return 'unknown';
   }
@@ -752,7 +756,7 @@ export class MonitoringService {
         return chrome.runtime.getManifest().version;
       }
       return 'unknown';
-    } catch (error) {
+    } catch {
       return 'unknown';
     }
   }

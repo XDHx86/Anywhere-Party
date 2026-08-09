@@ -6,5 +6,5 @@
  */
 
 export { SyncEngine } from './sync-engine';
-export { SyncState, DriftCorrection, SyncEngineOptions, SyncMessage } from './types';
+export type { SyncState, DriftCorrection, SyncEngineOptions, SyncMessage } from './types';
 export * from './types';

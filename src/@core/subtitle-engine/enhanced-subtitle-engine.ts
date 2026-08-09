@@ -5,6 +5,37 @@
 
 import { getAPIKeyManager } from '../api-keys/api-key-manager';
 
+/** Per-user preference data stored by the engine */
+interface UserSubtitlePreferences {
+  preferredLanguages?: string[];
+  enabledLanguages?: string[];
+  [key: string]: unknown;
+}
+
+/** A subtitle cue produced for rendering */
+interface SubtitleCueOutput {
+  trackId: string;
+  text: string;
+  startTime: number;
+  endTime: number;
+}
+
+/** Search response shape returned by the OpenSubtitles API */
+interface OpenSubtitlesApiResponse {
+  data?: Array<{
+    id?: string;
+    attributes?: {
+      language?: string;
+      files?: Array<{
+        file_name?: string;
+        file_id?: string;
+      }>;
+      ratings?: number;
+      download_count?: number;
+    };
+  }>;
+}
+
 export interface SubtitleErrorResponse {
   type: 'api_key_missing' | 'network_error' | 'service_unavailable' | 'invalid_response';
   message: string;
@@ -40,13 +71,13 @@ export class EnhancedSubtitleEngine {
   private apiKeyManager = getAPIKeyManager();
   private tracks: Map<string, SubtitleTrack> = new Map();
   private errorCallbacks: ((error: SubtitleErrorResponse) => void)[] = [];
-  private userPreferences: Map<string, any> = new Map();
-  private config: any = {};
+  private userPreferences: Map<string, UserSubtitlePreferences> = new Map();
+  private config: Record<string, unknown> = {};
 
   /**
    * Load subtitle file with error handling
    */
-  async loadSubtitleFile(file: File, userId: string): Promise<SubtitleTrack> {
+  async loadSubtitleFile(file: File, _userId: string): Promise<SubtitleTrack> {
     try {
       // Validate file
       if (!this.isValidSubtitleFile(file)) {
@@ -90,7 +121,7 @@ export class EnhancedSubtitleEngine {
   /**
    * Search OpenSubtitles with graceful error handling
    */
-  async searchOpenSubtitles(query: string, language?: string): Promise<SubtitleResult[]> {
+  async searchOpenSubtitles(_query: string, _language?: string): Promise<SubtitleResult[]> {
     try {
       // Check if API key is available
       const apiKey = await this.apiKeyManager.getAPIKey('opensubtitles');
@@ -177,7 +208,7 @@ export class EnhancedSubtitleEngine {
   /**
    * Download from OpenSubtitles with error handling
    */
-  async downloadFromOpenSubtitles(result: SubtitleResult, userId: string): Promise<SubtitleTrack> {
+  async downloadFromOpenSubtitles(result: SubtitleResult, _userId: string): Promise<SubtitleTrack> {
     try {
       const apiKey = await this.apiKeyManager.getAPIKey('opensubtitles');
 
@@ -222,7 +253,7 @@ export class EnhancedSubtitleEngine {
 
       this.tracks.set(track.id, track);
       return track;
-    } catch (error) {
+    } catch {
       // Graceful fallback - return empty track
       const fallbackTrack: SubtitleTrack = {
         id: `fallback_${Date.now()}`,
@@ -280,7 +311,7 @@ export class EnhancedSubtitleEngine {
   /**
    * Get fallback subtitles when external services fail
    */
-  async getFallbackSubtitles(videoInfo: any): Promise<SubtitleTrack[]> {
+  async getFallbackSubtitles(_videoInfo: unknown): Promise<SubtitleTrack[]> {
     // Return local tracks only
     return Array.from(this.tracks.values()).filter(
       (track) => track.source === 'local' || track.source === 'user_upload'
@@ -424,13 +455,13 @@ export class EnhancedSubtitleEngine {
   /**
    * Parse OpenSubtitles API response
    */
-  private parseOpenSubtitlesResponse(data: any): SubtitleResult[] {
+  private parseOpenSubtitlesResponse(data: OpenSubtitlesApiResponse): SubtitleResult[] {
     try {
       if (!data || !data.data || !Array.isArray(data.data)) {
         return [];
       }
 
-      return data.data.map((item: any) => ({
+      return data.data.map((item) => ({
         id: item.id || '',
         language: item.attributes?.language || 'Unknown',
         fileName: item.attributes?.files?.[0]?.file_name || 'subtitle.srt',
@@ -475,7 +506,7 @@ export class EnhancedSubtitleEngine {
   /**
    * Update configuration
    */
-  updateConfig(config: any): void {
+  updateConfig(config: Record<string, unknown>): void {
     this.config = { ...this.config, ...config };
   }
 
@@ -510,7 +541,7 @@ export class EnhancedSubtitleEngine {
   /**
    * Update track style (placeholder)
    */
-  updateTrackStyle(trackId: string, style: any): void {
+  updateTrackStyle(trackId: string, style: Record<string, unknown>): void {
     // Implementation would depend on style system
     console.log(`Updated track ${trackId} style:`, style);
   }
@@ -529,14 +560,15 @@ export class EnhancedSubtitleEngine {
    */
   toggleLanguage(userId: string, language: string, enabled: boolean): void {
     const prefs = this.userPreferences.get(userId) || {};
-    if (!prefs.enabledLanguages) {
-      prefs.enabledLanguages = [];
-    }
+    const enabledLanguages = prefs.enabledLanguages ?? [];
+    prefs.enabledLanguages = enabledLanguages;
 
-    if (enabled && !prefs.enabledLanguages.includes(language)) {
-      prefs.enabledLanguages.push(language);
-    } else if (!enabled) {
-      prefs.enabledLanguages = prefs.enabledLanguages.filter((l: string) => l !== language);
+    if (enabled) {
+      if (!enabledLanguages.includes(language)) {
+        enabledLanguages.push(language);
+      }
+    } else {
+      prefs.enabledLanguages = enabledLanguages.filter((lang) => lang !== language);
     }
 
     this.userPreferences.set(userId, prefs);
@@ -545,7 +577,7 @@ export class EnhancedSubtitleEngine {
   /**
    * Update user preferences
    */
-  updateUserPreferences(userId: string, preferences: any): void {
+  updateUserPreferences(userId: string, preferences: Record<string, unknown>): void {
     const existing = this.userPreferences.get(userId) || {};
     this.userPreferences.set(userId, { ...existing, ...preferences });
   }
@@ -553,7 +585,7 @@ export class EnhancedSubtitleEngine {
   /**
    * Get current cues for timestamp
    */
-  getCurrentCues(currentTime: number, userId: string): any[] {
+  getCurrentCues(currentTime: number, _userId: string): SubtitleCueOutput[] {
     // Simplified implementation - would need proper subtitle parsing
     const activeTracks = Array.from(this.tracks.values()).filter((track) => track.enabled);
     return activeTracks.map((track) => ({
@@ -567,7 +599,7 @@ export class EnhancedSubtitleEngine {
   /**
    * Render subtitles to container
    */
-  renderSubtitles(cues: any[], container: HTMLElement, userId: string): void {
+  renderSubtitles(cues: SubtitleCueOutput[], container: HTMLElement, _userId: string): void {
     if (!container) return;
 
     container.innerHTML = '';
@@ -582,7 +614,7 @@ export class EnhancedSubtitleEngine {
   /**
    * Get user tracks
    */
-  getUserTracks(userId: string): SubtitleTrack[] {
+  getUserTracks(_userId: string): SubtitleTrack[] {
     // For now, return all tracks - could be filtered by user preferences
     return Array.from(this.tracks.values());
   }
@@ -603,7 +635,7 @@ export class EnhancedSubtitleEngine {
   async loadUserPreferences(userId: string): Promise<void> {
     if (typeof chrome !== 'undefined' && chrome.storage) {
       const result = await chrome.storage.local.get([`subtitle_prefs_${userId}`]);
-      const prefs = result[`subtitle_prefs_${userId}`];
+      const prefs = result[`subtitle_prefs_${userId}`] as UserSubtitlePreferences | undefined;
       if (prefs) {
         this.userPreferences.set(userId, prefs);
       }
@@ -613,14 +645,14 @@ export class EnhancedSubtitleEngine {
   /**
    * Get user preferences
    */
-  getUserPreferences(userId: string): any {
+  getUserPreferences(userId: string): UserSubtitlePreferences {
     return this.userPreferences.get(userId) || {};
   }
 
   /**
    * Get available languages
    */
-  getAvailableLanguages(userId: string): string[] {
+  getAvailableLanguages(_userId: string): string[] {
     const uniqueLanguages = new Set<string>();
     this.tracks.forEach((track) => {
       uniqueLanguages.add(track.language);
@@ -631,7 +663,10 @@ export class EnhancedSubtitleEngine {
   /**
    * Auto download subtitles
    */
-  async autoDownloadSubtitles(userId: string, videoInfo: any): Promise<SubtitleTrack[]> {
+  async autoDownloadSubtitles(
+    userId: string,
+    videoInfo: { title?: string }
+  ): Promise<SubtitleTrack[]> {
     try {
       const searchResults = await this.searchOpenSubtitles(videoInfo.title || '', 'en');
 

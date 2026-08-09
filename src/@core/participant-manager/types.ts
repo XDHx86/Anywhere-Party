@@ -21,10 +21,7 @@ export interface ParticipantManagerConfig {
 }
 
 export type ParticipantEventType =
-  | 'participant_added'
-  | 'participant_removed'
-  | 'keys_exchanged'
-  | 'key_exchange_timeout';
+  'participant_added' | 'participant_removed' | 'keys_exchanged' | 'key_exchange_timeout';
 
 export interface ParticipantEvent {
   type: ParticipantEventType;

@@ -7,10 +7,11 @@
 import { WebRTCVoiceManager } from './webrtc-voice-manager';
 import { VoiceConfigManager } from './voice-config';
 import { VoiceControlsCard } from '../../@ui/components/voice/VoiceControlsCard';
+import { TurnServer } from '@core/browser-bridge/types';
 
 export interface VoiceIntegrationConfig {
   stunServers: string[];
-  turnServers: string[];
+  turnServers: TurnServer[];
   pushToTalkKey: string;
   defaultVolume: number;
   signalingEndpoint?: string;
@@ -31,7 +32,7 @@ export class VoiceIntegration {
     this.config = config;
   }
 
-  on(event: string, callback: (...args: any[]) => void): void {
+  on<TArgs extends unknown[]>(_event: string, _callback: (...args: TArgs) => void): void {
     // Event listener implementation
   }
 
@@ -43,7 +44,7 @@ export class VoiceIntegration {
     // Cleanup resources
   }
 
-  async joinVoiceChat(roomId: string, userId: string): Promise<void> {
+  async joinVoiceChat(_roomId: string, _userId: string): Promise<void> {
     // Join voice chat implementation
   }
 
@@ -51,12 +52,17 @@ export class VoiceIntegration {
     // Leave voice chat implementation
   }
 
-  getVoiceManager(): any {
+  getVoiceManager(): WebRTCVoiceManager {
     // Return voice manager
-    return {};
+    return {} as WebRTCVoiceManager;
   }
 
-  getVoiceChatStatus(): any {
+  getVoiceChatStatus(): {
+    initialized: boolean;
+    connected: boolean;
+    participants: string[];
+    error: string | null;
+  } {
     // Return voice chat status
     return {
       initialized: false,

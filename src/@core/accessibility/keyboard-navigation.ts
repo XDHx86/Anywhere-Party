@@ -276,6 +276,8 @@ export class KeyboardNavigation {
     if (index < 0 || index >= this.focusableElements.length) return;
 
     const focusableItem = this.focusableElements[index];
+    if (!focusableItem) return;
+
     this.currentIndex = index;
     focusableItem.element.focus();
 
@@ -323,7 +325,7 @@ export class KeyboardNavigation {
           element.click();
         }
         break;
-      case 'input':
+      case 'input': {
         const input = element as HTMLInputElement;
         if (input.type === 'checkbox' || input.type === 'radio') {
           input.click();
@@ -331,7 +333,8 @@ export class KeyboardNavigation {
           input.focus();
         }
         break;
-      case 'select':
+      }
+      case 'select': {
         // Open select dropdown
         const select = element as HTMLSelectElement;
         select.focus();
@@ -339,6 +342,7 @@ export class KeyboardNavigation {
         const event = new MouseEvent('mousedown', { bubbles: true });
         select.dispatchEvent(event);
         break;
+      }
       default:
         if (role === 'button' || role === 'tab' || role === 'menuitem' || role === 'option') {
           element.click();

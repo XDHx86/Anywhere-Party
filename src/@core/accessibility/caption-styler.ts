@@ -537,8 +537,7 @@ export class CaptionStyler {
 
     controls.forEach((controlId) => {
       const control = container.querySelector(`#${controlId}`) as
-        | HTMLInputElement
-        | HTMLSelectElement;
+        HTMLInputElement | HTMLSelectElement;
       if (control) {
         control.addEventListener('input', () => {
           this.updateStyleFromControl(controlId, control.value);

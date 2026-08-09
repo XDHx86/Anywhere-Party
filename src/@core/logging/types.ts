@@ -13,7 +13,7 @@ export interface LogEntry {
   drift_ms?: number;
   level: LogLevel;
   message?: string;
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
   error?: {
     name: string;
     message: string;
@@ -26,7 +26,7 @@ export interface TelemetryEvent {
   timestamp: number;
   anonymized_user_id: string;
   room_id?: string;
-  properties?: Record<string, any>;
+  properties?: Record<string, unknown>;
   metrics?: Record<string, number>;
 }
 
@@ -82,7 +82,7 @@ export interface ErrorEventData {
   errorType: string;
   errorMessage: string;
   stack?: string;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
 }
 
 export interface LogRetentionPolicy {

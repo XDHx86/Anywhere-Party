@@ -88,7 +88,6 @@ export interface ExtensionConfig {
 
 export class AvatarConfigManager {
   private config: ExtensionConfig | null = null;
-  private configCache: Map<string, any> = new Map();
   private listeners: Set<(config: ExtensionConfig) => void> = new Set();
 
   constructor() {
@@ -200,7 +199,7 @@ export class AvatarConfigManager {
       if (response.ok) {
         return await response.json();
       }
-    } catch (error) {
+    } catch {
       console.warn('Runtime config not found, using defaults');
     }
 
@@ -214,7 +213,7 @@ export class AvatarConfigManager {
       if (response.ok) {
         return await response.json();
       }
-    } catch (error) {
+    } catch {
       // Local config is optional
     }
 
@@ -265,11 +264,12 @@ export class AvatarConfigManager {
   }
 
   private notifyListeners(): void {
-    if (!this.config) return;
+    const config = this.config;
+    if (!config) return;
 
     this.listeners.forEach((listener) => {
       try {
-        listener(this.config!);
+        listener(config);
       } catch (error) {
         console.error('Error in config listener:', error);
       }

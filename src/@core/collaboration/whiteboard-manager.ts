@@ -11,7 +11,6 @@ import {
   WhiteboardAnnotation,
   WhiteboardAnnotationData,
   CollaborationEvent,
-  Point,
 } from './types';
 
 export interface WhiteboardManagerOptions {
@@ -249,6 +248,7 @@ export class WhiteboardManager {
     }
 
     const layer = session.layers[layerIndex];
+    if (!layer) return false;
 
     // Check permissions (only owner can delete)
     if (layer.ownerId !== userId) {
@@ -419,6 +419,7 @@ export class WhiteboardManager {
     }
 
     const annotation = layer.annotations[annotationIndex];
+    if (!annotation) return false;
 
     // Check permissions (creator or layer owner can delete)
     if (annotation.userId !== userId && layer.ownerId !== userId) {

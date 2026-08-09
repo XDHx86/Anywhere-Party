@@ -3,7 +3,7 @@
  * Tests requirements 9.1, 9.2, 9.3
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { CollaborationManager } from './collaboration-manager';
 
 describe('CollaborationManager', () => {
@@ -375,9 +375,13 @@ describe('CollaborationManager', () => {
       const results = collaborationManager.getPollResults(poll.id);
       expect(results).toBeDefined();
 
+      if (!results) {
+        throw new Error('Expected poll results to be defined');
+      }
+
       const exportResult = collaborationManager.exportPollResults(
-        results!.poll,
-        results!.votes,
+        results.poll,
+        results.votes,
         mockUserId,
         mockUserName
       );

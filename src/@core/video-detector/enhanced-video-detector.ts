@@ -51,7 +51,11 @@ export class EnhancedVideoDetector {
       const automaticResult = await this.attemptAutomaticDetection();
 
       if (automaticResult.success) {
-        this.selectedVideo = automaticResult.video!;
+        const video = automaticResult.video;
+        if (!video) {
+          throw new Error('Automatic detection succeeded but returned no video element');
+        }
+        this.selectedVideo = video;
         this.notifyStatusChange();
         return automaticResult;
       }
@@ -169,6 +173,7 @@ export class EnhancedVideoDetector {
         // Return the first visible video
         for (let i = 0; i < videos.length; i++) {
           const video = videos[i];
+          if (!video) continue;
           if (this.isVideoVisible(video)) {
             return video;
           }

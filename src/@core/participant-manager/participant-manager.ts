@@ -211,10 +211,12 @@ export class ParticipantManager {
     eventType: ParticipantEventType,
     callback: (event: ParticipantEvent) => void
   ): () => void {
-    if (!this.eventListeners.has(eventType)) {
-      this.eventListeners.set(eventType, new Set());
+    let listeners = this.eventListeners.get(eventType);
+    if (!listeners) {
+      listeners = new Set();
+      this.eventListeners.set(eventType, listeners);
     }
-    this.eventListeners.get(eventType)!.add(callback);
+    listeners.add(callback);
 
     return () => {
       this.eventListeners.get(eventType)?.delete(callback);

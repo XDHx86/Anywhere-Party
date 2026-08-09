@@ -9,14 +9,11 @@
 import {
   AnnotationLayerOptions,
   Annotation,
-  AnnotationLayer as Layer,
+  AnnotationLayer as AnnotationLayerType,
   AnnotationState,
   DrawingTool,
-  AnnotationType,
   AnnotationAction,
-  AnnotationMessage,
   CanvasEventHandlers,
-  Point,
 } from './types';
 
 export class AnnotationLayer {
@@ -56,7 +53,7 @@ export class AnnotationLayer {
     };
 
     // Create default layer without adding to undo stack
-    const defaultLayer: Layer = {
+    const defaultLayer: AnnotationLayerType = {
       id: 'default',
       name: 'Default Layer',
       visible: true,
@@ -178,7 +175,7 @@ export class AnnotationLayer {
       return false;
     }
 
-    const layer: Layer = {
+    const layer: AnnotationLayerType = {
       id,
       name,
       visible: true,
@@ -414,8 +411,8 @@ export class AnnotationLayer {
    */
   deleteAnnotation(annotationId: string): void {
     for (const layer of this.state.layers.values()) {
-      if (layer.annotations.has(annotationId)) {
-        const annotation = layer.annotations.get(annotationId)!;
+      const annotation = layer.annotations.get(annotationId);
+      if (annotation !== undefined) {
         layer.annotations.delete(annotationId);
 
         const action: AnnotationAction = {
@@ -444,11 +441,11 @@ export class AnnotationLayer {
    * Undo last action
    */
   undo(): boolean {
-    if (this.state.undoStack.length === 0) {
+    const action = this.state.undoStack.pop();
+    if (action === undefined) {
       return false;
     }
 
-    const action = this.state.undoStack.pop()!;
     this.state.redoStack.push(action);
 
     this.applyUndoAction(action);
@@ -460,11 +457,11 @@ export class AnnotationLayer {
    * Redo last undone action
    */
   redo(): boolean {
-    if (this.state.redoStack.length === 0) {
+    const action = this.state.redoStack.pop();
+    if (action === undefined) {
       return false;
     }
 
-    const action = this.state.redoStack.pop()!;
     this.state.undoStack.push(action);
 
     this.applyRedoAction(action);
@@ -517,9 +514,9 @@ export class AnnotationLayer {
   private canAccessVideoElement(video: HTMLVideoElement): boolean {
     try {
       // Try to access video properties that might be blocked by CORS
-      const _ = video.currentTime;
-      const __ = video.duration;
-      const ___ = video.videoWidth;
+      void video.currentTime;
+      void video.duration;
+      void video.videoWidth;
       return true;
     } catch (error) {
       console.warn('Video element access blocked by CORS:', error);
@@ -733,11 +730,17 @@ export class AnnotationLayer {
     this.ctx.globalAlpha = 1;
 
     this.ctx.beginPath();
-    this.ctx.moveTo(annotation.data.points[0].x, annotation.data.points[0].y);
-    for (let i = 1; i < annotation.data.points.length; i++) {
-      this.ctx.lineTo(annotation.data.points[i].x, annotation.data.points[i].y);
+    const firstPoint = annotation.data.points[0];
+    if (firstPoint) {
+      this.ctx.moveTo(firstPoint.x, firstPoint.y);
+      for (let i = 1; i < annotation.data.points.length; i++) {
+        const point = annotation.data.points[i];
+        if (point) {
+          this.ctx.lineTo(point.x, point.y);
+        }
+      }
+      this.ctx.stroke();
     }
-    this.ctx.stroke();
 
     this.ctx.globalCompositeOperation = prevComposite;
   }
@@ -754,11 +757,17 @@ export class AnnotationLayer {
     this.ctx.lineJoin = 'round';
 
     this.ctx.beginPath();
-    this.ctx.moveTo(annotation.data.points[0].x, annotation.data.points[0].y);
-    for (let i = 1; i < annotation.data.points.length; i++) {
-      this.ctx.lineTo(annotation.data.points[i].x, annotation.data.points[i].y);
+    const firstPoint = annotation.data.points[0];
+    if (firstPoint) {
+      this.ctx.moveTo(firstPoint.x, firstPoint.y);
+      for (let i = 1; i < annotation.data.points.length; i++) {
+        const point = annotation.data.points[i];
+        if (point) {
+          this.ctx.lineTo(point.x, point.y);
+        }
+      }
+      this.ctx.stroke();
     }
-    this.ctx.stroke();
 
     this.ctx.globalCompositeOperation = prevComposite;
   }
@@ -796,13 +805,17 @@ export class AnnotationLayer {
     if (!this.ctx || !annotation.data.points || annotation.data.points.length < 2) return;
 
     this.ctx.beginPath();
-    this.ctx.moveTo(annotation.data.points[0].x, annotation.data.points[0].y);
-
-    for (let i = 1; i < annotation.data.points.length; i++) {
-      this.ctx.lineTo(annotation.data.points[i].x, annotation.data.points[i].y);
+    const firstPoint = annotation.data.points[0];
+    if (firstPoint) {
+      this.ctx.moveTo(firstPoint.x, firstPoint.y);
+      for (let i = 1; i < annotation.data.points.length; i++) {
+        const point = annotation.data.points[i];
+        if (point) {
+          this.ctx.lineTo(point.x, point.y);
+        }
+      }
+      this.ctx.stroke();
     }
-
-    this.ctx.stroke();
   }
 
   private renderRectangleAnnotation(annotation: Annotation): void {
@@ -908,7 +921,7 @@ export class AnnotationLayer {
     this.continueDrawing(x, y);
   }
 
-  private handleMouseUp(event: MouseEvent): void {
+  private handleMouseUp(_event: MouseEvent): void {
     if (!this.state.isDrawing) return;
     this.finishDrawing();
   }
@@ -919,6 +932,7 @@ export class AnnotationLayer {
 
     const rect = this.canvas.getBoundingClientRect();
     const touch = event.touches[0];
+    if (!touch) return;
     const x = touch.clientX - rect.left;
     const y = touch.clientY - rect.top;
 
@@ -931,6 +945,7 @@ export class AnnotationLayer {
 
     const rect = this.canvas.getBoundingClientRect();
     const touch = event.touches[0];
+    if (!touch) return;
     const x = touch.clientX - rect.left;
     const y = touch.clientY - rect.top;
 
@@ -1088,7 +1103,8 @@ export class AnnotationLayer {
         if (action.annotationId && action.layerId && action.previousState) {
           const layer = this.state.layers.get(action.layerId);
           if (layer) {
-            layer.annotations.set(action.annotationId, action.previousState);
+            const annotation = action.previousState as Annotation;
+            layer.annotations.set(action.annotationId, annotation);
           }
         }
         break;
@@ -1099,14 +1115,16 @@ export class AnnotationLayer {
         break;
       case 'layer_delete':
         if (action.layerId && action.previousState) {
-          this.state.layers.set(action.layerId, action.previousState);
+          const layer = action.previousState as AnnotationLayerType;
+          this.state.layers.set(action.layerId, layer);
         }
         break;
       case 'layer_visibility':
         if (action.layerId && action.previousState) {
           const layer = this.state.layers.get(action.layerId);
           if (layer) {
-            layer.visible = action.previousState.visible;
+            const prevState = action.previousState as { visible: boolean };
+            layer.visible = prevState.visible;
           }
         }
         break;
@@ -1119,7 +1137,8 @@ export class AnnotationLayer {
         if (action.annotationId && action.layerId && action.newState) {
           const layer = this.state.layers.get(action.layerId);
           if (layer) {
-            layer.annotations.set(action.annotationId, action.newState);
+            const annotation = action.newState as Annotation;
+            layer.annotations.set(action.annotationId, annotation);
           }
         }
         break;
@@ -1133,7 +1152,8 @@ export class AnnotationLayer {
         break;
       case 'layer_create':
         if (action.layerId && action.newState) {
-          this.state.layers.set(action.layerId, action.newState);
+          const layer = action.newState as AnnotationLayerType;
+          this.state.layers.set(action.layerId, layer);
         }
         break;
       case 'layer_delete':
@@ -1145,7 +1165,8 @@ export class AnnotationLayer {
         if (action.layerId && action.newState) {
           const layer = this.state.layers.get(action.layerId);
           if (layer) {
-            layer.visible = action.newState.visible;
+            const newState = action.newState as { visible: boolean };
+            layer.visible = newState.visible;
           }
         }
         break;

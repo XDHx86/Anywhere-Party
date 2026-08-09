@@ -42,7 +42,7 @@ export class TelemetryService {
   private async getAnonymizedUserId(): Promise<string> {
     const result = await this.browserBridge.storage.local.get('anonymizedUserId');
     if (result.anonymizedUserId) {
-      return result.anonymizedUserId;
+      return result.anonymizedUserId as string;
     }
 
     // Generate anonymized ID (same as logger for consistency)
@@ -65,11 +65,11 @@ export class TelemetryService {
       this.config.optOut = true;
       await this.browserBridge.storage.local.set({ telemetryOptOut: true });
     } else {
-      this.config.optOut = result.telemetryOptOut;
+      this.config.optOut = result.telemetryOptOut as boolean;
     }
   }
 
-  setUserId(userId: string): void {
+  setUserId(_userId: string): void {
     // Don't store the actual user ID, keep using anonymized version
     // This method exists for API compatibility but maintains anonymization
   }
@@ -94,7 +94,7 @@ export class TelemetryService {
 
   private createTelemetryEvent(
     event: string,
-    properties?: Record<string, any>,
+    properties?: Record<string, unknown>,
     metrics?: Record<string, number>
   ): TelemetryEvent {
     const telemetryEvent: TelemetryEvent = {
@@ -112,7 +112,9 @@ export class TelemetryService {
     return telemetryEvent;
   }
 
-  private anonymizeProperties(properties?: Record<string, any>): Record<string, any> | undefined {
+  private anonymizeProperties(
+    properties?: Record<string, unknown>
+  ): Record<string, unknown> | undefined {
     if (!properties || !this.config.anonymizeData) {
       return properties;
     }
@@ -215,7 +217,8 @@ export class TelemetryService {
   private async storeLocally(events: TelemetryEvent[]): Promise<void> {
     try {
       const result = await this.browserBridge.storage.local.get('watchPartyTelemetry');
-      const existingEvents: TelemetryEvent[] = result.watchPartyTelemetry || [];
+      const existingEvents: TelemetryEvent[] =
+        (result.watchPartyTelemetry as TelemetryEvent[] | undefined) || [];
 
       const allEvents = [...existingEvents, ...events];
 
@@ -283,7 +286,7 @@ export class TelemetryService {
     this.addToBuffer(event);
   }
 
-  trackUserAction(action: string, properties?: Record<string, any>): void {
+  trackUserAction(action: string, properties?: Record<string, unknown>): void {
     const event = this.createTelemetryEvent('user_action', {
       action,
       ...properties,
@@ -322,14 +325,14 @@ export class TelemetryService {
 
   async getOptOutStatus(): Promise<boolean> {
     const result = await this.browserBridge.storage.local.get('telemetryOptOut');
-    return result.telemetryOptOut !== undefined ? result.telemetryOptOut : true; // Default to opt-out
+    return result.telemetryOptOut !== undefined ? (result.telemetryOptOut as boolean) : true; // Default to opt-out
   }
 
   // Export telemetry data
   async exportTelemetryData(): Promise<TelemetryEvent[]> {
     try {
       const result = await this.browserBridge.storage.local.get('watchPartyTelemetry');
-      return result.watchPartyTelemetry || [];
+      return (result.watchPartyTelemetry as TelemetryEvent[] | undefined) || [];
     } catch (error) {
       console.error('Failed to export telemetry data:', error);
       return [];

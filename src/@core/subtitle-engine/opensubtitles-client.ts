@@ -10,6 +10,25 @@ export interface OpenSubtitlesConfig {
   baseUrl: string;
 }
 
+/** A single subtitle entry from the OpenSubtitles API response */
+interface OpenSubtitlesApiItem {
+  id?: string;
+  attributes?: {
+    language?: string;
+    files?: Array<{
+      file_id?: number | string;
+      file_name?: string;
+    }>;
+    ratings?: string;
+    download_count?: string;
+  };
+}
+
+/** Search response shape returned by the OpenSubtitles API */
+interface OpenSubtitlesApiResponse {
+  data?: OpenSubtitlesApiItem[];
+}
+
 export class OpenSubtitlesClient {
   private static readonly DEFAULT_BASE_URL = 'https://api.opensubtitles.com/api/v1';
   private static readonly DEFAULT_USER_AGENT = 'WatchPartyExtension v1.0';
@@ -109,7 +128,7 @@ export class OpenSubtitlesClient {
         }
       }
 
-      const data = await response.json();
+      const data: OpenSubtitlesApiResponse = await response.json();
 
       if (!data.data || !Array.isArray(data.data)) {
         return [];
@@ -117,7 +136,7 @@ export class OpenSubtitlesClient {
 
       return data.data
         .slice(0, maxResults)
-        .map((item: any) => this.mapSearchResult(item))
+        .map((item) => this.mapSearchResult(item))
         .filter(
           (result: OpenSubtitlesSearchResult | null) => result !== null
         ) as OpenSubtitlesSearchResult[];
@@ -264,7 +283,7 @@ export class OpenSubtitlesClient {
   /**
    * Map OpenSubtitles API response to our search result format
    */
-  private mapSearchResult(item: any): OpenSubtitlesSearchResult | null {
+  private mapSearchResult(item: OpenSubtitlesApiItem): OpenSubtitlesSearchResult | null {
     try {
       if (
         !item.attributes ||
@@ -276,14 +295,15 @@ export class OpenSubtitlesClient {
       }
 
       const file = item.attributes.files[0];
+      if (!file) return null;
 
       return {
-        id: file.file_id?.toString() || item.id?.toString(),
+        id: file.file_id?.toString() || item.id?.toString() || '',
         language: item.attributes.language || 'unknown',
         fileName: file.file_name || 'subtitle.srt',
         downloadUrl: '', // Will be populated during download
-        rating: parseFloat(item.attributes.ratings) || 0,
-        downloadCount: parseInt(item.attributes.download_count) || 0,
+        rating: parseFloat(item.attributes.ratings ?? '') || 0,
+        downloadCount: parseInt(item.attributes.download_count ?? '', 10) || 0,
       };
     } catch {
       return null;
