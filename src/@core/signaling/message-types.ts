@@ -246,7 +246,7 @@ export interface ErrorMessage extends BaseMessage {
   error: {
     code: string;
     message: string;
-    details?: any;
+    details?: unknown;
   };
 }
 
@@ -536,8 +536,13 @@ export enum SignalingErrorCode {
 }
 
 // Message validation utilities
-export function isClientMessage(message: any): message is ClientMessage {
-  if (!message || typeof message !== 'object' || typeof message.type !== 'string') {
+export function isClientMessage(message: unknown): message is ClientMessage {
+  if (
+    !message ||
+    typeof message !== 'object' ||
+    !('type' in message) ||
+    typeof message.type !== 'string'
+  ) {
     return false;
   }
 
@@ -568,8 +573,13 @@ export function isClientMessage(message: any): message is ClientMessage {
   ].includes(message.type);
 }
 
-export function isServerMessage(message: any): message is ServerMessage {
-  if (!message || typeof message !== 'object' || typeof message.type !== 'string') {
+export function isServerMessage(message: unknown): message is ServerMessage {
+  if (
+    !message ||
+    typeof message !== 'object' ||
+    !('type' in message) ||
+    typeof message.type !== 'string'
+  ) {
     return false;
   }
 
@@ -602,13 +612,14 @@ export function isServerMessage(message: any): message is ServerMessage {
   ].includes(message.type);
 }
 
-export function validateMessage(message: any): { valid: boolean; error?: string } {
-  if (!message || typeof message !== 'object') {
-    return { valid: false, error: 'Message must be an object' };
-  }
-
-  if (!message.type || typeof message.type !== 'string') {
-    return { valid: false, error: 'Message must have a string type field' };
+export function validateMessage(message: unknown): { valid: boolean; error?: string } {
+  if (
+    !message ||
+    typeof message !== 'object' ||
+    !('type' in message) ||
+    typeof message.type !== 'string'
+  ) {
+    return { valid: false, error: 'Message must be an object with a string type field' };
   }
 
   // Check if message type is valid
@@ -773,7 +784,7 @@ export function createHeartbeatMessage(userId: string): HeartbeatMessage {
   };
 }
 
-export function createErrorMessage(code: string, message: string, details?: any): ErrorMessage {
+export function createErrorMessage(code: string, message: string, details?: unknown): ErrorMessage {
   return {
     type: 'ERROR',
     error: { code, message, details },

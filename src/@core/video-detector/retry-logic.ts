@@ -67,7 +67,7 @@ export class RetryManager {
         const result = await operation();
         this.reset();
         onSuccess(result);
-      } catch (error) {
+      } catch {
         this.scheduleRetry(operation, onSuccess, onError);
       }
     }, delay);

@@ -12,7 +12,7 @@ import {
   SyncMessage,
   VideoEventHandlers,
 } from './types';
-import { PlaybackState, createSyncStateMessage } from '../signaling/message-types';
+import { PlaybackState } from '../signaling/message-types';
 import { ExtensionConfig } from '../browser-bridge/types';
 import { PerformanceManager } from '../performance/performance-manager';
 

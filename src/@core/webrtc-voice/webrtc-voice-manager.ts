@@ -48,7 +48,9 @@ export class WebRTCVoiceManager {
     connected: false,
     connectionType: 'failed',
   };
-  private eventListeners = new Map<string, Function[]>();
+  // Event emitter uses `unknown[]` for callback args so consumers can register typed handlers
+  // (standard pattern for event emitter APIs where payloads are dispatch-time only).
+  private eventListeners = new Map<string, Array<(...args: unknown[]) => void>>();
 
   constructor(config: WebRTCVoiceConfig) {
     this.config = config;
@@ -187,16 +189,19 @@ export class WebRTCVoiceManager {
     this.participants.set(userId, participantState);
 
     // Add local stream to peer connection
-    if (this.localStream) {
-      this.localStream.getTracks().forEach((track) => {
-        peerConnection.addTrack(track, this.localStream!);
+    const localStream = this.localStream;
+    if (localStream) {
+      localStream.getTracks().forEach((track) => {
+        peerConnection.addTrack(track, localStream);
       });
     }
 
     // Handle incoming audio stream
     peerConnection.ontrack = (event) => {
-      participantState.audioStream = event.streams[0];
-      this.setupAudioElement(userId, event.streams[0]);
+      const remoteStream = event.streams[0];
+      if (!remoteStream) return;
+      participantState.audioStream = remoteStream;
+      this.setupAudioElement(userId, remoteStream);
       participantState.connected = true;
       this.emit('participantConnected', userId);
     };
@@ -499,25 +504,29 @@ export class WebRTCVoiceManager {
 
   /**
    * Event system for WebRTC voice events
+   *
+   * `on`/`off` are generic over the callback args so consumers can subscribe
+   * with fully typed handlers. Payloads are dispatch-time only, so the type
+   * is inferred from the registered callback rather than declared up front.
    */
-  on(event: string, callback: Function): void {
+  on<TArgs extends unknown[]>(event: string, callback: (...args: TArgs) => void): void {
     if (!this.eventListeners.has(event)) {
       this.eventListeners.set(event, []);
     }
-    this.eventListeners.get(event)!.push(callback);
+    this.eventListeners.get(event)?.push(callback as (...args: unknown[]) => void);
   }
 
-  off(event: string, callback: Function): void {
+  off<TArgs extends unknown[]>(event: string, callback: (...args: TArgs) => void): void {
     const listeners = this.eventListeners.get(event);
     if (listeners) {
-      const index = listeners.indexOf(callback);
+      const index = listeners.indexOf(callback as (...args: unknown[]) => void);
       if (index > -1) {
         listeners.splice(index, 1);
       }
     }
   }
 
-  private emit(event: string, data?: any): void {
+  private emit(event: string, data?: unknown): void {
     const listeners = this.eventListeners.get(event);
     if (listeners) {
       listeners.forEach((callback) => callback(data));

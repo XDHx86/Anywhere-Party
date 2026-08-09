@@ -9,11 +9,6 @@ import {
   NotificationsAPI,
 } from './types';
 
-// Type aliases for better compatibility
-type BrowserTabs = typeof browser.tabs;
-type BrowserRuntime = typeof browser.runtime;
-type BrowserPermissions = typeof browser.permissions;
-
 /**
  * Firefox-specific browser bridge implementation
  * Uses webextension-polyfill for consistent Promise-based API
@@ -22,12 +17,14 @@ type BrowserPermissions = typeof browser.permissions;
 class FirefoxStorageArea implements StorageArea {
   constructor(private area: typeof browser.storage.local) {}
 
-  async get(keys?: string | string[] | Record<string, any> | null): Promise<Record<string, any>> {
-    return this.area.get(keys);
+  async get(
+    keys?: string | string[] | Record<string, unknown> | null
+  ): Promise<Record<string, unknown>> {
+    return this.area.get(keys) as Promise<Record<string, unknown>>;
   }
 
-  async set(items: Record<string, any>): Promise<void> {
-    return this.area.set(items);
+  async set(items: Record<string, unknown>): Promise<void> {
+    return this.area.set(items as Record<string, unknown>);
   }
 
   async remove(keys: string | string[]): Promise<void> {
@@ -40,79 +37,116 @@ class FirefoxStorageArea implements StorageArea {
 }
 
 class FirefoxRuntimeAPI implements RuntimeAPI {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- chrome runtime delivers untyped payloads
+  private onMessageListeners = new WeakMap<
+    (
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- chrome runtime delivers untyped payloads
+      message: any,
+      sender: chrome.runtime.MessageSender | undefined,
+      sendResponse: (response?: unknown) => void
+    ) => void | boolean | Promise<unknown>,
+    (message: unknown, sender: unknown) => Promise<unknown>
+  >();
+
   get id(): string {
     return browser.runtime.id;
   }
 
-  async sendMessage(messageOrExtensionId: any, message?: any): Promise<any> {
+  async sendMessage(messageOrExtensionId: unknown, message?: unknown): Promise<unknown> {
     if (typeof messageOrExtensionId === 'string' && message !== undefined) {
       // Extension ID provided
-      return browser.runtime.sendMessage(messageOrExtensionId, message);
+      return browser.runtime.sendMessage(messageOrExtensionId, message as never);
     } else {
       // No extension ID, send to own extension
-      return browser.runtime.sendMessage(messageOrExtensionId);
+      return browser.runtime.sendMessage(messageOrExtensionId as never);
     }
   }
 
   onMessage = {
     addListener: (
       callback: (
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- chrome runtime delivers untyped payloads
         message: any,
-        sender: any,
-        sendResponse: (response?: any) => void
-      ) => void | boolean | Promise<any>
+        sender: chrome.runtime.MessageSender | undefined,
+        sendResponse: (response?: unknown) => void
+      ) => void | boolean | Promise<unknown>
     ) => {
-      browser.runtime.onMessage.addListener((message, sender) => {
+      const listener = (message: unknown, sender: unknown) => {
         return new Promise((resolve) => {
-          const result = callback(message, sender, resolve);
+          const result = callback(
+            message,
+            sender as chrome.runtime.MessageSender | undefined,
+            resolve as (response?: unknown) => void
+          );
           if (result instanceof Promise) {
             result.then(resolve);
           } else if (typeof result !== 'undefined') {
             resolve(result);
           }
         });
-      });
+      };
+
+      this.onMessageListeners.set(callback, listener);
+      browser.runtime.onMessage.addListener(listener);
     },
-    removeListener: (callback: Function) => {
-      browser.runtime.onMessage.removeListener(callback as any);
+    removeListener: (
+      callback: (
+        message: unknown,
+        sender: unknown,
+        sendResponse: (response?: unknown) => void
+      ) => void | boolean | Promise<unknown>
+    ) => {
+      const listener = this.onMessageListeners.get(callback);
+      if (listener) {
+        browser.runtime.onMessage.removeListener(listener);
+        this.onMessageListeners.delete(callback);
+      }
     },
   };
 
-  getManifest(): any {
-    return browser.runtime.getManifest();
+  getManifest(): Record<string, unknown> {
+    return browser.runtime.getManifest() as unknown as Record<string, unknown>;
   }
 }
 
 class FirefoxTabsAPI implements TabsAPI {
-  async query(queryInfo: any): Promise<any[]> {
-    return browser.tabs.query(queryInfo);
+  async query(queryInfo: chrome.tabs.QueryInfo): Promise<chrome.tabs.Tab[]> {
+    return browser.tabs.query(queryInfo as unknown as browser.Tabs.QueryQueryInfoType) as Promise<
+      chrome.tabs.Tab[]
+    >;
   }
 
-  async sendMessage(tabId: number, message: any): Promise<any> {
-    return browser.tabs.sendMessage(tabId, message);
+  async sendMessage(tabId: number, message: unknown): Promise<unknown> {
+    return browser.tabs.sendMessage(tabId, message as never);
   }
 
   onUpdated = {
-    addListener: (callback: (tabId: number, changeInfo: any, tab: any) => void) => {
-      browser.tabs.onUpdated.addListener(callback);
+    addListener: (
+      callback: (tabId: number, changeInfo: chrome.tabs.OnUpdatedInfo, tab: chrome.tabs.Tab) => void
+    ) => {
+      browser.tabs.onUpdated.addListener(
+        callback as unknown as Parameters<typeof browser.tabs.onUpdated.addListener>[0]
+      );
     },
-    removeListener: (callback: Function) => {
-      browser.tabs.onUpdated.removeListener(callback as any);
+    removeListener: (callback: (...args: unknown[]) => void) => {
+      browser.tabs.onUpdated.removeListener(
+        callback as unknown as Parameters<typeof browser.tabs.onUpdated.removeListener>[0]
+      );
     },
   };
 }
 
 class FirefoxPermissionsAPI implements PermissionsAPI {
-  async request(permissions: any): Promise<boolean> {
-    return browser.permissions.request(permissions);
+  async request(permissions: chrome.permissions.Permissions): Promise<boolean> {
+    return browser.permissions.request(permissions as never);
   }
 
-  async contains(permissions: any): Promise<boolean> {
-    return browser.permissions.contains(permissions);
+  async contains(permissions: chrome.permissions.Permissions): Promise<boolean> {
+    return browser.permissions.contains(permissions as never);
   }
 
-  async remove(permissions: any): Promise<boolean> {
-    return browser.permissions.remove(permissions);
+  async remove(permissions: chrome.permissions.Permissions): Promise<boolean> {
+    return browser.permissions.remove(permissions as never);
   }
 }
 
@@ -136,10 +170,22 @@ class FirefoxAlarmsAPI implements AlarmsAPI {
     addListener: (
       callback: (alarm: { name: string; scheduledTime: number; periodInMinutes?: number }) => void
     ) => {
-      browser.alarms.onAlarm.addListener(callback as any);
+      browser.alarms.onAlarm.addListener(
+        callback as unknown as (alarm: {
+          name: string;
+          scheduledTime: number;
+          periodInMinutes?: number;
+        }) => void
+      );
     },
-    removeListener: (callback: Function) => {
-      browser.alarms.onAlarm.removeListener(callback as any);
+    removeListener: (callback: (...args: unknown[]) => void) => {
+      browser.alarms.onAlarm.removeListener(
+        callback as unknown as (alarm: {
+          name: string;
+          scheduledTime: number;
+          periodInMinutes?: number;
+        }) => void
+      );
     },
   };
 }
@@ -156,7 +202,7 @@ class FirefoxNotificationsAPI implements NotificationsAPI {
       buttons?: Array<{ title: string; iconUrl?: string }>;
     }
   ): Promise<string> {
-    return browser.notifications.create(id, options as any);
+    return browser.notifications.create(id, options as unknown as never);
   }
 
   async clear(id: string): Promise<boolean> {
@@ -174,8 +220,10 @@ class FirefoxNotificationsAPI implements NotificationsAPI {
     addListener: (callback: (notificationId: string) => void) => {
       browser.notifications.onClicked.addListener(callback);
     },
-    removeListener: (callback: Function) => {
-      browser.notifications.onClicked.removeListener(callback as any);
+    removeListener: (callback: (...args: unknown[]) => void) => {
+      browser.notifications.onClicked.removeListener(
+        callback as unknown as (notificationId: string) => void
+      );
     },
   };
 }

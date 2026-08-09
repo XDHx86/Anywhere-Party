@@ -2,7 +2,7 @@
  * Tests for KeyboardNavigation
  */
 
-import { KeyboardNavigation, NavigationOptions } from './keyboard-navigation';
+import { KeyboardNavigation } from './keyboard-navigation';
 
 describe('KeyboardNavigation', () => {
   let container: HTMLElement;
@@ -353,7 +353,7 @@ describe('KeyboardNavigation', () => {
       button.focus();
 
       // Trigger focusin event
-      const focusEvent = new FocusEvent('focusin', { target: button } as any);
+      const focusEvent = new FocusEvent('focusin', { target: button } as unknown as FocusEventInit);
       container.dispatchEvent(focusEvent);
 
       const currentElement = keyboardNavigation.getCurrentElement();

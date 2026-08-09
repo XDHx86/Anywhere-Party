@@ -21,6 +21,9 @@ export interface SubtitleCue {
   endTime: number; // in seconds
   text: string;
   id?: string;
+  trackId?: string; // Track this cue belongs to (attached during cue retrieval)
+  language?: string; // Language of the cue's track
+  priority?: number; // Display priority of the cue's track
 }
 
 export interface SubtitleValidationResult {
@@ -154,5 +157,5 @@ export interface SubtitleMessage {
     | 'subtitle_preferences_updated';
   trackId: string;
   userId: string;
-  data?: any;
+  data?: unknown;
 }

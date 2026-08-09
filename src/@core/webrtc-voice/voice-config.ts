@@ -98,9 +98,12 @@ export class VoiceConfigManager {
    */
   async loadConfig(): Promise<VoiceConfigSchema> {
     try {
-      const stored = await browser.storage.local.get(this.storageKey);
+      const stored = (await browser.storage.local.get(this.storageKey)) as Record<string, unknown>;
       if (stored[this.storageKey]) {
-        this.config = { ...DEFAULT_VOICE_CONFIG, ...stored[this.storageKey] };
+        this.config = {
+          ...DEFAULT_VOICE_CONFIG,
+          ...(stored[this.storageKey] as Partial<VoiceConfigSchema>),
+        };
       }
     } catch (error) {
       console.warn('Failed to load voice config from storage:', error);
@@ -282,7 +285,7 @@ export class VoiceConfigManager {
       } else {
         return { success: false, errors: validation.errors };
       }
-    } catch (error) {
+    } catch {
       return {
         success: false,
         errors: ['Invalid JSON format'],

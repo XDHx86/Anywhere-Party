@@ -44,11 +44,12 @@ export interface LoadingOptimizationMetrics {
 class ComponentLoadingOptimizer {
   private lazyComponents: Map<string, LazyComponentConfig> = new Map();
   private preloadedResources: Set<string> = new Set();
-  private componentCache: Map<string, any> = new Map();
-  private loadingPromises: Map<string, Promise<any>> = new Map();
+  private componentCache: Map<string, unknown> = new Map();
+  private loadingPromises: Map<string, Promise<unknown>> = new Map();
   private preloadPromises: Map<string, Promise<void>> = new Map();
   private config: BundleOptimizationConfig;
   private metrics: LoadingOptimizationMetrics[] = [];
+  private lazyLoadingObserver?: IntersectionObserver;
 
   constructor(config?: Partial<BundleOptimizationConfig>) {
     this.config = {
@@ -95,7 +96,9 @@ class ComponentLoadingOptimizer {
   /**
    * Create a lazy-loaded React component
    */
-  createLazyComponent(componentName: string): React.LazyExoticComponent<any> | null {
+  createLazyComponent(
+    componentName: string
+  ): React.LazyExoticComponent<React.ComponentType<unknown>> | null {
     const config = this.lazyComponents.get(componentName);
     if (!config) {
       console.warn(`No lazy component config found for: ${componentName}`);
@@ -294,7 +297,7 @@ class ComponentLoadingOptimizer {
 
     // Set priority hint if supported
     if ('importance' in link) {
-      (link as any).importance = config.priority;
+      (link as HTMLLinkElement & { importance?: string }).importance = config.priority;
     }
 
     link.onload = () => {
@@ -339,7 +342,7 @@ class ComponentLoadingOptimizer {
     );
 
     // Store observer for later use
-    (this as any).lazyLoadingObserver = observer;
+    this.lazyLoadingObserver = observer;
   }
 
   /**
@@ -547,8 +550,8 @@ class ComponentLoadingOptimizer {
     this.metrics = [];
 
     // Disconnect lazy loading observer
-    if ((this as any).lazyLoadingObserver) {
-      (this as any).lazyLoadingObserver.disconnect();
+    if (this.lazyLoadingObserver) {
+      this.lazyLoadingObserver.disconnect();
     }
 
     console.log('🧹 Component loading optimizer destroyed');

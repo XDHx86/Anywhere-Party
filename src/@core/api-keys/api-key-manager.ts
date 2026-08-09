@@ -191,6 +191,7 @@ export class APIKeyManager {
         return null;
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { key, ...info } = keyConfig;
       return info;
     } catch (error) {
@@ -295,10 +296,10 @@ export class APIKeyManager {
   private async getAllStoredKeys(): Promise<Record<string, APIKeyConfig>> {
     try {
       const result = await this.browserBridge.storage.local.get(this.STORAGE_KEY);
-      const keys = result[this.STORAGE_KEY] || {};
+      const keys = (result[this.STORAGE_KEY] as Record<string, APIKeyConfig>) || {};
 
       // Convert date strings back to Date objects
-      Object.values(keys).forEach((keyConfig: any) => {
+      Object.values(keys).forEach((keyConfig: APIKeyConfig) => {
         if (keyConfig.createdAt && typeof keyConfig.createdAt === 'string') {
           keyConfig.createdAt = new Date(keyConfig.createdAt);
         }
@@ -405,6 +406,7 @@ export class APIKeyManager {
       const exportData: Record<string, Omit<APIKeyConfig, 'key'>> = {};
 
       Object.entries(keys).forEach(([service, config]) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { key, ...info } = config;
         exportData[service] = info;
       });

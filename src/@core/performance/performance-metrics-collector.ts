@@ -174,9 +174,9 @@ class PerformanceMetricsCollector {
 
       // Add battery and thermal info if available
       if ('getBattery' in navigator) {
-        (navigator as any)
+        (navigator as Navigator & { getBattery: () => Promise<{ level: number }> })
           .getBattery()
-          .then((battery: any) => {
+          .then((battery: { level: number }) => {
             metrics.batteryLevel = Math.round(battery.level * 100);
           })
           .catch(() => {
@@ -224,7 +224,7 @@ class PerformanceMetricsCollector {
     }
   }
 
-  private processMemoryEntry(entry: PerformanceEntry): void {
+  private processMemoryEntry(_entry: PerformanceEntry): void {
     const memoryUsage = this.getCurrentMemoryUsage();
 
     // Update peak memory for current component
@@ -247,9 +247,12 @@ class PerformanceMetricsCollector {
   }
 
   private getCurrentMemoryUsage(): MemoryUsage {
-    const perf = (globalThis as { performance?: { memory?: any } }).performance;
-    if (perf && 'memory' in perf) {
-      const memory = perf.memory;
+    const memory = (
+      globalThis.performance as
+        | { memory?: { usedJSHeapSize: number; totalJSHeapSize: number; jsHeapSizeLimit: number } }
+        | undefined
+    )?.memory;
+    if (memory) {
       const used = memory.usedJSHeapSize;
       const total = memory.totalJSHeapSize;
       const limit = memory.jsHeapSizeLimit;
@@ -271,7 +274,7 @@ class PerformanceMetricsCollector {
 
   private measureNetworkLatency(): number | undefined {
     // Use navigation timing to estimate network latency
-    const perf = (globalThis as { performance?: { timing?: any } }).performance;
+    const perf = globalThis.performance;
     if (perf && perf.timing) {
       const timing = perf.timing;
       return timing.responseStart - timing.requestStart;

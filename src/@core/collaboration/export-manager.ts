@@ -11,7 +11,12 @@ import {
   Quiz,
   Bookmark,
   Highlight,
+  PollVote,
+  PollOption,
+  QuizResponse,
+  QuizAnswer,
   WhiteboardSession,
+  WhiteboardAnnotation,
   CollaborationEvent,
 } from './types';
 
@@ -46,7 +51,12 @@ export class ExportManager {
   /**
    * Export poll results
    */
-  exportPollResults(poll: Poll, votes: any[], userId: string, userName: string): ExportableResult {
+  exportPollResults(
+    poll: Poll,
+    votes: PollVote[],
+    userId: string,
+    userName: string
+  ): ExportableResult {
     const result: ExportableResult = {
       id: this.generateId(),
       type: 'poll',
@@ -58,14 +68,14 @@ export class ExportManager {
         poll,
         votes,
         totalVotes: votes.length,
-        participantCount: new Set(votes.map((v: any) => v.userId)).size,
+        participantCount: new Set(votes.map((v: PollVote) => v.userId)).size,
         results: poll.options.map((option) => ({
           option: option.text,
           votes: option.votes,
           percentage: votes.length > 0 ? (option.votes / votes.length) * 100 : 0,
         })),
       },
-      participants: Array.from(new Set(votes.map((v: any) => v.userId))),
+      participants: Array.from(new Set(votes.map((v: PollVote) => v.userId))),
       createdAt: poll.createdAt,
       exportedAt: Date.now(),
     };
@@ -91,22 +101,23 @@ export class ExportManager {
    */
   exportQuizResults(
     quiz: Quiz,
-    responses: any[],
+    responses: QuizResponse[],
     userId: string,
     userName: string
   ): ExportableResult {
     const totalResponses = responses.length;
     const averageScore =
       totalResponses > 0
-        ? responses.reduce((sum: number, r: any) => sum + r.score / r.maxScore, 0) / totalResponses
+        ? responses.reduce((sum: number, r: QuizResponse) => sum + r.score / r.maxScore, 0) /
+          totalResponses
         : 0;
 
     const questionStats = quiz.questions.map((question) => {
       const questionResponses = responses
-        .map((r: any) => r.answers.find((a: any) => a.questionId === question.id))
-        .filter(Boolean);
+        .map((r: QuizResponse) => r.answers.find((a: QuizAnswer) => a.questionId === question.id))
+        .filter((a): a is QuizAnswer => a !== undefined);
 
-      const correctCount = questionResponses.filter((a: any) => a.isCorrect).length;
+      const correctCount = questionResponses.filter((a: QuizAnswer) => a.isCorrect).length;
 
       return {
         question: question.question,
@@ -132,16 +143,16 @@ export class ExportManager {
         averageScore: averageScore * 100, // Convert to percentage
         questionStats,
         topScorers: responses
-          .sort((a: any, b: any) => b.score / b.maxScore - a.score / a.maxScore)
+          .sort((a: QuizResponse, b: QuizResponse) => b.score / b.maxScore - a.score / a.maxScore)
           .slice(0, 5)
-          .map((r: any) => ({
+          .map((r: QuizResponse) => ({
             userName: r.userName,
             score: r.score,
             maxScore: r.maxScore,
             percentage: (r.score / r.maxScore) * 100,
           })),
       },
-      participants: Array.from(new Set(responses.map((r: any) => r.userId))),
+      participants: Array.from(new Set(responses.map((r: QuizResponse) => r.userId))),
       createdAt: quiz.createdAt,
       exportedAt: Date.now(),
     };
@@ -178,7 +189,7 @@ export class ExportManager {
       title: `Bookmarks: ${title}`,
       description: `Collection of ${bookmarks.length} bookmarks`,
       roomId,
-      videoTimestamp: bookmarks.length > 0 ? bookmarks[0].videoTimestamp : 0,
+      videoTimestamp: bookmarks[0]?.videoTimestamp ?? 0,
       data: {
         bookmarks: bookmarks.map((bookmark) => ({
           title: bookmark.title,
@@ -241,7 +252,7 @@ export class ExportManager {
       title: `Highlights: ${title}`,
       description: `Collection of ${highlights.length} highlights`,
       roomId,
-      videoTimestamp: highlights.length > 0 ? highlights[0].startTimestamp : 0,
+      videoTimestamp: highlights[0]?.startTimestamp ?? 0,
       data: {
         highlights: highlights.map((highlight) => ({
           title: highlight.title,
@@ -421,7 +432,7 @@ export class ExportManager {
     description?: string,
     videoUrl?: string,
     thumbnail?: string,
-    annotations: any[] = [],
+    annotations: WhiteboardAnnotation[] = [],
     polls: Poll[] = [],
     bookmarks: Bookmark[] = [],
     highlights: Highlight[] = []
@@ -429,7 +440,7 @@ export class ExportManager {
     const participants = new Set<string>();
 
     // Collect all participants
-    annotations.forEach((a: any) => participants.add(a.userId));
+    annotations.forEach((a: WhiteboardAnnotation) => participants.add(a.userId));
     polls.forEach((p) => participants.add(p.userId));
     bookmarks.forEach((b) => participants.add(b.userId));
     highlights.forEach((h) => participants.add(h.userId));
@@ -596,7 +607,10 @@ export class ExportManager {
       .sort((a, b) => b.count - a.count);
   }
 
-  private getAnnotationTypeStats(annotations: any[]): { type: string; count: number }[] {
+  private getAnnotationTypeStats(annotations: WhiteboardAnnotation[]): {
+    type: string;
+    count: number;
+  }[] {
     const typeCounts = new Map<string, number>();
 
     annotations.forEach((annotation) => {
@@ -609,12 +623,13 @@ export class ExportManager {
   }
 
   private exportPollToCSV(result: ExportableResult): string {
-    const poll = result.data.poll;
-    const votes = result.data.votes;
+    const data = result.data as { poll: Poll; votes: PollVote[] };
+    const poll = data.poll;
+    const votes = data.votes;
 
     let csv = 'Poll Title,Question,Option,Votes,Percentage\n';
 
-    poll.options.forEach((option: any) => {
+    poll.options.forEach((option: PollOption) => {
       const percentage = votes.length > 0 ? (option.votes / votes.length) * 100 : 0;
       csv += `"${poll.title}","${poll.question}","${option.text}",${option.votes},${percentage.toFixed(2)}\n`;
     });
@@ -623,14 +638,31 @@ export class ExportManager {
   }
 
   private exportQuizToCSV(result: ExportableResult): string {
-    const quiz = result.data.quiz;
-    const responses = result.data.responses;
+    const data = result.data as {
+      quiz: Quiz;
+      questionStats: Array<{
+        question: string;
+        type: string;
+        correctAnswers: number;
+        totalAnswers: number;
+        accuracy: number;
+      }>;
+    };
+    const quiz = data.quiz;
 
     let csv = 'Quiz Title,Question,Question Type,Correct Answers,Total Answers,Accuracy\n';
 
-    result.data.questionStats.forEach((stat: any) => {
-      csv += `"${quiz.title}","${stat.question}","${stat.type}",${stat.correctAnswers},${stat.totalAnswers},${stat.accuracy.toFixed(2)}\n`;
-    });
+    data.questionStats.forEach(
+      (stat: {
+        question: string;
+        type: string;
+        correctAnswers: number;
+        totalAnswers: number;
+        accuracy: number;
+      }): void => {
+        csv += `"${quiz.title}","${stat.question}","${stat.type}",${stat.correctAnswers},${stat.totalAnswers},${stat.accuracy.toFixed(2)}\n`;
+      }
+    );
 
     return csv;
   }

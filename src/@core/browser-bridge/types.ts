@@ -3,37 +3,40 @@
  */
 
 export interface StorageArea {
-  get(keys?: string | string[] | Record<string, any> | null): Promise<Record<string, any>>;
-  set(items: Record<string, any>): Promise<void>;
+  get(keys?: string | string[] | Record<string, unknown> | null): Promise<Record<string, unknown>>;
+  set(items: Record<string, unknown>): Promise<void>;
   remove(keys: string | string[]): Promise<void>;
   clear(): Promise<void>;
 }
 
 export interface RuntimeAPI {
-  sendMessage(message: any): Promise<any>;
-  sendMessage(extensionId: string, message: any): Promise<any>;
+  sendMessage(message: unknown): Promise<unknown>;
+  sendMessage(extensionId: string, message: unknown): Promise<unknown>;
   onMessage: {
+    // NOTE: `any` for `message` matches the standard @types/chrome signatures.
+    // The chrome runtime delivers untyped payloads; narrowing is done in each handler.
     addListener(
       callback: (
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped runtime boundary, matches @types/chrome
         message: any,
-        sender: any,
-        sendResponse: (response?: any) => void
-      ) => void | boolean | Promise<any>
+        sender: chrome.runtime.MessageSender | undefined,
+        sendResponse: (response?: unknown) => void
+      ) => void | boolean | Promise<unknown>
     ): void;
-    removeListener(callback: Function): void;
+    removeListener(callback: (...args: unknown[]) => void): void;
   };
-  getManifest(): chrome.runtime.Manifest | any;
+  getManifest(): chrome.runtime.Manifest | Record<string, unknown>;
   id: string;
 }
 
 export interface TabsAPI {
   query(queryInfo: chrome.tabs.QueryInfo): Promise<chrome.tabs.Tab[]>;
-  sendMessage(tabId: number, message: any): Promise<any>;
+  sendMessage(tabId: number, message: unknown): Promise<unknown>;
   onUpdated: {
     addListener(
-      callback: (tabId: number, changeInfo: chrome.tabs.TabChangeInfo, tab: chrome.tabs.Tab) => void
+      callback: (tabId: number, changeInfo: chrome.tabs.OnUpdatedInfo, tab: chrome.tabs.Tab) => void
     ): void;
-    removeListener(callback: Function): void;
+    removeListener(callback: (...args: unknown[]) => void): void;
   };
 }
 
@@ -54,7 +57,7 @@ export interface AlarmsAPI {
     addListener(
       callback: (alarm: { name: string; scheduledTime: number; periodInMinutes?: number }) => void
     ): void;
-    removeListener(callback: Function): void;
+    removeListener(callback: (...args: unknown[]) => void): void;
   };
 }
 
@@ -74,7 +77,7 @@ export interface NotificationsAPI {
   clearAll(): Promise<boolean>;
   onClicked: {
     addListener(callback: (notificationId: string) => void): void;
-    removeListener(callback: Function): void;
+    removeListener(callback: (...args: unknown[]) => void): void;
   };
 }
 
@@ -137,6 +140,14 @@ export interface ExtensionConfig {
   MEMORY_CLEANUP_INTERVAL_MS: number;
   // Accessibility Settings
   ACCESSIBILITY_SETTINGS?: AccessibilitySettings;
+  // Voice Chat Settings
+  PUSH_TO_TALK_KEY?: string;
+  DEFAULT_VOICE_VOLUME?: number;
+  ECHO_CANCELLATION?: boolean;
+  NOISE_SUPPRESSION?: boolean;
+  AUTO_GAIN_CONTROL?: boolean;
+  AUDIO_SAMPLE_RATE?: number;
+  VOICE_SIGNALING_ENDPOINT?: string;
 }
 
 export interface AccessibilitySettings {

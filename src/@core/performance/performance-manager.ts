@@ -15,6 +15,7 @@ import { DriftAnalyzer } from './drift-analyzer';
 import { BandwidthMonitor } from './bandwidth-monitor';
 import { AdaptiveQualityController } from './adaptive-quality';
 import { ResourceMonitor } from './resource-monitor';
+import { ResourceUsageMetrics } from './types';
 import { PerformanceDiagnostics as DiagnosticsCollector } from './diagnostics';
 import { DriftCorrection } from '../sync-engine/types';
 
@@ -28,7 +29,7 @@ export interface PerformanceAlert {
   type: 'warning' | 'error' | 'info';
   category: 'sync' | 'network' | 'memory' | 'video';
   message: string;
-  details?: any;
+  details?: unknown;
   timestamp: number;
 }
 
@@ -440,7 +441,7 @@ export class PerformanceManager {
     }
   }
 
-  private handleResourceUpdate(metrics: any): void {
+  private handleResourceUpdate(metrics: ResourceUsageMetrics): void {
     const warnings = this.resourceMonitor.getResourceWarnings();
 
     for (const warning of warnings) {

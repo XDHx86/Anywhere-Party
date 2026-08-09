@@ -6,7 +6,6 @@
  */
 
 import {
-  SignalingMessage,
   ClientMessage,
   ServerMessage,
   SignalingErrorCode,
@@ -36,7 +35,7 @@ export enum ConnectionState {
 export interface SignalingError {
   code: string;
   message: string;
-  details?: any;
+  details?: unknown;
   timestamp: number;
 }
 
@@ -411,7 +410,7 @@ export class SignalingClient {
     });
   }
 
-  private handleServerMessage(message: any): void {
+  private handleServerMessage(message: unknown): void {
     if (!isServerMessage(message)) {
       console.warn('Received invalid server message:', message);
       this.emitError({
@@ -523,7 +522,7 @@ export class SignalingClient {
     this.scheduleReconnect();
   }
 
-  private handleConnectionError(error: any): void {
+  private handleConnectionError(error: unknown): void {
     console.error('Connection error:', error);
 
     this.emitError({
@@ -741,7 +740,8 @@ export class SignalingClient {
 
   private detectFirefox(): boolean {
     // Check for Firefox-specific APIs or webextension-polyfill
-    if (typeof (globalThis as any).browser !== 'undefined' && (globalThis as any).browser.runtime) {
+    const browserApi = (globalThis as { browser?: { runtime?: unknown } }).browser;
+    if (browserApi?.runtime) {
       return true;
     }
 
@@ -773,7 +773,7 @@ export class SignalingClient {
           resolve(ws);
         };
 
-        const onError = (error: Event) => {
+        const onError = (_error: Event) => {
           clearTimeout(creationTimeout);
           ws.removeEventListener('open', onOpen);
           ws.removeEventListener('error', onError);
@@ -781,7 +781,7 @@ export class SignalingClient {
           reject(new Error('Firefox WebSocket failed to initialize'));
         };
 
-        const onClose = (event: CloseEvent) => {
+        const onClose = (_event: CloseEvent) => {
           clearTimeout(creationTimeout);
           ws.removeEventListener('open', onOpen);
           ws.removeEventListener('error', onError);
@@ -804,16 +804,17 @@ export class SignalingClient {
     });
   }
 
-  private validateServerMessage(message: any): boolean {
-    if (!message || typeof message !== 'object') {
+  private validateServerMessage(message: unknown): boolean {
+    if (
+      !message ||
+      typeof message !== 'object' ||
+      !('type' in message) ||
+      typeof message.type !== 'string'
+    ) {
       return false;
     }
 
-    if (!message.type || typeof message.type !== 'string') {
-      return false;
-    }
-
-    if (!message.timestamp || typeof message.timestamp !== 'number') {
+    if (!('timestamp' in message) || typeof message.timestamp !== 'number') {
       // Some message types might not have timestamp, so this is a warning rather than failure
       console.debug('Server message missing timestamp:', message.type);
     }

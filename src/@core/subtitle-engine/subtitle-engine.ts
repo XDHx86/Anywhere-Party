@@ -220,12 +220,14 @@ export class SubtitleEngineImpl implements SubtitleEngine {
    */
   updateTrackStyle(trackId: string, style: Partial<SubtitleStyle>): void {
     const track = this.tracks.get(trackId);
-    if (track) {
+    if (track && track.style) {
       // Merge styles, keeping existing values for undefined properties
+      const currentStyle = track.style;
       Object.keys(style).forEach((key) => {
-        const value = (style as any)[key];
+        const styleKey = key as keyof SubtitleStyle;
+        const value = style[styleKey];
         if (value !== undefined) {
-          (track.style as any)[key] = value;
+          Object.assign(currentStyle, { [styleKey]: value });
         }
       });
     }
@@ -312,15 +314,15 @@ export class SubtitleEngineImpl implements SubtitleEngine {
 
       // Add track info to cues for styling
       activeCues.forEach((cue) => {
-        (cue as any).trackId = track.id;
-        (cue as any).language = track.language;
-        (cue as any).priority = track.priority;
+        cue.trackId = track.id;
+        cue.language = track.language;
+        cue.priority = track.priority;
       });
 
       allCues.push(...activeCues);
     }
 
-    return allCues.sort((a, b) => ((a as any).priority || 0) - ((b as any).priority || 0));
+    return allCues.sort((a, b) => (a.priority || 0) - (b.priority || 0));
   }
 
   /**
@@ -339,14 +341,14 @@ export class SubtitleEngineImpl implements SubtitleEngine {
 
     // Create subtitle elements
     cues.forEach((cue, index) => {
-      const trackId = (cue as any).trackId;
+      const trackId = cue.trackId;
       const track = trackId ? this.getTrack(trackId) : null;
       const style = track?.style ? { ...defaultStyle, ...track.style } : defaultStyle;
 
       const subtitleElement = document.createElement('div');
-      subtitleElement.className = `subtitle-cue subtitle-lang-${(cue as any).language || 'unknown'}`;
+      subtitleElement.className = `subtitle-cue subtitle-lang-${cue.language || 'unknown'}`;
       subtitleElement.setAttribute('data-track-id', trackId || '');
-      subtitleElement.setAttribute('data-language', (cue as any).language || '');
+      subtitleElement.setAttribute('data-language', cue.language || '');
 
       this.applySubtitleStyle(subtitleElement, style);
 
@@ -398,7 +400,8 @@ export class SubtitleEngineImpl implements SubtitleEngine {
    * Get user preferences, creating defaults if not found
    */
   getUserPreferences(userId: string): SubtitleUserPreferences {
-    if (!this.userPreferences.has(userId)) {
+    let preferences = this.userPreferences.get(userId);
+    if (!preferences) {
       const defaultPreferences: SubtitleUserPreferences = {
         userId,
         preferredLanguages: [...this.config.defaultLanguages],
@@ -409,8 +412,9 @@ export class SubtitleEngineImpl implements SubtitleEngine {
         maxSimultaneousTracks: this.config.enableMultipleLanguages ? 3 : 1,
       };
       this.userPreferences.set(userId, defaultPreferences);
+      preferences = defaultPreferences;
     }
-    return this.userPreferences.get(userId)!;
+    return preferences;
   }
 
   /**
@@ -594,9 +598,10 @@ export class SubtitleEngineImpl implements SubtitleEngine {
         };
 
         const results = await this.searchOpenSubtitles(searchOptions);
-        if (results.length > 0) {
+        const bestResult = results[0];
+        if (bestResult) {
           // Download the best result (first one, as they're sorted by quality)
-          const track = await this.downloadFromOpenSubtitles(results[0], userId);
+          const track = await this.downloadFromOpenSubtitles(bestResult, userId);
           downloadedTracks.push(track);
         }
       } catch (error) {

@@ -30,15 +30,19 @@ export async function trackAPICall<T>(
       });
 
     return result;
-  } catch (error) {
+  } catch (error: unknown) {
     // Track API error
-    const statusCode = (error as any)?.status || (error as any)?.statusCode;
+    const errorRecord = error as Record<string, unknown> | undefined;
+    const statusCode = errorRecord
+      ? ((errorRecord.status as number | undefined) ??
+        (errorRecord.statusCode as number | undefined))
+      : undefined;
     chrome.runtime
       .sendMessage({
         type: 'TRACK_RUNTIME_BUG',
         bugEvent: {
           bugType: 'api_error',
-          severity: statusCode >= 500 ? 'high' : 'medium',
+          severity: (statusCode ?? 0) >= 500 ? 'high' : 'medium',
           component,
           operation,
           errorMessage: `API error in ${apiService}: ${error instanceof Error ? error.message : String(error)}`,
@@ -48,7 +52,7 @@ export async function trackAPICall<T>(
             errorType: error instanceof Error ? error.name : 'UnknownError',
           },
           userId: 'current_user', // Will be set by background script
-          userImpact: statusCode >= 500 ? 'major' : 'minor',
+          userImpact: (statusCode ?? 0) >= 500 ? 'major' : 'minor',
           recoveryAction: 'Retry with exponential backoff',
         },
       })
@@ -87,7 +91,7 @@ export async function trackStatePersistence<T>(
       });
 
     return result;
-  } catch (error) {
+  } catch (error: unknown) {
     // Track state persistence error
     chrome.runtime
       .sendMessage({
@@ -325,7 +329,7 @@ export function trackRuntimeBug(
   component: string,
   operation: string,
   error: Error,
-  context: Record<string, any> = {},
+  context: Record<string, unknown> = {},
   severity: 'low' | 'medium' | 'high' | 'critical' = 'medium'
 ): void {
   chrome.runtime

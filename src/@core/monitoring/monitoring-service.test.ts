@@ -80,8 +80,8 @@ describe('MonitoringService', () => {
     vi.clearAllMocks();
 
     // Mock storage responses
-    (mockBrowserBridge.storage.local.get as any).mockResolvedValue({});
-    (mockBrowserBridge.storage.local.set as any).mockResolvedValue(undefined);
+    vi.mocked(mockBrowserBridge.storage.local.get).mockResolvedValue({});
+    vi.mocked(mockBrowserBridge.storage.local.set).mockResolvedValue(undefined);
 
     monitoringService = new MonitoringService(mockBrowserBridge, mockLoggingManager, config);
   });
@@ -291,7 +291,7 @@ describe('MonitoringService', () => {
         },
       ];
 
-      (mockBrowserBridge.storage.local.get as any).mockResolvedValue({
+      vi.mocked(mockBrowserBridge.storage.local.get).mockResolvedValue({
         userFeedbackHistory: mockFeedback,
       });
 
@@ -309,7 +309,7 @@ describe('MonitoringService', () => {
       const mockFeedback = [{ id: 'feedback_1', type: 'bug_report' }];
       const mockAlerts = [{ type: 'critical_error', timestamp: Date.now() }];
 
-      (mockBrowserBridge.storage.local.get as any)
+      vi.mocked(mockBrowserBridge.storage.local.get)
         .mockResolvedValueOnce({ runtimeBugHistory: mockRuntimeBugs })
         .mockResolvedValueOnce({ userFeedbackHistory: mockFeedback })
         .mockResolvedValueOnce({ alertHistory: mockAlerts });

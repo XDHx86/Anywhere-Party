@@ -11,6 +11,7 @@ import {
   AvatarOverlayOptions,
   AvatarSyncOptions,
   AvatarAnimationKey,
+  AvatarConfig,
 } from './types';
 
 export interface AvatarManagerOptions {
@@ -18,7 +19,7 @@ export interface AvatarManagerOptions {
   userId: string;
   userName: string;
   overlayOptions?: AvatarOverlayOptions;
-  signalingSend?: (message: any) => void;
+  signalingSend?: (message: unknown) => void;
   onAvatarUpdate?: (avatar: Avatar) => void;
   onAvatarMove?: (avatar: Avatar) => void;
   onAvatarAnimate?: (avatar: Avatar, animationKey: string) => void;
@@ -246,7 +247,7 @@ export class AvatarManager {
     }
   }
 
-  private handleConfigUpdate(avatarId: string, config: any): void {
+  private handleConfigUpdate(avatarId: string, config: AvatarConfig): void {
     // Config updates are handled automatically by sync
     console.log('Avatar config updated:', avatarId, config);
   }

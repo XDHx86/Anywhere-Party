@@ -140,7 +140,7 @@ export class ConfigManagerImpl implements ConfigManager {
       }
 
       // Apply fallback values for any invalid configuration
-      const safeConfig = ConfigValidator.getDefaultsForInvalidConfig(importedConfig);
+      ConfigValidator.getDefaultsForInvalidConfig(importedConfig);
 
       // Only update with the valid parts
       const validConfig: Partial<ExtensionConfig> = {};
@@ -148,7 +148,8 @@ export class ConfigManagerImpl implements ConfigManager {
 
       Object.keys(importedConfig).forEach((key) => {
         if (!errorFields.has(key)) {
-          (validConfig as any)[key] = importedConfig[key as keyof ExtensionConfig];
+          (validConfig as Record<string, unknown>)[key] =
+            importedConfig[key as keyof ExtensionConfig];
         }
       });
 
@@ -289,7 +290,7 @@ export class ConfigManagerImpl implements ConfigManager {
   }
 
   private envToConfig(content: string): Partial<ExtensionConfig> {
-    const config: any = {};
+    const config: Record<string, unknown> = {};
     const lines = content.split('\n').filter((line) => line.trim() && !line.startsWith('#'));
 
     for (const line of lines) {
@@ -314,7 +315,7 @@ export class ConfigManagerImpl implements ConfigManager {
       }
     }
 
-    return config;
+    return config as Partial<ExtensionConfig>;
   }
 
   private configToIni(config: ExtensionConfig): string {
@@ -332,7 +333,7 @@ export class ConfigManagerImpl implements ConfigManager {
   }
 
   private iniToConfig(content: string): Partial<ExtensionConfig> {
-    const config: any = {};
+    const config: Record<string, unknown> = {};
     const lines = content
       .split('\n')
       .filter((line) => line.trim() && !line.startsWith('[') && !line.startsWith(';'));
@@ -358,6 +359,6 @@ export class ConfigManagerImpl implements ConfigManager {
       }
     }
 
-    return config;
+    return config as Partial<ExtensionConfig>;
   }
 }

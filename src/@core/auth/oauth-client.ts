@@ -8,7 +8,7 @@ import { BrowserBridge } from '../browser-bridge/types';
 
 export interface AuthConfig {
   enabled: boolean;
-  providers: Record<string, any>;
+  providers: Record<string, unknown>;
   allowAnonymous: boolean;
   sessionDuration: number; // in milliseconds
   maxUsernameLength: number;
@@ -57,8 +57,9 @@ export class AuthClient {
     try {
       // Try to restore existing session
       const storedAuth = await this.browserBridge.storage.local.get('authState');
-      if (storedAuth.authState) {
-        const authState = JSON.parse(storedAuth.authState);
+      const storedAuthState = storedAuth.authState as string | undefined;
+      if (storedAuthState) {
+        const authState = JSON.parse(storedAuthState) as AuthState;
 
         // Check if session is still valid
         if (authState.user && this.isSessionValid(authState.user)) {

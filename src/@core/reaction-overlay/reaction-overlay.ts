@@ -138,7 +138,7 @@ export class ReactionOverlay {
     if (this.activeReactions.size >= this.options.maxConcurrentReactions) {
       // Remove oldest reaction
       const oldestId = Array.from(this.activeReactions.keys())[0];
-      this.removeReaction(oldestId);
+      if (oldestId !== undefined) this.removeReaction(oldestId);
     }
 
     // Get emoji for reaction type
@@ -244,20 +244,20 @@ export class ReactionOverlay {
       if (!parent) return false;
 
       // Try to access parent's style (will throw if cross-origin)
-      const _ = parent.style.position;
+      void parent.style.position;
 
       // Check if video is in an iframe
       if (window !== window.top) {
         // We're in an iframe, check if we can access parent window
         try {
-          const _ = window.parent.document;
-        } catch (error) {
+          void window.parent.document;
+        } catch {
           return false; // Cross-origin iframe
         }
       }
 
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -296,7 +296,8 @@ export class ReactionOverlay {
     if (!this.container || !this.videoElement) return;
 
     const videoRect = this.videoElement.getBoundingClientRect();
-    const parentRect = this.videoElement.parentElement!.getBoundingClientRect();
+    const parentRect = this.videoElement.parentElement?.getBoundingClientRect();
+    if (!parentRect) return;
 
     // Position overlay to match video bounds within parent
     this.container.style.left = `${videoRect.left - parentRect.left}px`;

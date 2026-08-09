@@ -108,7 +108,7 @@ export class RoomStateManager {
 
       if (result.watchPartyRoomState) {
         // Convert date strings back to Date objects
-        const state = result.watchPartyRoomState;
+        const state = result.watchPartyRoomState as RoomState;
         state.createdAt = new Date(state.createdAt);
         state.lastActivity = new Date(state.lastActivity);
 

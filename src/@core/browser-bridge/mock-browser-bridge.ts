@@ -3,7 +3,7 @@
  * Provides mock implementations of browser APIs for unit tests
  */
 
-type MockFunction = (...args: any[]) => any;
+type MockFunction = (...args: unknown[]) => unknown;
 
 export interface MockBrowserBridge {
   storage: {
@@ -31,8 +31,8 @@ export interface MockBrowserBridge {
 
 export function createMockBrowserBridge(): MockBrowserBridge {
   const mockFn =
-    (returnValue: any = {}) =>
-    (...args: any[]) =>
+    (returnValue: unknown = {}) =>
+    (..._args: unknown[]) =>
       Promise.resolve(returnValue);
 
   return {
