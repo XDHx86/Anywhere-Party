@@ -16,6 +16,7 @@ build/
 .env.test.local
 .env.production.local
 extension-config.local.json
+tmp/
 
 # IDE and editor files
 .vscode/
