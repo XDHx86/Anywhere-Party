@@ -147,14 +147,7 @@ export interface WhiteboardAnnotation {
   userId: string;
   userName?: string;
   type:
-    | 'pen'
-    | 'highlighter'
-    | 'eraser'
-    | 'rectangle'
-    | 'circle'
-    | 'arrow'
-    | 'text'
-    | 'sticky_note';
+    'pen' | 'highlighter' | 'eraser' | 'rectangle' | 'circle' | 'arrow' | 'text' | 'sticky_note';
   data: WhiteboardAnnotationData;
   videoTimestamp: number;
   visible: boolean;
@@ -212,7 +205,7 @@ export interface ExportableResult {
   description?: string;
   roomId: string;
   videoTimestamp: number;
-  data: any; // Specific data based on type
+  data: unknown; // Specific data based on type
   participants: string[];
   createdAt: number;
   exportedAt: number;
@@ -256,7 +249,7 @@ export interface CollaborationEvent {
   userName?: string;
   roomId: string;
   timestamp: number;
-  data: any;
+  data: unknown;
 }
 
 export type CollaborationEventType =

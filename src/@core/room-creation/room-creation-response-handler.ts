@@ -7,14 +7,24 @@ export interface RoomCreationResponse {
   success: boolean;
   roomId?: string;
   hostId?: string;
-  participants?: any[];
-  currentState?: any;
+  participants?: unknown[];
+  currentState?: unknown;
   timestamp?: number;
   error?: {
     code: string;
     message: string;
-    details?: any;
+    details?: unknown;
   };
+}
+
+interface RawRoomResponse {
+  type?: string;
+  error?: { code?: string; message?: string };
+  roomId?: string;
+  hostId?: string;
+  timestamp?: number;
+  participants?: unknown[];
+  currentState?: unknown;
 }
 
 export interface RoomCreationResult {
@@ -36,7 +46,7 @@ export class RoomCreationResponseHandler {
   /**
    * Parse and validate server response for room creation
    */
-  parseRoomCreationResponse(rawResponse: any): RoomCreationResponse {
+  parseRoomCreationResponse(rawResponse: RawRoomResponse): RoomCreationResponse {
     // Handle null/undefined responses
     if (!rawResponse) {
       return {
@@ -118,7 +128,7 @@ export class RoomCreationResponseHandler {
     // Return successful parsed response
     return {
       success: true,
-      roomId: rawResponse.roomId.trim(),
+      roomId: rawResponse.roomId?.trim() ?? '',
       hostId: rawResponse.hostId,
       participants: Array.isArray(rawResponse.participants) ? rawResponse.participants : [],
       currentState: rawResponse.currentState || {
@@ -220,22 +230,18 @@ export class RoomCreationResponseHandler {
   /**
    * Handle malformed server responses gracefully
    */
-  handleMalformedResponse(rawData: any, error?: Error): RoomCreationResult {
+  handleMalformedResponse(rawData: unknown, error?: Error): RoomCreationResult {
     console.error('Malformed server response:', { rawData, error });
 
     let userFriendlyMessage = 'Server returned invalid response. Please try again.';
-    let errorCode = 'MALFORMED_RESPONSE';
 
     if (error) {
       if (error.name === 'SyntaxError') {
         userFriendlyMessage = 'Server response format error. Please try again.';
-        errorCode = 'JSON_PARSE_ERROR';
       } else if (error.message.includes('timeout')) {
         userFriendlyMessage = 'Request timed out. Please check your connection and try again.';
-        errorCode = 'TIMEOUT';
       } else if (error.message.includes('network')) {
         userFriendlyMessage = 'Network error. Please check your internet connection.';
-        errorCode = 'NETWORK_ERROR';
       }
     }
 

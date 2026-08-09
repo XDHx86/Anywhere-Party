@@ -4,7 +4,7 @@
  */
 
 import React, { forwardRef, useState, useEffect, useCallback, useMemo } from 'react';
-import { OverlayManagerProps, Avatar, Reaction, OverlayConfig, OverlayBreakpoints } from './types';
+import { OverlayManagerProps, Avatar, Reaction, OverlayConfig } from './types';
 import { useMaterialTheme } from '../../theme/theme-provider';
 import { useStaggerAnimation } from '../../hooks/useAnimations';
 import { materialMotion } from '../../animations/material-animations';
@@ -66,7 +66,7 @@ const OverlayManager = forwardRef<HTMLDivElement, OverlayManagerProps>(
     },
     ref
   ) => {
-    const { theme } = useMaterialTheme();
+    useMaterialTheme();
     const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
     const [visibleAvatars, setVisibleAvatars] = useState<Avatar[]>([]);
     const [visibleReactions, setVisibleReactions] = useState<Reaction[]>([]);
@@ -75,7 +75,7 @@ const OverlayManager = forwardRef<HTMLDivElement, OverlayManagerProps>(
     const { breakpoint, getResponsiveConfig } = useResponsiveOverlays(containerDimensions.width);
 
     // Simple z-index management
-    const getZIndex = (type: string, id: string) => {
+    const getZIndex = (type: string, _id: string) => {
       switch (type) {
         case 'avatar':
           return overlayConfig.zIndex.avatar;
@@ -86,7 +86,7 @@ const OverlayManager = forwardRef<HTMLDivElement, OverlayManagerProps>(
       }
     };
 
-    const releaseZIndex = (id: string) => {
+    const releaseZIndex = (_id: string) => {
       // Simple implementation - in full version this would manage reserved z-indexes
     };
     const staggeredAvatars = useStaggerAnimation(

@@ -250,8 +250,8 @@ export class DriftAnalyzer {
       return 0;
     }
 
-    const oldest = this.driftSamples[0].timestamp;
-    const newest = this.driftSamples[this.driftSamples.length - 1].timestamp;
+    const oldest = this.driftSamples[0]?.timestamp ?? 0;
+    const newest = this.driftSamples[this.driftSamples.length - 1]?.timestamp ?? 0;
     return (newest - oldest) / (1000 * 60); // Convert to minutes
   }
 
@@ -273,8 +273,10 @@ export class DriftAnalyzer {
       // Look for when drift stabilizes (stays below threshold)
       const stabilityThreshold = 100; // 100ms
       for (let i = 0; i < subsequentSamples.length; i++) {
-        if (subsequentSamples[i].driftMs <= stabilityThreshold) {
-          const convergenceTime = subsequentSamples[i].timestamp - correction.timestamp;
+        const sample = subsequentSamples[i];
+        if (!sample) continue;
+        if (sample.driftMs <= stabilityThreshold) {
+          const convergenceTime = sample.timestamp - correction.timestamp;
           totalConvergenceTime += convergenceTime;
           convergenceCount++;
           break;

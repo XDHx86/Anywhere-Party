@@ -54,6 +54,13 @@ const FloatingSurface = forwardRef<HTMLDivElement, FloatingSurfaceProps>(
           isVisible: visible,
         }));
 
+        const getDurationMs = (): number => {
+          if (typeof animationDuration === 'number') {
+            return animationDuration;
+          }
+          return materialMotion.duration[animationDuration];
+        };
+
         const timer = setTimeout(() => {
           setAnimationState((prev) => ({
             ...prev,
@@ -61,10 +68,11 @@ const FloatingSurface = forwardRef<HTMLDivElement, FloatingSurfaceProps>(
             progress: visible ? 1 : 0,
           }));
           onAnimationComplete?.();
-        }, animationDuration);
+        }, getDurationMs());
 
         return () => clearTimeout(timer);
       }
+      return undefined;
     }, [visible, animationState.isVisible, animationDuration, onAnimationComplete]);
 
     // Get position styles
@@ -112,9 +120,28 @@ const FloatingSurface = forwardRef<HTMLDivElement, FloatingSurfaceProps>(
 
     // Get animation styles
     const getAnimationStyles = (): React.CSSProperties => {
+      // Convert animationDuration to a DurationToken for createTransition if it's a token
+      const getDurationToken = (): keyof typeof materialMotion.duration => {
+        if (typeof animationDuration === 'number') {
+          // Find the closest matching token for the given number
+          const durations = materialMotion.duration;
+          let closest: keyof typeof materialMotion.duration = 'medium3';
+          let minDiff = Infinity;
+          for (const [key, value] of Object.entries(durations)) {
+            const diff = Math.abs(value - animationDuration);
+            if (diff < minDiff) {
+              minDiff = diff;
+              closest = key as keyof typeof materialMotion.duration;
+            }
+          }
+          return closest;
+        }
+        return animationDuration;
+      };
+
       const baseTransition = createTransition(
         ['opacity', 'transform', 'backdrop-filter'],
-        animationDuration as any,
+        getDurationToken(),
         'emphasized'
       );
 

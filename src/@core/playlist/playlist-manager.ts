@@ -5,7 +5,7 @@
  */
 
 import { createBrowserBridge } from '../browser-bridge';
-import { PlaylistItem, PlaylistState, PlaylistVote, PlaylistManagerConfig } from './types';
+import { PlaylistItem, PlaylistState, PlaylistManagerConfig } from './types';
 
 const DEFAULT_CONFIG: PlaylistManagerConfig = {
   maxItems: 100,
@@ -93,20 +93,17 @@ export class PlaylistManager {
     }
 
     // Rebuild: items not in reordered list, with reordered items spliced in
-    const remaining = this.state.items.filter(
-      (item) =>
-        !idToItem.has(item.id) === false || reordered.some((r) => r.id === item.id) === false
-    );
-    // Simpler: rebuild from scratch
     const newItems: PlaylistItem[] = [];
     let rIdx = 0;
     for (let i = 0; i < this.state.items.length; i++) {
+      const item = this.state.items[i];
+      if (item === undefined) continue;
       if (rIdx < reordered.length && i === insertPos) {
         newItems.push(...reordered);
         rIdx = reordered.length;
       }
-      if (!reordered.some((r) => r.id === this.state.items[i].id)) {
-        newItems.push(this.state.items[i]);
+      if (!reordered.some((r) => r.id === item.id)) {
+        newItems.push(item);
       }
     }
     // Append remaining reordered if not yet placed
@@ -161,12 +158,11 @@ export class PlaylistManager {
     userId: string,
     totalParticipants: number
   ): { skipped: boolean; voteCount: number } {
-    if (!this.skipVotes.has(itemId)) {
-      this.skipVotes.set(itemId, new Set());
-    }
-    this.skipVotes.get(itemId)!.add(userId);
+    const votes = this.skipVotes.get(itemId) ?? new Set<string>();
+    this.skipVotes.set(itemId, votes);
+    votes.add(userId);
 
-    const voteCount = this.skipVotes.get(itemId)!.size;
+    const voteCount = votes.size;
     const threshold = Math.ceil(totalParticipants * this.config.skipVoteThreshold);
     const skipped = voteCount >= threshold;
 
@@ -204,20 +200,35 @@ export class PlaylistManager {
   async loadPlaylist(): Promise<void> {
     try {
       const result = await this.browserBridge.storage.local.get(this.config.persistenceKey);
-      const data = result[this.config.persistenceKey];
+      const data = result[this.config.persistenceKey] as
+        | {
+            savedAt?: number;
+            items?: PlaylistItem[];
+            currentIndex?: number;
+            isPlaying?: boolean;
+            playHistory?: string[];
+          }
+        | undefined;
 
       if (data) {
-        const age = Date.now() - (data.savedAt || 0);
+        const savedData = data as {
+          savedAt?: number;
+          items?: PlaylistItem[];
+          currentIndex?: number;
+          isPlaying?: boolean;
+          playHistory?: string[];
+        };
+        const age = Date.now() - (savedData.savedAt || 0);
         if (age > this.config.persistenceTTL) {
           await this.clearPlaylist();
           return;
         }
 
         this.state = {
-          items: data.items || [],
-          currentIndex: data.currentIndex || 0,
-          isPlaying: data.isPlaying || false,
-          playHistory: data.playHistory || [],
+          items: savedData.items || [],
+          currentIndex: savedData.currentIndex || 0,
+          isPlaying: savedData.isPlaying || false,
+          playHistory: savedData.playHistory || [],
         };
       }
     } catch (error) {

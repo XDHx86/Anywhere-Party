@@ -13,10 +13,27 @@ import {
   Annotation,
   AnnotationMessage,
 } from './@core/annotation-layer';
-import { CollaborationManager } from './@core/collaboration';
-import { AvatarManager, AvatarMessage, AVATAR_ANIMATIONS } from './@core/avatar-overlay';
+import {
+  CollaborationManager,
+  Poll,
+  Quiz,
+  Bookmark,
+  Highlight,
+  ShareableMoment,
+  WhiteboardAnnotation,
+} from './@core/collaboration';
+import { AvatarManager, Avatar } from './@core/avatar-overlay';
 
 console.log('Watch Party Extension content script loaded');
+
+/** Permissive message envelope used by the background↔content message handlers.
+ *  Uses `any` for message fields to match the chrome runtime onMessage signature.
+ *  Each handler branch narrows via the `type` discriminant before accessing fields. */
+interface RuntimeMessagePayload {
+  type: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- matches chrome runtime onMessage payloads
+  [key: string]: any;
+}
 
 class ContentScript {
   private videoDetector: VideoDetector;
@@ -282,7 +299,11 @@ class ContentScript {
     }
   }
 
-  private handleMessage(message: any, sendResponse: (response: any) => void) {
+  private handleMessage(
+    message: RuntimeMessagePayload,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    sendResponse: (response?: any) => void
+  ): void {
     try {
       // Room-scoped messages must only be processed when this tab is part of an active
       // watch party. This prevents room data (chat, reactions, annotations) from leaking
@@ -301,10 +322,11 @@ class ContentScript {
       }
 
       switch (message.type) {
-        case 'GET_VIDEO_TIMESTAMP':
+        case 'GET_VIDEO_TIMESTAMP': {
           const timestamp = this.getCurrentVideoTimestamp();
           sendResponse({ success: true, timestamp });
           break;
+        }
 
         case 'SHOW_REACTION':
           this.showReaction(message.reactionType, message.videoTimestamp, message.userId);
@@ -325,7 +347,7 @@ class ContentScript {
                 error: error instanceof Error ? error.message : 'Video detection failed',
               });
             });
-          return true; // Keep message channel open for async response
+          return; // Keep message channel open for async response
 
         case 'DRIFT_DETECTED':
           // Handle drift correction
@@ -335,7 +357,7 @@ class ContentScript {
 
         case 'SERVER_MESSAGE':
           // Handle server messages that affect content script
-          this.handleServerMessage(message.message);
+          this.handleServerMessage(message.message as RuntimeMessagePayload);
           sendResponse({ success: true });
           break;
 
@@ -370,15 +392,15 @@ class ContentScript {
             { query: message.query, language: message.language },
             sendResponse
           );
-          return true; // Keep channel open for async response
+          return; // Keep channel open for async response
 
         case 'DOWNLOAD_OPENSUBTITLES':
           this.handleOpenSubtitlesDownload(message.result, message.userId, sendResponse);
-          return true; // Keep channel open for async response
+          return; // Keep channel open for async response
 
         case 'GET_SUBTITLE_TRACKS':
           this.handleGetSubtitleTracks(message.userId, sendResponse);
-          return true; // Keep channel open for async response
+          return; // Keep channel open for async response
 
         case 'UPDATE_SUBTITLE_PRIORITY':
           this.subtitleEngine.updateTrackPriority(message.trackId, message.priority);
@@ -407,23 +429,23 @@ class ContentScript {
 
         case 'SAVE_USER_PREFERENCES':
           this.handleSaveUserPreferences(message.userId, sendResponse);
-          return true; // Keep channel open for async response
+          return; // Keep channel open for async response
 
         case 'LOAD_USER_PREFERENCES':
           this.handleLoadUserPreferences(message.userId, sendResponse);
-          return true; // Keep channel open for async response
+          return; // Keep channel open for async response
 
         case 'GET_USER_PREFERENCES':
           this.handleGetUserPreferences(message.userId, sendResponse);
-          return true; // Keep channel open for async response
+          return; // Keep channel open for async response
 
         case 'GET_AVAILABLE_LANGUAGES':
           this.handleGetAvailableLanguages(message.userId, sendResponse);
-          return true; // Keep channel open for async response
+          return; // Keep channel open for async response
 
         case 'AUTO_DOWNLOAD_SUBTITLES':
           this.handleAutoDownloadSubtitles(message.userId, message.videoInfo, sendResponse);
-          return true; // Keep channel open for async response
+          return; // Keep channel open for async response
 
         case 'CREATE_ANNOTATION_LAYER':
           this.handleCreateAnnotationLayer(message.layerId, message.layerName);
@@ -445,10 +467,11 @@ class ContentScript {
           sendResponse({ success: true });
           break;
 
-        case 'SET_CURRENT_ANNOTATION_LAYER':
+        case 'SET_CURRENT_ANNOTATION_LAYER': {
           const success = this.annotationLayer.setCurrentLayer(message.layerId);
           sendResponse({ success });
           break;
+        }
 
         case 'ADD_ANNOTATION':
           this.annotationLayer.addAnnotation(message.annotation);
@@ -465,25 +488,28 @@ class ContentScript {
           sendResponse({ success: true });
           break;
 
-        case 'UNDO_ANNOTATION':
+        case 'UNDO_ANNOTATION': {
           const undoSuccess = this.annotationLayer.undo();
           sendResponse({ success: undoSuccess });
           break;
+        }
 
-        case 'REDO_ANNOTATION':
+        case 'REDO_ANNOTATION': {
           const redoSuccess = this.annotationLayer.redo();
           sendResponse({ success: redoSuccess });
           break;
+        }
 
         case 'CLEAR_ALL_ANNOTATIONS':
           this.annotationLayer.clearAllAnnotations();
           sendResponse({ success: true });
           break;
 
-        case 'GET_ALL_ANNOTATIONS':
+        case 'GET_ALL_ANNOTATIONS': {
           const annotations = this.annotationLayer.getAllAnnotations();
           sendResponse({ success: true, annotations });
           break;
+        }
 
         case 'ANNOTATION_STATE_SNAPSHOT':
           // Full state replacement from server/peer
@@ -568,7 +594,7 @@ class ContentScript {
               .catch((error) => {
                 sendResponse({ success: false, error: error.message });
               });
-            return true; // Keep channel open for async response
+            return; // Keep channel open for async response
           } catch (error) {
             sendResponse({ success: false, error: (error as Error).message });
           }
@@ -595,7 +621,7 @@ class ContentScript {
               .catch((error) => {
                 sendResponse({ success: false, error: error.message });
               });
-            return true; // Keep channel open for async response
+            return; // Keep channel open for async response
           } catch (error) {
             sendResponse({ success: false, error: (error as Error).message });
           }
@@ -725,7 +751,7 @@ class ContentScript {
     }
   }
 
-  private handleServerMessage(message: any) {
+  private handleServerMessage(message: RuntimeMessagePayload) {
     switch (message.type) {
       case 'REACTION':
         // Show reaction from other participants
@@ -792,7 +818,7 @@ class ContentScript {
     }
   }
 
-  private notifyBackgroundScript(type: string, data: any) {
+  private notifyBackgroundScript(type: string, data: Record<string, unknown> = {}) {
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
       chrome.runtime
         .sendMessage({
@@ -867,6 +893,7 @@ class ContentScript {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async handleSubtitleFileLoad(fileData: any, userId: string) {
     try {
       // Convert file data back to File object
@@ -891,7 +918,9 @@ class ContentScript {
   }
 
   private async handleOpenSubtitlesSearch(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OpenSubtitles results are untyped API payloads
     searchOptions: any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     sendResponse: (response: any) => void
   ) {
     try {
@@ -907,8 +936,10 @@ class ContentScript {
   }
 
   private async handleOpenSubtitlesDownload(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OpenSubtitles results are untyped API payloads
     result: any,
     userId: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     sendResponse: (response: any) => void
   ) {
     try {
@@ -933,6 +964,7 @@ class ContentScript {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private handleGetSubtitleTracks(userId: string, sendResponse: (response: any) => void) {
     try {
       const tracks = this.subtitleEngine.getUserTracks(userId);
@@ -991,89 +1023,93 @@ class ContentScript {
   }
 
   // Collaboration event handlers
-  private handlePollCreated(poll: any): void {
+  private handlePollCreated(poll: Poll): void {
     console.log('Poll created:', poll.id, poll.title);
     this.notifyBackgroundScript('POLL_CREATED', { poll });
   }
 
-  private handleQuizCreated(quiz: any): void {
+  private handleQuizCreated(quiz: Quiz): void {
     console.log('Quiz created:', quiz.id, quiz.title);
     this.notifyBackgroundScript('QUIZ_CREATED', { quiz });
   }
 
-  private handleBookmarkCreated(bookmark: any): void {
+  private handleBookmarkCreated(bookmark: Bookmark): void {
     console.log('Bookmark created:', bookmark.id, bookmark.title);
     this.notifyBackgroundScript('BOOKMARK_CREATED', { bookmark });
   }
 
-  private handleHighlightCreated(highlight: any): void {
+  private handleHighlightCreated(highlight: Highlight): void {
     console.log('Highlight created:', highlight.id, highlight.title);
     this.notifyBackgroundScript('HIGHLIGHT_CREATED', { highlight });
   }
 
-  private handleWhiteboardAnnotationCreated(annotation: any): void {
+  private handleWhiteboardAnnotationCreated(annotation: WhiteboardAnnotation): void {
     console.log('Whiteboard annotation created:', annotation.id, annotation.type);
     this.notifyBackgroundScript('WHITEBOARD_ANNOTATION_CREATED', { annotation });
   }
 
-  private handleMomentShared(moment: any): void {
+  private handleMomentShared(moment: ShareableMoment): void {
     console.log('Moment shared:', moment.id, moment.title);
     this.notifyBackgroundScript('MOMENT_SHARED', { moment });
   }
 
   // Avatar overlay handlers
-  private handleAvatarUpdate(avatar: any): void {
+  private handleAvatarUpdate(avatar: Avatar): void {
     console.log('Avatar updated:', avatar.id, avatar.displayName);
     this.notifyBackgroundScript('AVATAR_UPDATED', { avatar });
   }
 
-  private handleAvatarMove(avatar: any): void {
+  private handleAvatarMove(avatar: Avatar): void {
     console.log('Avatar moved:', avatar.id, `(${avatar.x.toFixed(2)}, ${avatar.y.toFixed(2)})`);
     this.notifyBackgroundScript('AVATAR_MOVED', { avatar });
   }
 
-  private handleAvatarAnimate(avatar: any, animationKey: string): void {
+  private handleAvatarAnimate(avatar: Avatar, animationKey: string): void {
     console.log('Avatar animated:', avatar.id, animationKey);
     this.notifyBackgroundScript('AVATAR_ANIMATED', { avatar, animationKey });
   }
 
-  private handleAvatarChatBubble(avatar: any, message: string): void {
+  private handleAvatarChatBubble(avatar: Avatar, message: string): void {
     console.log('Avatar chat bubble:', avatar.id, message);
     this.notifyBackgroundScript('AVATAR_CHAT_BUBBLE', { avatar, message });
   }
 
-  private handleAvatarVoiceActivity(avatar: any, speaking: boolean): void {
+  private handleAvatarVoiceActivity(avatar: Avatar, speaking: boolean): void {
     console.log('Avatar voice activity:', avatar.id, speaking);
     this.notifyBackgroundScript('AVATAR_VOICE_ACTIVITY', { avatar, speaking });
   }
 
-  private handleCollaborationExport(message: any): any {
+  // `message` carries heterogeneous payloads across export types; the switch narrows per branch.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private handleCollaborationExport(message: any): unknown {
     switch (message.exportType) {
-      case 'poll':
+      case 'poll': {
         const pollResults = this.collaborationManager.getPollResults(message.pollId);
-        if (pollResults) {
-          return this.collaborationManager.exportPollResults(
-            pollResults.poll,
-            pollResults.votes,
-            message.userId,
-            message.userName
-          );
+        if (!pollResults) {
+          throw new Error('Poll not found');
         }
-        throw new Error('Poll not found');
+        return this.collaborationManager.exportPollResults(
+          pollResults.poll,
+          pollResults.votes,
+          message.userId,
+          message.userName
+        );
+      }
 
-      case 'quiz':
+      case 'quiz': {
         const quizResults = this.collaborationManager.getQuizResults(message.quizId);
-        if (quizResults) {
-          return this.collaborationManager.exportQuizResults(
-            quizResults.quiz,
-            quizResults.responses,
-            message.userId,
-            message.userName
-          );
+        if (!quizResults) {
+          throw new Error('Quiz not found');
         }
-        throw new Error('Quiz not found');
+        return this.collaborationManager.exportQuizResults(
+          quizResults.quiz,
+          quizResults.responses,
+          message.userId,
+          message.userName
+        );
+      }
 
-      case 'bookmarks':
+      case 'bookmarks': {
         const bookmarks = this.collaborationManager.getBookmarksByRoom(message.roomId);
         return this.collaborationManager.exportBookmarks(
           bookmarks,
@@ -1082,8 +1118,9 @@ class ContentScript {
           message.title || 'Room Bookmarks',
           message.roomId
         );
+      }
 
-      case 'highlights':
+      case 'highlights': {
         const highlights = this.collaborationManager.getHighlightsByRoom(message.roomId);
         return this.collaborationManager.exportHighlights(
           highlights,
@@ -1092,17 +1129,19 @@ class ContentScript {
           message.title || 'Room Highlights',
           message.roomId
         );
+      }
 
-      case 'whiteboard':
+      case 'whiteboard': {
         const session = this.collaborationManager.getWhiteboardSession(message.sessionId);
-        if (session) {
-          return this.collaborationManager.exportWhiteboardSession(
-            session,
-            message.userId,
-            message.userName
-          );
+        if (!session) {
+          throw new Error('Whiteboard session not found');
         }
-        throw new Error('Whiteboard session not found');
+        return this.collaborationManager.exportWhiteboardSession(
+          session,
+          message.userId,
+          message.userName
+        );
+      }
 
       default:
         throw new Error('Unknown export type: ' + message.exportType);
@@ -1130,7 +1169,8 @@ class ContentScript {
           roomId: this.currentRoomId,
           userId: this.currentUserId,
           userName: this.currentUserName || 'Unknown User',
-          signalingSend: (message) => this.notifyBackgroundScript('AVATAR_SIGNALING', message),
+          signalingSend: (message: unknown) =>
+            this.notifyBackgroundScript('AVATAR_SIGNALING', message as Record<string, unknown>),
           onAvatarUpdate: (avatar) => this.handleAvatarUpdate(avatar),
           onAvatarMove: (avatar) => this.handleAvatarMove(avatar),
           onAvatarAnimate: (avatar, animationKey) => this.handleAvatarAnimate(avatar, animationKey),
@@ -1257,6 +1297,7 @@ class ContentScript {
     this.subtitleEngine.clearAllTracks();
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async handleSaveUserPreferences(userId: string, sendResponse: (response: any) => void) {
     try {
       await this.subtitleEngine.saveUserPreferences(userId);
@@ -1270,6 +1311,7 @@ class ContentScript {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async handleLoadUserPreferences(userId: string, sendResponse: (response: any) => void) {
     try {
       await this.subtitleEngine.loadUserPreferences(userId);
@@ -1283,6 +1325,7 @@ class ContentScript {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private handleGetUserPreferences(userId: string, sendResponse: (response: any) => void) {
     try {
       const preferences = this.subtitleEngine.getUserPreferences(userId);
@@ -1296,6 +1339,7 @@ class ContentScript {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private handleGetAvailableLanguages(userId: string, sendResponse: (response: any) => void) {
     try {
       const languages = this.subtitleEngine.getAvailableLanguages(userId);
@@ -1311,7 +1355,9 @@ class ContentScript {
 
   private async handleAutoDownloadSubtitles(
     userId: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- video metadata is an untyped API payload
     videoInfo: any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     sendResponse: (response: any) => void
   ) {
     try {

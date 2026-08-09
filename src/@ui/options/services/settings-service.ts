@@ -4,13 +4,72 @@
  */
 
 import { ValidationResult, validateAllSettings } from '../utils/validation';
+import { ExtensionConfig } from '../../../@core/browser-bridge/types';
+import { ThemeMode } from '../../theme/types';
+
+export interface GeneralSettings {
+  signalingServer: string;
+  signalingWsPath: string;
+  localDevMode: boolean;
+  roomDefaultPassword: string;
+  syncTolerance: number;
+  syncTimeout: number;
+  heartbeatInterval: number;
+  reconnectInterval: number;
+  roomStateTtl: number;
+  videoDetectPoll?: number;
+}
+
+export interface AccessibilitySettings {
+  keyboardNavigationEnabled: boolean;
+  screenReaderEnabled: boolean;
+  highContrastMode: boolean;
+  fontSize: 'small' | 'medium' | 'large' | 'extra-large';
+  reducedMotion: boolean;
+  focusIndicatorStyle: 'default' | 'high-contrast' | 'custom';
+  customColors: {
+    background: string;
+    foreground: string;
+    accent: string;
+    border: string;
+  };
+  captionStyling: {
+    fontSize: 'small' | 'medium' | 'large' | 'extra-large';
+    backgroundColor: string;
+    textColor: string;
+    outline: boolean;
+  };
+  audioDescriptions: boolean;
+}
+
+export interface AppearanceSettings {
+  themeMode: ThemeMode;
+  accentColor: string;
+  customPrimaryColor: string;
+  customSecondaryColor: string;
+  enableCustomColors: boolean;
+  compactMode: boolean;
+  animationsEnabled: boolean;
+}
+
+export interface AboutSettings {
+  version: string;
+  buildDate: string;
+  changelogUrl: string;
+  repositoryUrl: string;
+  supportUrl: string;
+}
+
+export interface ApiKeysSettings {
+  opensubtitles: string;
+}
 
 export interface SettingsData {
-  general: any;
-  apiKeys: any;
-  accessibility: any;
-  appearance: any;
-  about: any;
+  general: GeneralSettings;
+  apiKeys: ApiKeysSettings;
+  accessibility: AccessibilitySettings;
+  appearance: AppearanceSettings;
+  about: AboutSettings;
 }
 
 export interface SaveResult {
@@ -31,6 +90,14 @@ export interface ExportResult {
 
 export type ConfigFormat = 'json' | 'env' | 'ini';
 
+interface BackgroundResponse {
+  success: boolean;
+  error?: string;
+  config?: ExtensionConfig;
+  data?: string;
+  validation?: ValidationResult;
+}
+
 export class SettingsService {
   private static instance: SettingsService;
 
@@ -46,7 +113,7 @@ export class SettingsService {
     try {
       const response = await this.sendMessage({ type: 'GET_CONFIG' });
 
-      if (response && response.success) {
+      if (response && response.success && response.config) {
         return this.transformConfigToSettings(response.config);
       } else {
         throw new Error(response?.error || 'Failed to load settings');
@@ -58,8 +125,8 @@ export class SettingsService {
   }
 
   // Wrapper for chrome.runtime.sendMessage with proper error handling
-  private async sendMessage(message: any): Promise<any> {
-    return new Promise((resolve, reject) => {
+  private async sendMessage(message: object): Promise<BackgroundResponse> {
+    return new Promise<BackgroundResponse>((resolve, reject) => {
       try {
         chrome.runtime.sendMessage(message, (response) => {
           if (chrome.runtime.lastError) {
@@ -210,7 +277,7 @@ export class SettingsService {
   }
 
   // Transform extension config to settings format
-  private transformConfigToSettings(config: any): SettingsData {
+  private transformConfigToSettings(config: ExtensionConfig): SettingsData {
     return {
       general: {
         signalingServer: config.SIGNALING_SERVER || '',
@@ -268,7 +335,7 @@ export class SettingsService {
   }
 
   // Transform settings to extension config format
-  private transformSettingsToConfig(settings: SettingsData): any {
+  private transformSettingsToConfig(settings: SettingsData): Partial<ExtensionConfig> {
     return {
       SIGNALING_SERVER: settings.general.signalingServer,
       SIGNALING_WS_PATH: settings.general.signalingWsPath,

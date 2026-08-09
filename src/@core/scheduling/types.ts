@@ -36,10 +36,7 @@ export interface SchedulingManagerConfig {
 }
 
 export type SchedulingEventType =
-  | 'SESSION_CREATED'
-  | 'SESSION_CANCELLED'
-  | 'REMINDER_FIRED'
-  | 'SESSION_STARTED';
+  'SESSION_CREATED' | 'SESSION_CANCELLED' | 'REMINDER_FIRED' | 'SESSION_STARTED';
 
 export interface SchedulingEvent {
   type: SchedulingEventType;

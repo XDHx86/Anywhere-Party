@@ -119,7 +119,7 @@ export const InputBar = memo<InputBarProps>(
     className,
     'data-testid': testId,
   }) => {
-    const { theme } = useMaterialTheme();
+    useMaterialTheme();
     const [message, setMessage] = useState('');
     const [isComposing, setIsComposing] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -172,19 +172,21 @@ export const InputBar = memo<InputBarProps>(
           maxRows={4}
           fullWidth
           variant="outlined"
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <Tooltip title="Add emoji" arrow>
-                  <EmojiButton variant="text" size="small" disabled={disabled}>
-                    <MaterialIcon name="smile" size="small" />
-                  </EmojiButton>
-                </Tooltip>
-              </InputAdornment>
-            ),
-          }}
-          inputProps={{
-            'aria-label': 'Type your message',
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Tooltip title="Add emoji" arrow>
+                    <EmojiButton variant="text" size="small" disabled={disabled}>
+                      <MaterialIcon name="smile" size="small" />
+                    </EmojiButton>
+                  </Tooltip>
+                </InputAdornment>
+              ),
+            },
+            htmlInput: {
+              'aria-label': 'Type your message',
+            },
           }}
           data-testid="message-input"
         />

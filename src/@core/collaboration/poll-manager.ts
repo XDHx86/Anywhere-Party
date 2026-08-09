@@ -5,7 +5,6 @@
 
 import {
   Poll,
-  PollOption,
   PollVote,
   Quiz,
   QuizQuestion,

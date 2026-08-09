@@ -286,9 +286,9 @@ export class MaterialVideoOverlay {
       if (!parent) return false;
 
       // Try to access parent's style to check for cross-origin restrictions
-      const _ = parent.style.position;
+      void parent.style.position;
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -311,7 +311,8 @@ export class MaterialVideoOverlay {
       font-family: 'Roboto', 'Inter', system-ui, sans-serif;
     `;
 
-    const parent = videoElement.parentElement!;
+    const parent = videoElement.parentElement;
+    if (!parent) return container;
     const parentStyle = window.getComputedStyle(parent);
     if (parentStyle.position === 'static') {
       parent.style.position = 'relative';
@@ -326,7 +327,7 @@ export class MaterialVideoOverlay {
   private createMaterialSurface(config: {
     id: string;
     type: 'reaction' | 'avatar';
-    content: any;
+    content: unknown;
     position: { x: number; y: number };
     elevation: 'level1' | 'level2' | 'level3' | 'level4' | 'level5';
     cornerRadius: 'medium' | 'large';
@@ -427,14 +428,19 @@ export class MaterialVideoOverlay {
     const { element, type, content } = surface;
 
     if (type === 'reaction') {
-      element.textContent = content;
+      element.textContent = content as string;
     } else if (type === 'avatar') {
       this.updateAvatarSurfaceContent(surface);
     }
   }
 
   private updateAvatarSurfaceContent(surface: MaterialSurface): void {
-    const { element, content, showIndicators, speaking, muted } = surface;
+    const { element, showIndicators, speaking, muted } = surface;
+    const avatarContent = surface.content as {
+      color?: string;
+      imageUrl?: string;
+      displayName?: string;
+    };
 
     element.innerHTML = '';
 
@@ -446,16 +452,16 @@ export class MaterialVideoOverlay {
       height: ${surface.size - 16}px;
       border-radius: 50%;
       overflow: hidden;
-      background-color: ${content.color};
+      background-color: ${avatarContent.color ?? '#ccc'};
       display: flex;
       align-items: center;
       justify-content: center;
       ${speaking ? `box-shadow: 0 0 0 3px ${this.materialTokens.colors.secondary};` : ''}
     `;
 
-    if (content.imageUrl) {
+    if (avatarContent.imageUrl) {
       const img = document.createElement('img');
-      img.src = content.imageUrl;
+      img.src = avatarContent.imageUrl;
       img.style.cssText = `
         width: 100%;
         height: 100%;
@@ -463,7 +469,7 @@ export class MaterialVideoOverlay {
       `;
       img.onerror = () => {
         // Fallback to initials
-        avatarContainer.textContent = content.displayName.charAt(0).toUpperCase();
+        avatarContainer.textContent = avatarContent.displayName?.charAt(0).toUpperCase() ?? '';
         avatarContainer.style.color = 'white';
         avatarContainer.style.fontSize = `${(surface.size - 16) / 2}px`;
         avatarContainer.style.fontWeight = '500';
@@ -471,7 +477,7 @@ export class MaterialVideoOverlay {
       avatarContainer.appendChild(img);
     } else {
       // Show initials
-      avatarContainer.textContent = content.displayName.charAt(0).toUpperCase();
+      avatarContainer.textContent = avatarContent.displayName?.charAt(0).toUpperCase() ?? '';
       avatarContainer.style.color = 'white';
       avatarContainer.style.fontSize = `${(surface.size - 16) / 2}px`;
       avatarContainer.style.fontWeight = '500';
@@ -522,7 +528,7 @@ export class MaterialVideoOverlay {
         overflow: hidden;
         text-overflow: ellipsis;
       `;
-      nameLabel.textContent = content.displayName;
+      nameLabel.textContent = avatarContent.displayName ?? '';
       element.appendChild(nameLabel);
     }
   }
@@ -578,7 +584,8 @@ export class MaterialVideoOverlay {
     if (!this.container || !this.videoElement) return;
 
     const videoRect = this.videoElement.getBoundingClientRect();
-    const parentRect = this.videoElement.parentElement!.getBoundingClientRect();
+    const parentRect = this.videoElement.parentElement?.getBoundingClientRect();
+    if (!parentRect) return;
 
     this.container.style.left = `${videoRect.left - parentRect.left}px`;
     this.container.style.top = `${videoRect.top - parentRect.top}px`;

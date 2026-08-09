@@ -16,6 +16,7 @@ import {
   AnnotationAction,
   DrawingTool,
   AnnotationType,
+  AnnotationData,
 } from './types';
 
 export interface CollaborativeAnnotationOptions extends AnnotationLayerOptions {
@@ -84,7 +85,7 @@ export class CollaborativeAnnotationLayer extends AnnotationLayer {
   /**
    * Inject overlay with collaborative features
    */
-  injectOverlay(video: HTMLVideoElement): boolean {
+  override injectOverlay(video: HTMLVideoElement): boolean {
     const success = super.injectOverlay(video);
 
     if (!success && this.isCrossOriginBlocked()) {
@@ -104,7 +105,7 @@ export class CollaborativeAnnotationLayer extends AnnotationLayer {
   /**
    * Remove overlay and stop collaborative features
    */
-  removeOverlay(): void {
+  override removeOverlay(): void {
     this.stopCollaborativeSync();
     this.clearParticipantCursors();
     super.removeOverlay();
@@ -115,7 +116,7 @@ export class CollaborativeAnnotationLayer extends AnnotationLayer {
    */
   createTimestampedAnnotation(
     type: AnnotationType,
-    data: any,
+    data: Partial<AnnotationData>,
     position: { x: number; y: number }
   ): Annotation | null {
     if (!this.isActive() || !this.video) {
@@ -130,10 +131,12 @@ export class CollaborativeAnnotationLayer extends AnnotationLayer {
       layerId: this.state.currentLayer,
       data: {
         ...data,
+        color: data.color || '#ff0000',
+        strokeWidth: data.strokeWidth || 2,
+        opacity: data.opacity || 1.0,
         x: position.x,
         y: position.y,
-        timestamp: Date.now(),
-        userName: this.collaborativeOptions.userName,
+        // Note: timestamp and userName are not in AnnotationData, they're handled separately
       },
       visible: true,
       createdAt: Date.now(),
@@ -160,7 +163,7 @@ export class CollaborativeAnnotationLayer extends AnnotationLayer {
   /**
    * Override startDrawing to inject the real user ID instead of hardcoded 'current-user'.
    */
-  protected startDrawing(x: number, y: number): void {
+  protected override startDrawing(x: number, y: number): void {
     if (!this.isActive() || !this.video) return;
 
     const currentLayer = this.state.layers.get(this.state.currentLayer);

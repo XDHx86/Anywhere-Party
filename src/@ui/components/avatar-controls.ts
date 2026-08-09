@@ -8,7 +8,7 @@ import { AVATAR_ANIMATIONS, AvatarAnimationKey } from '../../@core/avatar-overla
 
 export interface AvatarControlsOptions {
   avatarManager: AvatarManager;
-  onAvatarConfigChange?: (config: any) => void;
+  onAvatarConfigChange?: (config: Record<string, string>) => void;
   onAnimationTrigger?: (animationKey: string) => void;
   onVisibilityToggle?: (visible: boolean) => void;
 }
@@ -329,7 +329,7 @@ export class AvatarControls {
     // Filter out empty values
     const filteredConfig = Object.fromEntries(
       Object.entries(config).filter(([_, value]) => value !== undefined && value !== '')
-    );
+    ) as Record<string, string>;
 
     if (Object.keys(filteredConfig).length > 0) {
       this.options.avatarManager.updateConfig(filteredConfig);

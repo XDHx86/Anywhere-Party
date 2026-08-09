@@ -17,12 +17,19 @@ export interface PreloadResult {
   method: 'preload' | 'prefetch' | 'lazy';
 }
 
+interface NetworkInformationLike {
+  effectiveType: string;
+  addEventListener: (type: string, listener: EventListenerOrEventListenerObject) => void;
+}
+
 export class AssetPreloader {
   private static instance: AssetPreloader;
   private preloadedAssets = new Set<string>();
   private preloadPromises = new Map<string, Promise<PreloadResult>>();
   private loadingQueue: Array<{ asset: string; priority: number }> = [];
   private isProcessingQueue = false;
+  private intersectionObserver?: IntersectionObserver;
+  private preloadingMode?: 'minimal' | 'moderate' | 'full';
 
   // Preload strategies based on user interaction patterns
   private strategies: Record<string, PreloadStrategy> = {
@@ -125,7 +132,11 @@ export class AssetPreloader {
    */
   private setupNetworkAwarePreloading(): void {
     if (typeof navigator !== 'undefined' && 'connection' in navigator) {
-      const connection = (navigator as any).connection;
+      const connection = (navigator as Navigator & { connection?: NetworkInformationLike })
+        .connection;
+      if (!connection) {
+        return;
+      }
 
       // Adjust preloading strategy based on connection
       const adjustStrategy = () => {
@@ -177,14 +188,14 @@ export class AssetPreloader {
       }
     );
 
-    (this as any).intersectionObserver = observer;
+    this.intersectionObserver = observer;
   }
 
   /**
    * Set preloading mode based on network conditions
    */
   private setPreloadingMode(mode: 'minimal' | 'moderate' | 'full'): void {
-    (this as any).preloadingMode = mode;
+    this.preloadingMode = mode;
   }
 
   /**
@@ -249,8 +260,9 @@ export class AssetPreloader {
     }
 
     // Check if already loading
-    if (this.preloadPromises.has(assetName)) {
-      return this.preloadPromises.get(assetName)!;
+    const existingPromise = this.preloadPromises.get(assetName);
+    if (existingPromise) {
+      return existingPromise;
     }
 
     const startTime = performance.now();
@@ -309,7 +321,7 @@ export class AssetPreloader {
         size: 50, // Approximate fallback size
         method,
       };
-    } catch (error) {
+    } catch {
       return {
         asset: assetName,
         success: false,
@@ -323,7 +335,7 @@ export class AssetPreloader {
   /**
    * Preload SVG sprite
    */
-  private async preloadSVGSprite(assetName: string): Promise<{ success: boolean; size: number }> {
+  private async preloadSVGSprite(_assetName: string): Promise<{ success: boolean; size: number }> {
     try {
       if (typeof chrome === 'undefined' || !chrome.runtime) {
         return { success: false, size: 0 };
@@ -353,12 +365,12 @@ export class AssetPreloader {
         setTimeout(() => {
           try {
             document.head.removeChild(link);
-          } catch (e) {
+          } catch {
             // Element might already be removed
           }
         }, 1000);
       });
-    } catch (error) {
+    } catch {
       return { success: false, size: 0 };
     }
   }
@@ -366,7 +378,7 @@ export class AssetPreloader {
   /**
    * Preload icon font
    */
-  private async preloadIconFont(assetName: string): Promise<{ success: boolean; size: number }> {
+  private async preloadIconFont(_assetName: string): Promise<{ success: boolean; size: number }> {
     try {
       if (typeof chrome === 'undefined' || !chrome.runtime) {
         return { success: false, size: 0 };
@@ -394,12 +406,12 @@ export class AssetPreloader {
         setTimeout(() => {
           try {
             document.head.removeChild(link);
-          } catch (e) {
+          } catch {
             // Element might already be removed
           }
         }, 1000);
       });
-    } catch (error) {
+    } catch {
       return { success: false, size: 0 };
     }
   }
@@ -452,9 +464,9 @@ export class AssetPreloader {
    * Enable lazy loading for an element
    */
   public enableLazyLoading(element: HTMLElement, assetName: string): void {
-    if ((this as any).intersectionObserver) {
+    if (this.intersectionObserver) {
       element.dataset.preloadAsset = assetName;
-      (this as any).intersectionObserver.observe(element);
+      this.intersectionObserver.observe(element);
     }
   }
 

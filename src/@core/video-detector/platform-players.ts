@@ -171,7 +171,7 @@ export class GenericPlayer implements PlatformPlayer {
     if (videos.length === 0) return null;
 
     // Return the first video element found
-    return videos[0];
+    return videos[0] ?? null;
   }
 
   canControl(): boolean {
@@ -227,5 +227,6 @@ export function getPlatformPlayer(hostname: string): PlatformPlayer {
       return player;
     }
   }
-  return PLATFORM_PLAYERS[PLATFORM_PLAYERS.length - 1]; // Generic fallback
+  // Generic fallback (always last; construct a fresh one as a safety net)
+  return PLATFORM_PLAYERS[PLATFORM_PLAYERS.length - 1] ?? new GenericPlayer();
 }

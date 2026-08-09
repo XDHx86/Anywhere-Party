@@ -7,7 +7,6 @@ import {
   PerformanceDiagnostics as PerformanceDiagnosticsData,
   SyncPerformanceMetrics,
   NetworkPerformanceMetrics,
-  ResourceUsageMetrics,
   VideoPerformanceMetrics,
   PerformanceOptimizationConfig,
 } from './types';

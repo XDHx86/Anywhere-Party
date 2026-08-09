@@ -215,7 +215,7 @@ export const darkTheme: MaterialThemeConfig = {
 };
 
 // Theme factory function
-export const createMaterialTheme = (mode: ThemeMode, settings?: any): MaterialThemeConfig => {
+export const createMaterialTheme = (mode: ThemeMode, settings?: unknown): MaterialThemeConfig => {
   let baseTheme: MaterialThemeConfig;
 
   if (mode === 'auto') {
@@ -226,30 +226,34 @@ export const createMaterialTheme = (mode: ThemeMode, settings?: any): MaterialTh
     baseTheme = mode === 'dark' ? darkTheme : lightTheme;
   }
 
+  const themeSettings = settings as
+    | { enableCustomColors?: boolean; customPrimaryColor?: string; customSecondaryColor?: string }
+    | undefined;
+
   // Apply custom colors if enabled
-  if (settings?.enableCustomColors) {
+  if (themeSettings?.enableCustomColors) {
     const customTheme = { ...baseTheme };
 
-    if (settings.customPrimaryColor) {
+    if (themeSettings.customPrimaryColor) {
       customTheme.palette = {
         ...customTheme.palette,
         primary: {
           ...customTheme.palette.primary,
-          main: settings.customPrimaryColor,
-          light: lightenColor(settings.customPrimaryColor, 0.2),
-          dark: darkenColor(settings.customPrimaryColor, 0.2),
+          main: themeSettings.customPrimaryColor,
+          light: lightenColor(themeSettings.customPrimaryColor, 0.2),
+          dark: darkenColor(themeSettings.customPrimaryColor, 0.2),
         },
       };
     }
 
-    if (settings.customSecondaryColor) {
+    if (themeSettings.customSecondaryColor) {
       customTheme.palette = {
         ...customTheme.palette,
         secondary: {
           ...customTheme.palette.secondary,
-          main: settings.customSecondaryColor,
-          light: lightenColor(settings.customSecondaryColor, 0.2),
-          dark: darkenColor(settings.customSecondaryColor, 0.2),
+          main: themeSettings.customSecondaryColor,
+          light: lightenColor(themeSettings.customSecondaryColor, 0.2),
+          dark: darkenColor(themeSettings.customSecondaryColor, 0.2),
         },
       };
     }
@@ -288,7 +292,7 @@ const darkenColor = (color: string, amount: number): string => {
 export const defaultTheme = lightTheme;
 
 // Theme utilities
-export const getContrastRatio = (foreground: string, background: string): number => {
+export const getContrastRatio = (_foreground: string, _background: string): number => {
   // Simplified contrast ratio calculation
   // In a real implementation, you'd use a proper color library
   return 4.5; // Placeholder - meets WCAG AA standard

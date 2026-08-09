@@ -5,6 +5,7 @@
 
 import { ReactNode, CSSProperties } from 'react';
 import { ElevationLevel, SpacingSize, BorderRadiusSize } from '../cards/types';
+import type { DurationToken } from '../../animations/material-animations';
 
 // Base overlay props
 export interface BaseOverlayProps {
@@ -32,7 +33,7 @@ export interface FloatingSurfaceProps extends BaseOverlayProps {
   zIndex?: number;
   visible?: boolean;
   animationType?: OverlayAnimationType;
-  animationDuration?: number;
+  animationDuration?: DurationToken | number;
   onAnimationComplete?: () => void;
 }
 

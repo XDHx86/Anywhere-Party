@@ -81,8 +81,6 @@ class LoadingStateManager {
    * Set global loading state
    */
   setGlobalLoading(loading: boolean, operation?: string): void {
-    const wasLoading = this.state.global;
-
     this.state.global = loading;
     this.state.startTime = loading ? Date.now() : 0;
     this.state.timeoutReached = false;
@@ -179,7 +177,6 @@ class LoadingStateManager {
 
     const startTime = this.operationStartTimes.get(operation) || Date.now();
     const elapsed = Date.now() - startTime;
-    const timeout = this.getOperationTimeout(operation);
 
     // Calculate estimated time remaining
     let estimatedTimeRemaining = 0;
@@ -414,7 +411,7 @@ class LoadingStateManager {
 
   private updateCurrentOperation(): void {
     const operations = Array.from(this.state.operations);
-    this.state.currentOperation = operations.length > 0 ? operations[0] : '';
+    this.state.currentOperation = operations.length > 0 ? (operations[0] ?? '') : '';
   }
 
   private updateGlobalProgress(): void {
@@ -539,7 +536,7 @@ class LoadingStateManager {
   /**
    * Get performance metrics for all tracked components
    */
-  getPerformanceMetrics(): any {
+  getPerformanceMetrics(): unknown {
     return this.performanceCollector.exportMetrics();
   }
 }

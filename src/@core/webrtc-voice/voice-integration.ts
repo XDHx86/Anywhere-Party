@@ -25,7 +25,7 @@ export interface VoiceMessage {
     | 'participant-left';
   fromUserId: string;
   toUserId?: string;
-  data: any;
+  data: unknown;
   timestamp: number;
 }
 
@@ -34,7 +34,8 @@ export class VoiceIntegration {
   private config: VoiceIntegrationConfig;
   private signalingSocket?: WebSocket;
   private isInitialized = false;
-  private eventListeners = new Map<string, Function[]>();
+  // Event emitter uses `unknown[]` for callback args so consumers can register typed handlers.
+  private eventListeners = new Map<string, Array<(...args: unknown[]) => void>>();
 
   constructor(config: VoiceIntegrationConfig) {
     this.config = config;
@@ -90,9 +91,13 @@ export class VoiceIntegration {
 
       this.signalingSocket.onopen = () => {
         console.log('Connected to voice signaling server');
+        if (!this.config.userId) {
+          console.error('User ID not set for voice signaling');
+          return;
+        }
         this.sendVoiceMessage({
           type: 'participant-joined',
-          fromUserId: this.config.userId!,
+          fromUserId: this.config.userId,
           data: { voiceEnabled: true },
           timestamp: Date.now(),
         });
@@ -146,26 +151,35 @@ export class VoiceIntegration {
 
       case 'offer':
         if (message.toUserId === this.config.userId) {
-          await this.voiceManager.handleOffer(message.fromUserId, message.data);
+          await this.voiceManager.handleOffer(
+            message.fromUserId,
+            message.data as RTCSessionDescriptionInit
+          );
         }
         break;
 
       case 'answer':
         if (message.toUserId === this.config.userId) {
-          await this.voiceManager.handleAnswer(message.fromUserId, message.data);
+          await this.voiceManager.handleAnswer(
+            message.fromUserId,
+            message.data as RTCSessionDescriptionInit
+          );
         }
         break;
 
       case 'ice-candidate':
         if (message.toUserId === this.config.userId) {
-          await this.voiceManager.handleIceCandidate(message.fromUserId, message.data);
+          await this.voiceManager.handleIceCandidate(
+            message.fromUserId,
+            message.data as RTCIceCandidateInit
+          );
         }
         break;
 
       case 'voice-state':
         this.emit('participantVoiceStateChanged', {
           userId: message.fromUserId,
-          ...message.data,
+          ...(message.data as Record<string, unknown>),
         });
         break;
 
@@ -179,9 +193,10 @@ export class VoiceIntegration {
    */
   private setupVoiceManagerListeners(): void {
     this.voiceManager.on('offer', (data: { userId: string; offer: RTCSessionDescriptionInit }) => {
+      if (!this.config.userId) return;
       this.sendVoiceMessage({
         type: 'offer',
-        fromUserId: this.config.userId!,
+        fromUserId: this.config.userId,
         toUserId: data.userId,
         data: data.offer,
         timestamp: Date.now(),
@@ -191,9 +206,10 @@ export class VoiceIntegration {
     this.voiceManager.on(
       'answer',
       (data: { userId: string; answer: RTCSessionDescriptionInit }) => {
+        if (!this.config.userId) return;
         this.sendVoiceMessage({
           type: 'answer',
-          fromUserId: this.config.userId!,
+          fromUserId: this.config.userId,
           toUserId: data.userId,
           data: data.answer,
           timestamp: Date.now(),
@@ -202,9 +218,10 @@ export class VoiceIntegration {
     );
 
     this.voiceManager.on('iceCandidate', (data: { userId: string; candidate: RTCIceCandidate }) => {
+      if (!this.config.userId) return;
       this.sendVoiceMessage({
         type: 'ice-candidate',
-        fromUserId: this.config.userId!,
+        fromUserId: this.config.userId,
         toUserId: data.userId,
         data: data.candidate,
         timestamp: Date.now(),
@@ -213,9 +230,10 @@ export class VoiceIntegration {
 
     this.voiceManager.on('muteStateChanged', (data: { muted: boolean; userId: string }) => {
       if (data.userId === 'local') {
+        if (!this.config.userId) return;
         this.sendVoiceMessage({
           type: 'voice-state',
-          fromUserId: this.config.userId!,
+          fromUserId: this.config.userId,
           data: { muted: data.muted },
           timestamp: Date.now(),
         });
@@ -268,10 +286,10 @@ export class VoiceIntegration {
    */
   leaveVoiceChat(): void {
     // Notify other participants
-    if (this.signalingSocket?.readyState === WebSocket.OPEN) {
+    if (this.signalingSocket?.readyState === WebSocket.OPEN && this.config.userId) {
       this.sendVoiceMessage({
         type: 'participant-left',
-        fromUserId: this.config.userId!,
+        fromUserId: this.config.userId,
         data: {},
         timestamp: Date.now(),
       });
@@ -337,25 +355,29 @@ export class VoiceIntegration {
 
   /**
    * Event system
+   *
+   * `on`/`off` are generic over the callback args so consumers can subscribe
+   * with fully typed handlers. Payloads are dispatch-time only, so the type
+   * is inferred from the registered callback rather than declared up front.
    */
-  on(event: string, callback: Function): void {
+  on<TArgs extends unknown[]>(event: string, callback: (...args: TArgs) => void): void {
     if (!this.eventListeners.has(event)) {
       this.eventListeners.set(event, []);
     }
-    this.eventListeners.get(event)!.push(callback);
+    this.eventListeners.get(event)?.push(callback as (...args: unknown[]) => void);
   }
 
-  off(event: string, callback: Function): void {
+  off<TArgs extends unknown[]>(event: string, callback: (...args: TArgs) => void): void {
     const listeners = this.eventListeners.get(event);
     if (listeners) {
-      const index = listeners.indexOf(callback);
+      const index = listeners.indexOf(callback as (...args: unknown[]) => void);
       if (index > -1) {
         listeners.splice(index, 1);
       }
     }
   }
 
-  private emit(event: string, data?: any): void {
+  private emit(event: string, data?: unknown): void {
     const listeners = this.eventListeners.get(event);
     if (listeners) {
       listeners.forEach((callback) => callback(data));

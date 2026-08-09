@@ -13,11 +13,9 @@ function detectBrowser(): 'chrome' | 'firefox' | 'unknown' {
   }
 
   // Check for Firefox-specific APIs or webextension-polyfill
-  if (
-    typeof (globalThis as any).browser !== 'undefined' &&
-    (globalThis as any).browser.runtime &&
-    (globalThis as any).browser.runtime.id
-  ) {
+  const browserGlobal = (globalThis as Record<string, unknown>).browser as
+    { runtime?: { id?: string } } | undefined;
+  if (typeof browserGlobal !== 'undefined' && browserGlobal.runtime && browserGlobal.runtime.id) {
     return 'firefox';
   }
 

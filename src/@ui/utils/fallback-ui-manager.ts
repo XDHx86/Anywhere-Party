@@ -925,10 +925,10 @@ export class FallbackUIManager {
 
     try {
       // Send message to background script to create room
-      const response = await browserAPI.runtime.sendMessage({
+      const response = (await browserAPI.runtime.sendMessage({
         type: 'CREATE_ROOM',
         data: roomData,
-      });
+      })) as { success?: boolean; error?: string } | undefined;
 
       if (response?.success) {
         // Refresh to show room view
@@ -954,13 +954,13 @@ export class FallbackUIManager {
 
     try {
       // Send message to background script to join room
-      const response = await browserAPI.runtime.sendMessage({
+      const response = (await browserAPI.runtime.sendMessage({
         type: 'JOIN_ROOM',
         data: {
           roomId,
           password: passwordInput?.value || '',
         },
-      });
+      })) as { success?: boolean; error?: string } | undefined;
 
       if (response?.success) {
         // Refresh to show room view
@@ -978,9 +978,9 @@ export class FallbackUIManager {
     if (!confirm('Are you sure you want to leave the room?')) return;
 
     try {
-      const response = await browserAPI.runtime.sendMessage({
+      const response = (await browserAPI.runtime.sendMessage({
         type: 'LEAVE_ROOM',
-      });
+      })) as { success?: boolean; error?: string } | undefined;
 
       if (response?.success) {
         // Refresh to show main menu
@@ -996,9 +996,9 @@ export class FallbackUIManager {
 
   private async copyInvitationLink(): Promise<void> {
     try {
-      const response = await browserAPI.runtime.sendMessage({
+      const response = (await browserAPI.runtime.sendMessage({
         type: 'GET_INVITATION_LINK',
-      });
+      })) as { success?: boolean; link?: string } | undefined;
 
       if (response?.success && response.link) {
         await navigator.clipboard.writeText(response.link);
@@ -1094,7 +1094,9 @@ export class FallbackUIManager {
     if (telemetryCheckbox) settings.telemetryEnabled = telemetryCheckbox.checked;
     if (highContrastCheckbox) settings.highContrastMode = highContrastCheckbox.checked;
     if (reducedMotionCheckbox) settings.reducedMotion = reducedMotionCheckbox.checked;
-    if (fontSizeSelect) settings.fontSize = fontSizeSelect.value as any;
+    if (fontSizeSelect) {
+      settings.fontSize = fontSizeSelect.value as FallbackSettings['fontSize'];
+    }
 
     return settings;
   }
@@ -1302,21 +1304,21 @@ export class FallbackUIManager {
 
   private async getConnectionStatus(): Promise<ConnectionStatus> {
     try {
-      const response = await browserAPI.runtime.sendMessage({
+      const response = (await browserAPI.runtime.sendMessage({
         type: 'GET_CONNECTION_STATUS',
-      });
+      })) as { status?: ConnectionStatus } | undefined;
 
       return response?.status || { status: 'disconnected' };
-    } catch (error) {
+    } catch {
       return { status: 'error', errorMessage: 'Failed to get status' };
     }
   }
 
   private async getRoomInfo(): Promise<RoomInfo> {
     try {
-      const response = await browserAPI.runtime.sendMessage({
+      const response = (await browserAPI.runtime.sendMessage({
         type: 'GET_ROOM_INFO',
-      });
+      })) as { roomInfo?: RoomInfo } | undefined;
 
       return (
         response?.roomInfo || {
@@ -1327,7 +1329,7 @@ export class FallbackUIManager {
           isActive: false,
         }
       );
-    } catch (error) {
+    } catch {
       return {
         id: null,
         name: null,

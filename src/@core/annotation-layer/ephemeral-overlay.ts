@@ -187,6 +187,9 @@ export class EphemeralOverlay {
 
       if (trail.points.length < 2) continue;
 
+      const firstPoint = trail.points[0];
+      if (!firstPoint) continue;
+
       this.ctx.globalAlpha = alpha;
       this.ctx.strokeStyle = trail.color;
       this.ctx.lineWidth = this.config.trailWidth;
@@ -194,10 +197,13 @@ export class EphemeralOverlay {
       this.ctx.lineJoin = 'round';
 
       this.ctx.beginPath();
-      this.ctx.moveTo(trail.points[0].x, trail.points[0].y);
+      this.ctx.moveTo(firstPoint.x, firstPoint.y);
 
       for (let i = 1; i < trail.points.length; i++) {
-        this.ctx.lineTo(trail.points[i].x, trail.points[i].y);
+        const point = trail.points[i];
+        if (point) {
+          this.ctx.lineTo(point.x, point.y);
+        }
       }
 
       this.ctx.stroke();

@@ -1,21 +1,29 @@
 import { createBrowserBridge } from '@core/browser-bridge';
-import { ConfigManagerImpl } from '@core/config';
+import { ConfigManagerImpl, ExtensionConfig } from '@core/config';
 import {
   SignalingClient,
   ConnectionState,
   ServerMessage,
+  ClientMessage,
+  RoomOptions,
+  AnnotationCreatedBroadcastMessage,
   createCreateRoomMessage,
   createJoinRoomMessage,
   createSyncStateMessage,
   createChatMessage,
 } from '@core/signaling';
 import { SyncEngine } from '@core/sync-engine';
-import { SyncMessage } from '@core/sync-engine/types';
+import { SyncMessage, DriftCorrection } from '@core/sync-engine/types';
 import { ChatManager } from '@core/chat';
 import { ReactionType } from '@core/chat/types';
 import { createPrivacyManager, PrivacyManager } from '@core/privacy/privacy-manager';
 import { createLoggingManager, LoggingManager } from '@core/logging';
-import { getRoomStateManager, RoomStateManager } from '@core/room-state/room-state-manager';
+import {
+  getRoomStateManager,
+  RoomStateManager,
+  Participant,
+  PlaybackState,
+} from '@core/room-state/room-state-manager';
 import { getPlaylistManager, PlaylistManager } from '@core/playlist';
 import { getSchedulingManager, SchedulingManager } from '@core/scheduling';
 import {
@@ -28,6 +36,7 @@ import { getAPIKeyManager, APIKeyManager } from '@core/api-keys/api-key-manager'
 import { roomCreationResponseHandler } from '@core/room-creation/room-creation-response-handler';
 import { getParticipantManager, ParticipantManager } from '@core/participant-manager';
 import { createPublicKeyBroadcastMessage, createEncryptedChatMessage } from '@core/signaling';
+import { AnnotationData as SignalingAnnotationData } from '@core/signaling/message-types';
 import {
   createMonitoringService,
   MonitoringService,
@@ -216,7 +225,7 @@ class BackgroundService {
    * Initialize WebRTC voice integration
    * Requirement 4.1: Establish peer-to-peer audio connections with TURN server configuration
    */
-  private async initializeVoiceIntegration(config: any): Promise<void> {
+  private async initializeVoiceIntegration(config: ExtensionConfig): Promise<void> {
     try {
       // Create voice integration configuration
       const voiceConfig: VoiceIntegrationConfig = {
@@ -267,12 +276,12 @@ class BackgroundService {
     if (!this.voiceIntegration) return;
 
     // Handle voice initialization
-    this.voiceIntegration.on('initialized', (status: any) => {
+    this.voiceIntegration.on('initialized', (status: unknown) => {
       this.loggingManager?.info('voice_integration', 'Voice chat initialized', { status });
       this.broadcastToTabs('VOICE_INITIALIZED', { status });
     });
 
-    this.voiceIntegration.on('initializationFailed', (status: any) => {
+    this.voiceIntegration.on('initializationFailed', (status: unknown) => {
       this.loggingManager?.warn('voice_integration', 'Voice chat initialization failed', {
         status,
       });
@@ -280,23 +289,25 @@ class BackgroundService {
     });
 
     // Handle participant events
-    this.voiceIntegration.on('participantJoined', (userId: string) => {
+    this.voiceIntegration.on('participantJoined', (...args: unknown[]) => {
+      const userId = typeof args[0] === 'string' ? args[0] : String(args[0]);
       this.loggingManager?.info('voice_integration', 'Participant joined voice chat', { userId });
       this.broadcastToTabs('VOICE_PARTICIPANT_JOINED', { userId });
     });
 
-    this.voiceIntegration.on('participantLeft', (userId: string) => {
+    this.voiceIntegration.on('participantLeft', (...args: unknown[]) => {
+      const userId = typeof args[0] === 'string' ? args[0] : String(args[0]);
       this.loggingManager?.info('voice_integration', 'Participant left voice chat', { userId });
       this.broadcastToTabs('VOICE_PARTICIPANT_LEFT', { userId });
     });
 
     // Handle voice activity
-    this.voiceIntegration.on('voiceActivity', (data: any) => {
+    this.voiceIntegration.on('voiceActivity', (data: Record<string, unknown>) => {
       this.broadcastToTabs('VOICE_ACTIVITY', data);
     });
 
     // Handle mute state changes
-    this.voiceIntegration.on('muteStateChanged', (data: any) => {
+    this.voiceIntegration.on('muteStateChanged', (data: Record<string, unknown>) => {
       this.broadcastToTabs('VOICE_MUTE_STATE_CHANGED', data);
     });
   }
@@ -304,7 +315,7 @@ class BackgroundService {
   /**
    * Broadcast message to all tabs
    */
-  private async broadcastToTabs(type: string, data: any): Promise<void> {
+  private async broadcastToTabs(type: string, data: Record<string, unknown>): Promise<void> {
     try {
       const tabs = await this.browserBridge.tabs.query({});
       for (const tab of tabs) {
@@ -314,7 +325,7 @@ class BackgroundService {
           });
         }
       }
-    } catch (error) {
+    } catch {
       // Ignore broadcast errors
     }
   }
@@ -331,10 +342,11 @@ class BackgroundService {
 
       try {
         switch (message.type) {
-          case 'GET_CONFIG':
+          case 'GET_CONFIG': {
             const config = await this.configManager.loadConfig();
             sendResponse({ success: true, config });
             break;
+          }
 
           case 'UPDATE_CONFIG':
             try {
@@ -477,10 +489,11 @@ class BackgroundService {
             sendResponse({ success: true });
             break;
 
-          case 'GET_VOICE_STATUS':
+          case 'GET_VOICE_STATUS': {
             const voiceStatus = this.getVoiceStatus();
             sendResponse({ success: true, status: voiceStatus });
             break;
+          }
 
           // Sync engine controls
           case 'START_SYNC':
@@ -509,10 +522,11 @@ class BackgroundService {
             sendResponse({ success: true });
             break;
 
-          case 'GET_CHAT_MESSAGES':
+          case 'GET_CHAT_MESSAGES': {
             const messages = this.chatManager.getRecentMessages(message.count || 50);
             sendResponse({ success: true, messages });
             break;
+          }
 
           // ─── Playlist Messages ─────────────────────────
           case 'GET_PLAYLIST':
@@ -528,7 +542,7 @@ class BackgroundService {
             // Broadcast updated state to server
             if (this.signalingClient?.isConnected()) {
               this.signalingClient.sendMessage(
-                createPlaylistAddMessage(this.currentUserId!, message.items)
+                createPlaylistAddMessage(this.currentUserId, message.items)
               );
             }
             sendResponse({ success: true, playlist: this.playlistManager.getState() });
@@ -543,7 +557,7 @@ class BackgroundService {
             await this.playlistManager.removeItems(message.itemIds);
             if (this.signalingClient?.isConnected()) {
               this.signalingClient.sendMessage(
-                createPlaylistRemoveMessage(this.currentUserId!, message.itemIds)
+                createPlaylistRemoveMessage(this.currentUserId, message.itemIds)
               );
             }
             sendResponse({ success: true, playlist: this.playlistManager.getState() });
@@ -558,7 +572,7 @@ class BackgroundService {
             await this.playlistManager.reorderItems(message.itemIds, message.newIndex);
             if (this.signalingClient?.isConnected()) {
               this.signalingClient.sendMessage(
-                createPlaylistReorderMessage(this.currentUserId!, message.itemIds, message.newIndex)
+                createPlaylistReorderMessage(this.currentUserId, message.itemIds, message.newIndex)
               );
             }
             sendResponse({ success: true, playlist: this.playlistManager.getState() });
@@ -568,7 +582,7 @@ class BackgroundService {
           case 'VOTE_SKIP': {
             if (this.signalingClient?.isConnected()) {
               this.signalingClient.sendMessage(
-                createPlaylistSkipVoteMessage(this.currentUserId!, message.itemId)
+                createPlaylistSkipVoteMessage(this.currentUserId, message.itemId)
               );
             }
             sendResponse({ success: true });
@@ -1139,7 +1153,7 @@ class BackgroundService {
               const healthMetrics = this.monitoringService.getHealthMetrics();
               const recentBugs = await this.monitoringService.getRuntimeBugHistory(20);
               const recentFeedback = await this.monitoringService.getUserFeedbackHistory(10);
-              const alerts: any[] = []; // TODO: Implement alert retrieval
+              const alerts: unknown[] = []; // TODO: Implement alert retrieval
 
               sendResponse({
                 success: true,
@@ -1244,7 +1258,9 @@ class BackgroundService {
    * Validate that a message sender is trusted (comes from within the extension).
    * Rejects messages from external/untrusted sources.
    */
-  private isValidMessageSender(sender: chrome.runtime.MessageSender | undefined): boolean {
+  private isValidMessageSender(
+    sender: chrome.runtime.MessageSender | undefined
+  ): sender is chrome.runtime.MessageSender {
     if (!sender) return false;
 
     // Messages from extension pages (popup, options) always have sender.id set
@@ -1267,7 +1283,7 @@ class BackgroundService {
   private async getOrCreateUserId(): Promise<string> {
     const result = await this.browserBridge.storage.local.get('userId');
     if (result.userId) {
-      return result.userId;
+      return result.userId as string;
     }
 
     // Generate cryptographically secure user ID
@@ -1299,7 +1315,7 @@ class BackgroundService {
     await this.signalingClient.connect();
   }
 
-  private async handleStartRoom(roomOptions?: any): Promise<void> {
+  private async handleStartRoom(roomOptions?: RoomOptions): Promise<void> {
     try {
       console.log('Starting room with video detection...');
 
@@ -1310,7 +1326,7 @@ class BackgroundService {
       }
 
       const activeTab = tabs[0];
-      if (!activeTab.id) {
+      if (!activeTab?.id) {
         throw new Error('Active tab has no ID');
       }
 
@@ -1354,7 +1370,7 @@ class BackgroundService {
     }
   }
 
-  private async handleCreateRoom(roomOptions?: any): Promise<void> {
+  private async handleCreateRoom(roomOptions?: RoomOptions): Promise<void> {
     try {
       if (!this.signalingClient) {
         await this.initializeSignalingClient();
@@ -1610,7 +1626,7 @@ class BackgroundService {
     };
 
     // Send as a custom message for now
-    this.signalingClient.sendMessage(message as any);
+    this.signalingClient.sendMessage(message as unknown as ClientMessage);
   }
 
   private async handleToggleRoomLock(): Promise<void> {
@@ -1627,7 +1643,7 @@ class BackgroundService {
     };
 
     // Send as a custom message for now
-    this.signalingClient.sendMessage(message as any);
+    this.signalingClient.sendMessage(message as unknown as ClientMessage);
   }
 
   /**
@@ -1788,7 +1804,7 @@ class BackgroundService {
   /**
    * Get current voice chat status
    */
-  private getVoiceStatus(): any {
+  private getVoiceStatus(): Record<string, unknown> {
     if (!this.voiceIntegration) {
       return {
         available: false,
@@ -1830,7 +1846,7 @@ class BackgroundService {
       onSyncMessage: (syncMessage: SyncMessage) => {
         // Log sync event
         this.loggingManager?.logSyncEvent({
-          type: syncMessage.type as any,
+          type: syncMessage.type,
           currentTime: syncMessage.currentTime,
           targetTime: undefined,
           drift_ms: undefined,
@@ -1852,16 +1868,16 @@ class BackgroundService {
           this.signalingClient.sendMessage(signalingMessage);
         }
       },
-      onDriftDetected: (drift: any) => {
+      onDriftDetected: (drift: DriftCorrection) => {
         console.log('Drift detected:', drift);
 
         // Log drift detection
         this.loggingManager?.logSyncEvent({
           type: 'drift_correction',
-          currentTime: drift.currentTime || 0,
+          currentTime: 0,
           targetTime: drift.targetTime || 0,
-          drift_ms: drift.driftMs || 0,
-          playbackRate: drift.playbackRate || 1,
+          drift_ms: drift.detectedDriftMs || 0,
+          playbackRate: 1,
           isHost: this.isHost,
           participantCount: undefined,
         });
@@ -1951,12 +1967,17 @@ class BackgroundService {
       throw new Error('No active tab found');
     }
 
+    const activeTabId = tabs[0]?.id;
+    if (!activeTabId) {
+      throw new Error('Active tab has no ID');
+    }
+
     try {
-      const response = await this.browserBridge.tabs.sendMessage(tabs[0].id!, {
+      const response = await this.browserBridge.tabs.sendMessage(activeTabId, {
         type: 'GET_VIDEO_TIMESTAMP',
       });
 
-      const videoTimestamp = response?.timestamp || 0;
+      const videoTimestamp = ((response as Record<string, unknown>)?.timestamp as number) || 0;
 
       // Add to local reactions
       this.chatManager.addReaction(this.currentUserId, reactionType, videoTimestamp);
@@ -1974,7 +1995,7 @@ class BackgroundService {
 
       // Also send to content script for immediate display
       this.browserBridge.tabs
-        .sendMessage(tabs[0].id!, {
+        .sendMessage(activeTabId, {
           type: 'SHOW_REACTION',
           reactionType,
           videoTimestamp,
@@ -2003,7 +2024,7 @@ class BackgroundService {
     console.log('Received server message:', message.type);
 
     switch (message.type) {
-      case 'ROOM_CREATED':
+      case 'ROOM_CREATED': {
         // Use enhanced response parsing
         const parsedResponse = roomCreationResponseHandler.parseRoomCreationResponse(message);
 
@@ -2037,7 +2058,12 @@ class BackgroundService {
         }
 
         // Successfully parsed response
-        this.currentRoomId = parsedResponse.roomId!;
+        const roomId = parsedResponse.roomId;
+        if (!roomId) {
+          console.error('Room created but response is missing roomId');
+          return;
+        }
+        this.currentRoomId = roomId;
         this.isHost = parsedResponse.hostId === this.currentUserId;
 
         console.log(
@@ -2049,26 +2075,26 @@ class BackgroundService {
 
         // Persist comprehensive room state
         this.roomStateManager
-          .persistRoomState(parsedResponse.roomId!, {
+          .persistRoomState(roomId, {
             isHost: this.isHost,
             connectionStatus: 'connected',
-            participants: parsedResponse.participants || [],
-            currentPlaybackState: parsedResponse.currentState || {
+            participants: (parsedResponse.participants as Participant[]) || [],
+            currentPlaybackState: (parsedResponse.currentState as PlaybackState) || {
               currentTime: 0,
               paused: true,
               playbackRate: 1,
               timestamp: parsedResponse.timestamp || Date.now(),
             },
             roomInfo: {
-              roomId: parsedResponse.roomId!,
+              roomId,
               inviteLink: userResult.inviteLink,
               createdAt: new Date(parsedResponse.timestamp || Date.now()),
               copyableInfo: roomCreationResponseHandler.generateCopyableRoomInfo(
-                parsedResponse.roomId!,
+                roomId,
                 userResult.inviteLink
               ),
               shareableMessage: roomCreationResponseHandler.generateShareableMessage(
-                parsedResponse.roomId!,
+                roomId,
                 userResult.inviteLink
               ),
             },
@@ -2094,27 +2120,28 @@ class BackgroundService {
           });
 
         // Update logging manager with room ID
-        this.loggingManager?.setRoomId(parsedResponse.roomId!);
+        this.loggingManager?.setRoomId(roomId);
 
         // Update runtime bug tracker with room ID
-        this.runtimeBugTracker?.setRoomId(parsedResponse.roomId!);
+        this.runtimeBugTracker?.setRoomId(roomId);
 
         // Notify UI of successful room creation
         this.broadcastToUI({
           type: 'ROOM_CREATED_SUCCESS',
-          roomId: parsedResponse.roomId,
+          roomId,
           inviteLink: userResult.inviteLink,
           userFriendlyMessage: userResult.userFriendlyMessage,
           copyableInfo: roomCreationResponseHandler.generateCopyableRoomInfo(
-            parsedResponse.roomId!,
+            roomId,
             userResult.inviteLink
           ),
           shareableMessage: roomCreationResponseHandler.generateShareableMessage(
-            parsedResponse.roomId!,
+            roomId,
             userResult.inviteLink
           ),
         });
         break;
+      }
 
       case 'ROOM_JOINED':
         // Validate room join response
@@ -2140,7 +2167,7 @@ class BackgroundService {
           .persistRoomState(message.roomId, {
             isHost: this.isHost,
             connectionStatus: 'connected',
-            participants: (message.participants || []).map((p: any) => ({
+            participants: (message.participants || []).map((p) => ({
               id: p.id,
               name: p.name || 'Unknown',
               role: p.role || 'participant',
@@ -2174,7 +2201,7 @@ class BackgroundService {
         // Initialize participant manager with server-provided participant list
         if (this.participantManager) {
           const participantIds = (message.participants || [])
-            .map((p: any) => p.id)
+            .map((p) => p.id)
             .filter((id: string) => id !== this.currentUserId);
           this.participantManager.onRoomJoined(message.roomId, this.currentUserId, participantIds);
           // Notify privacy manager with actual participant list
@@ -2218,13 +2245,9 @@ class BackgroundService {
         if (this.participantManager) {
           this.participantManager.addParticipant(message.userId);
           // Notify privacy manager for key exchange
+          // (public key arrives separately via PUBLIC_KEY_BROADCAST messages)
           if (this.privacyManager) {
-            const publicKey = (message as any).publicKey;
-            await this.privacyManager.onParticipantJoined(
-              this.currentRoomId,
-              message.userId,
-              publicKey
-            );
+            await this.privacyManager.onParticipantJoined(this.currentRoomId, message.userId);
           }
           // Send our public key to the new participant
           await this.broadcastPublicKey();
@@ -2310,7 +2333,7 @@ class BackgroundService {
                   videoTimestamp: message.videoTimestamp,
                   userId: message.userId,
                 })
-                .catch((error) => {
+                .catch((_error) => {
                   // Ignore errors for tabs without content script
                 });
             }
@@ -2326,9 +2349,9 @@ class BackgroundService {
               this.browserBridge.tabs
                 .sendMessage(tab.id, {
                   type: 'ADD_ANNOTATION',
-                  annotation: (message as any).annotation,
+                  annotation: (message as AnnotationCreatedBroadcastMessage).annotation,
                 })
-                .catch((error) => {
+                .catch((_error) => {
                   // Ignore errors for tabs without content script
                 });
             }
@@ -2344,10 +2367,10 @@ class BackgroundService {
               this.browserBridge.tabs
                 .sendMessage(tab.id, {
                   type: 'UPDATE_ANNOTATION',
-                  annotationId: (message as any).annotationId,
-                  updates: (message as any).updates,
+                  annotationId: message.annotationId,
+                  updates: message.updates,
                 })
-                .catch((error) => {
+                .catch((_error) => {
                   // Ignore errors for tabs without content script
                 });
             }
@@ -2363,9 +2386,9 @@ class BackgroundService {
               this.browserBridge.tabs
                 .sendMessage(tab.id, {
                   type: 'DELETE_ANNOTATION',
-                  annotationId: (message as any).annotationId,
+                  annotationId: message.annotationId,
                 })
-                .catch((error) => {
+                .catch((_error) => {
                   // Ignore errors for tabs without content script
                 });
             }
@@ -2381,10 +2404,10 @@ class BackgroundService {
               this.browserBridge.tabs
                 .sendMessage(tab.id, {
                   type: 'SET_ANNOTATION_LAYER_VISIBILITY',
-                  layerId: (message as any).layerId,
-                  visible: (message as any).visible,
+                  layerId: message.layerId,
+                  visible: message.visible,
                 })
-                .catch((error) => {
+                .catch((_error) => {
                   // Ignore errors for tabs without content script
                 });
             }
@@ -2456,7 +2479,7 @@ class BackgroundService {
               type: 'SERVER_MESSAGE',
               message,
             })
-            .catch((error) => {
+            .catch((_error) => {
               // Ignore errors for tabs without content script
             });
         }
@@ -2470,7 +2493,7 @@ class BackgroundService {
     // Log connection state change
     if (this.loggingManager) {
       this.loggingManager.logConnectionEvent({
-        state: state as any, // Convert enum to string
+        state: state as 'connecting' | 'connected' | 'disconnected' | 'reconnecting' | 'failed',
         previousState: undefined, // Could track previous state if needed
         duration: undefined,
         error: undefined,
@@ -2487,7 +2510,7 @@ class BackgroundService {
               type: 'CONNECTION_STATE_CHANGED',
               state,
             })
-            .catch((error) => {
+            .catch((_error) => {
               // Ignore errors for tabs without content script
             });
         }
@@ -2496,7 +2519,11 @@ class BackgroundService {
   }
 
   // Subtitle functionality handlers
-  private async handleLoadSubtitleFile(file: any, userId: string, tabId?: number): Promise<void> {
+  private async handleLoadSubtitleFile(
+    file: unknown,
+    userId: string,
+    tabId?: number
+  ): Promise<void> {
     if (!tabId) {
       throw new Error('Tab ID required for subtitle operations');
     }
@@ -2516,7 +2543,7 @@ class BackgroundService {
   private async handleSearchOpenSubtitles(
     query: string,
     language: string | undefined,
-    sendResponse: (response: any) => void,
+    sendResponse: (response: unknown) => void,
     tabId?: number
   ): Promise<void> {
     if (!tabId) {
@@ -2542,9 +2569,9 @@ class BackgroundService {
   }
 
   private async handleDownloadOpenSubtitles(
-    result: any,
+    result: unknown,
     userId: string,
-    sendResponse: (response: any) => void,
+    sendResponse: (response: unknown) => void,
     tabId?: number
   ): Promise<void> {
     if (!tabId) {
@@ -2571,7 +2598,7 @@ class BackgroundService {
 
   private async handleGetSubtitleTracks(
     userId: string,
-    sendResponse: (response: any) => void,
+    sendResponse: (response: unknown) => void,
     tabId?: number
   ): Promise<void> {
     if (!tabId) {
@@ -2661,7 +2688,7 @@ class BackgroundService {
   }
 
   // Annotation functionality handlers
-  private async handleAnnotationCreated(annotation: any): Promise<void> {
+  private async handleAnnotationCreated(annotation: SignalingAnnotationData): Promise<void> {
     if (!this.signalingClient || !this.currentRoomId) {
       console.warn('Cannot send annotation - not connected to room');
       return;
@@ -2684,7 +2711,10 @@ class BackgroundService {
     }
   }
 
-  private async handleAnnotationUpdated(annotationId: string, updates: any): Promise<void> {
+  private async handleAnnotationUpdated(
+    annotationId: string,
+    updates: Partial<SignalingAnnotationData>
+  ): Promise<void> {
     if (!this.signalingClient || !this.currentRoomId) {
       console.warn('Cannot update annotation - not connected to room');
       return;
@@ -2758,7 +2788,7 @@ class BackgroundService {
   /**
    * Broadcast message to all UI components (popup, options, content scripts)
    */
-  private async broadcastToUI(message: any): Promise<void> {
+  private async broadcastToUI(message: Record<string, unknown>): Promise<void> {
     try {
       // Get all tabs to send message to content scripts
       const tabs = await this.browserBridge.tabs.query({});

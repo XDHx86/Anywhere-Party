@@ -7,21 +7,131 @@
 
 import { getBrowserCompatibilityManager } from './browser-compatibility';
 
+// Minimal shape of the WebExtension manifest used by this module
+interface BrowserManifest {
+  version?: string;
+  name?: string;
+  manifest_version?: number;
+}
+
+// Loose structural types for the global browser object (Firefox WebExtensions API)
+export interface BrowserLikePort {
+  onMessage: {
+    addListener: (callback: (message: unknown) => void) => void;
+    removeListener: (callback: (message: unknown) => void) => void;
+  };
+  onDisconnect: {
+    addListener: (callback: () => void) => void;
+  };
+  postMessage: (message: unknown) => void;
+  disconnect: () => void;
+  name?: string;
+}
+
+interface BrowserLikeRuntime {
+  sendMessage: (message: unknown) => Promise<unknown>;
+  openOptionsPage: () => void;
+  getManifest: () => unknown;
+  getURL: (path: string) => string;
+  id?: string;
+  connect: (connectInfo?: { name?: string }) => BrowserLikePort;
+  onMessage: {
+    addListener: (
+      callback: (
+        message: unknown,
+        sender: unknown,
+        sendResponse: (response?: unknown) => void
+      ) => void | boolean | Promise<unknown>
+    ) => void;
+    removeListener: (callback: (...args: unknown[]) => void) => void;
+  };
+  onUpdateAvailable?: {
+    addListener: (callback: (details: unknown) => void) => void;
+  };
+  onInstalled?: {
+    addListener: (callback: (details: unknown) => void) => void;
+  };
+  onStartup?: {
+    addListener: (callback: () => void) => void;
+  };
+}
+
+interface BrowserLikeStorage {
+  local: {
+    get: (keys?: string[] | string | null) => Promise<unknown>;
+    set: (items: Record<string, unknown>) => Promise<void>;
+    remove: (keys: string | string[]) => Promise<void>;
+    clear: () => Promise<void>;
+  };
+  onChanged?: {
+    addListener: (callback: (changes: unknown, areaName: string) => void) => void;
+  };
+}
+
+interface BrowserLikeTabs {
+  onUpdated: {
+    addListener: (callback: (tabId: number, changeInfo: unknown, tab: unknown) => void) => void;
+  };
+  sendMessage: (tabId: number, message: unknown) => Promise<unknown>;
+  query: (queryInfo: unknown) => Promise<unknown>;
+}
+
+interface BrowserLikeBrowserAction {
+  setTitle: (details: unknown) => Promise<void>;
+  setBadgeText: (details: unknown) => Promise<void>;
+  setBadgeBackgroundColor: (details: unknown) => Promise<void>;
+  onClicked: {
+    addListener: (callback: (tab: unknown) => void) => void;
+  };
+}
+
+interface BrowserLikeNotifications {
+  create: (id: string, options: unknown) => Promise<string>;
+  clear: (id: string) => Promise<boolean>;
+  getAll: () => Promise<unknown>;
+  onClicked: {
+    addListener: (callback: (notificationId: string) => void) => void;
+  };
+}
+
+interface BrowserLikeAlarms {
+  create: (name: string, alarmInfo?: unknown) => void;
+  onAlarm: {
+    addListener: (callback: (alarm: unknown) => void) => void;
+  };
+}
+
+interface BrowserLikePermissions {
+  request: (permissions: unknown) => Promise<boolean>;
+  contains: (permissions: unknown) => Promise<boolean>;
+  remove: (permissions: unknown) => Promise<boolean>;
+}
+
+interface BrowserLike {
+  runtime: BrowserLikeRuntime;
+  storage: BrowserLikeStorage;
+  tabs: BrowserLikeTabs;
+  browserAction: BrowserLikeBrowserAction;
+  notifications: BrowserLikeNotifications;
+  alarms: BrowserLikeAlarms;
+  permissions: BrowserLikePermissions;
+}
+
 // Browser API interface
 interface BrowserAPI {
   runtime: {
-    sendMessage: (message: any) => Promise<any>;
+    sendMessage: (message: unknown) => Promise<unknown>;
     openOptionsPage: () => void;
-    getManifest: () => any;
+    getManifest: () => BrowserManifest;
     onMessage: {
-      addListener: (callback: (message: any) => void) => void;
-      removeListener: (callback: (message: any) => void) => void;
+      addListener: (callback: (message: unknown) => void) => void;
+      removeListener: (callback: (message: unknown) => void) => void;
     };
   };
   storage: {
     local: {
-      get: (keys?: string[] | string | null) => Promise<any>;
-      set: (items: Record<string, any>) => Promise<void>;
+      get: (keys?: string[] | string | null) => Promise<Record<string, unknown>>;
+      set: (items: Record<string, unknown>) => Promise<void>;
       clear: () => Promise<void>;
     };
   };
@@ -39,7 +149,7 @@ export const getBrowserAPI = (): BrowserAPI => {
   if (typeof browser !== 'undefined' && browser.runtime) {
     return {
       runtime: {
-        sendMessage: async (message: any) => {
+        sendMessage: async (message: unknown) => {
           try {
             return await browser.runtime.sendMessage(message);
           } catch (error) {
@@ -58,21 +168,21 @@ export const getBrowserAPI = (): BrowserAPI => {
         },
         getManifest: () => {
           try {
-            return browser.runtime.getManifest();
+            return browser.runtime.getManifest() as BrowserManifest;
           } catch (error) {
             console.warn('Firefox getManifest failed:', error);
             return { version: '1.0.0', manifest_version: 2, name: 'Watch Party Extension' };
           }
         },
         onMessage: {
-          addListener: (callback: (message: any) => void) => {
+          addListener: (callback: (message: unknown) => void) => {
             try {
               browser.runtime.onMessage.addListener(callback);
             } catch (error) {
               console.warn('Firefox onMessage.addListener failed:', error);
             }
           },
-          removeListener: (callback: (message: any) => void) => {
+          removeListener: (callback: (message: unknown) => void) => {
             try {
               browser.runtime.onMessage.removeListener(callback);
             } catch (error) {
@@ -85,13 +195,13 @@ export const getBrowserAPI = (): BrowserAPI => {
         local: {
           get: async (keys?: string[] | string | null) => {
             try {
-              return await browser.storage.local.get(keys);
+              return (await browser.storage.local.get(keys)) as Record<string, unknown>;
             } catch (error) {
               console.warn('Firefox storage.get failed:', error);
               return {};
             }
           },
-          set: async (items: Record<string, any>) => {
+          set: async (items: Record<string, unknown>) => {
             try {
               await browser.storage.local.set(items);
             } catch (error) {
@@ -119,7 +229,7 @@ export const getBrowserAPI = (): BrowserAPI => {
   if (typeof chrome !== 'undefined' && chrome.runtime) {
     return {
       runtime: {
-        sendMessage: async (message: any) => {
+        sendMessage: async (message: unknown) => {
           try {
             return await chrome.runtime.sendMessage(message);
           } catch (error) {
@@ -145,14 +255,14 @@ export const getBrowserAPI = (): BrowserAPI => {
           }
         },
         onMessage: {
-          addListener: (callback: (message: any) => void) => {
+          addListener: (callback: (message: unknown) => void) => {
             try {
               chrome.runtime.onMessage.addListener(callback);
             } catch (error) {
               console.warn('Chrome onMessage.addListener failed:', error);
             }
           },
-          removeListener: (callback: (message: any) => void) => {
+          removeListener: (callback: (message: unknown) => void) => {
             try {
               chrome.runtime.onMessage.removeListener(callback);
             } catch (error) {
@@ -165,13 +275,13 @@ export const getBrowserAPI = (): BrowserAPI => {
         local: {
           get: async (keys?: string[] | string | null) => {
             try {
-              return await chrome.storage.local.get(keys);
+              return (await chrome.storage.local.get(keys)) as Record<string, unknown>;
             } catch (error) {
               console.warn('Chrome storage.get failed:', error);
               return {};
             }
           },
-          set: async (items: Record<string, any>) => {
+          set: async (items: Record<string, unknown>) => {
             try {
               await chrome.storage.local.set(items);
             } catch (error) {
@@ -201,7 +311,7 @@ export const getBrowserAPI = (): BrowserAPI => {
 
   return {
     runtime: {
-      sendMessage: async (message: any) => {
+      sendMessage: async (message: unknown) => {
         console.warn(`Browser API not available (${browserName}), message:`, message);
         return { success: false, error: 'Browser API not available' };
       },
@@ -239,7 +349,7 @@ export const getBrowserAPI = (): BrowserAPI => {
               const value = localStorage.getItem(keys);
               return { [keys]: value ? JSON.parse(value) : undefined };
             } else if (Array.isArray(keys)) {
-              const result: Record<string, any> = {};
+              const result: Record<string, unknown> = {};
               keys.forEach((key) => {
                 const value = localStorage.getItem(key);
                 result[key] = value ? JSON.parse(value) : undefined;
@@ -247,7 +357,7 @@ export const getBrowserAPI = (): BrowserAPI => {
               return result;
             } else {
               // Get all items
-              const result: Record<string, any> = {};
+              const result: Record<string, unknown> = {};
               for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
                 if (key) {
@@ -262,7 +372,7 @@ export const getBrowserAPI = (): BrowserAPI => {
             return {};
           }
         },
-        set: async (items: Record<string, any>) => {
+        set: async (items: Record<string, unknown>) => {
           console.warn(`Browser API not available (${browserName}), using localStorage fallback`);
           try {
             Object.entries(items).forEach(([key, value]) => {
@@ -300,12 +410,12 @@ export const browserAPI = getBrowserAPI();
 // Type declarations for global browser APIs
 declare global {
   interface Window {
-    browser?: any;
+    browser?: BrowserLike;
     hideLoadingFallback?: () => void;
   }
 
   // Firefox WebExtensions API
-  const browser: any;
+  const browser: BrowserLike;
 }
 
 export default browserAPI;

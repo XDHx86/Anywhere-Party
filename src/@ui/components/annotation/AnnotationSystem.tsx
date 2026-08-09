@@ -141,8 +141,11 @@ export const AnnotationSystem: React.FC<AnnotationSystemProps> = ({
     if (!layerRef.current) return;
 
     // Check if undo/redo is available (simplified check)
-    const undoStack = (layerRef.current as any).state?.undoStack || [];
-    const redoStack = (layerRef.current as any).state?.redoStack || [];
+    const layer = layerRef.current as CollaborativeAnnotationLayer & {
+      state?: { undoStack: unknown[]; redoStack: unknown[] };
+    };
+    const undoStack = layer.state?.undoStack || [];
+    const redoStack = layer.state?.redoStack || [];
 
     setCanUndo(undoStack.length > 0);
     setCanRedo(redoStack.length > 0);
@@ -234,18 +237,11 @@ export const AnnotationSystem: React.FC<AnnotationSystemProps> = ({
     [annotationLayer, updateUndoRedoState]
   );
 
-  // Handle incoming sync messages
-  const handleIncomingSyncMessage = useCallback(
-    (message: AnnotationMessage) => {
-      if (annotationLayer) {
-        annotationLayer.handleSyncMessage(message);
-      }
-    },
-    [annotationLayer]
-  );
-
   // Expose method to handle incoming messages
-  React.useImperativeHandle(layerRef, () => annotationLayer as any);
+  React.useImperativeHandle<
+    CollaborativeAnnotationLayer | null,
+    CollaborativeAnnotationLayer | null
+  >(layerRef, () => annotationLayer);
 
   if (!isVisible) {
     return null;
@@ -332,5 +328,11 @@ export default AnnotationSystem;
 export interface AnnotationSystemRef {
   handleSyncMessage: (message: AnnotationMessage) => void;
   getAnnotationLayer: () => CollaborativeAnnotationLayer | null;
-  getSyncStats: () => any;
+  getSyncStats: () => {
+    isConnected: boolean;
+    lastSyncTime: number;
+    pendingMessages: number;
+    participantCount: number;
+    syncErrors: string[];
+  };
 }

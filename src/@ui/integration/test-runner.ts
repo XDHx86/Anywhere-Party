@@ -6,6 +6,8 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import fs from 'fs';
+import path from 'path';
 
 // Test suite imports
 import './final-integration.test';
@@ -53,7 +55,11 @@ interface IntegrationTestReport {
 class IntegrationTestReporter {
   private startTime: number = 0;
   private results: TestSuiteResult[] = [];
-  private performanceMetrics: any = {};
+  private performanceMetrics: {
+    averageRenderTime?: number;
+    memoryUsage?: number;
+    animationFrameRate?: number;
+  } = {};
 
   start(): void {
     this.startTime = Date.now();
@@ -70,7 +76,11 @@ class IntegrationTestReporter {
     this.results.push(result);
   }
 
-  setPerformanceMetrics(metrics: any): void {
+  setPerformanceMetrics(metrics: {
+    averageRenderTime?: number;
+    memoryUsage?: number;
+    animationFrameRate?: number;
+  }): void {
     this.performanceMetrics = metrics;
   }
 
@@ -199,9 +209,6 @@ describe('Material Design 3 Integration Test Suite', () => {
     // Save report to file if in CI environment
     if (process.env.CI) {
       try {
-        const fs = require('fs');
-        const path = require('path');
-
         const reportPath = path.join(process.cwd(), 'integration-test-report.json');
         fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
 

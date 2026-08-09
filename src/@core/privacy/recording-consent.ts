@@ -402,26 +402,30 @@ export class RecordingConsentManager {
       ]);
 
       if (stored.recordingConsents) {
-        const consents = JSON.parse(stored.recordingConsents);
+        const consents = JSON.parse(stored.recordingConsents as string);
         this.activeConsents = new Map(Object.entries(consents));
       }
 
       if (stored.recordingSessions) {
-        const sessions = JSON.parse(stored.recordingSessions);
+        const sessions = JSON.parse(stored.recordingSessions as string);
         this.activeSessions = new Map(Object.entries(sessions));
       }
 
       if (stored.consentRequests) {
-        const requests = JSON.parse(stored.consentRequests);
+        const requests = JSON.parse(stored.consentRequests as string) as Record<
+          string,
+          Omit<ConsentRequest, 'responses'> & { responses: Record<string, boolean> }
+        >;
         for (const [id, request] of Object.entries(requests)) {
-          const req = request as any;
-          req.responses = new Map(Object.entries(req.responses || {}));
-          this.consentRequests.set(id, req);
+          this.consentRequests.set(id, {
+            ...request,
+            responses: new Map(Object.entries(request.responses)),
+          });
         }
       }
 
       if (stored.recordingPolicy) {
-        const policy = JSON.parse(stored.recordingPolicy);
+        const policy = JSON.parse(stored.recordingPolicy as string);
         this.policy = { ...this.policy, ...policy };
       }
     } catch (error) {
@@ -444,7 +448,10 @@ export class RecordingConsentManager {
   }
 
   private async saveConsentRequests(): Promise<void> {
-    const requests: Record<string, any> = {};
+    const requests: Record<
+      string,
+      Omit<ConsentRequest, 'responses'> & { responses: Record<string, boolean> }
+    > = {};
     for (const [id, request] of this.consentRequests.entries()) {
       requests[id] = {
         ...request,
@@ -498,7 +505,7 @@ export class RecordingConsentManager {
 
   private async cleanupExpiredRequests(): Promise<void> {
     const now = Date.now();
-    for (const [requestId, request] of this.consentRequests.entries()) {
+    for (const request of this.consentRequests.values()) {
       if (request.expiresAt < now && request.status === 'pending') {
         request.status = 'expired';
       }
@@ -525,7 +532,7 @@ export class RecordingConsentManager {
     }
   }
 
-  private async notifyParticipants(roomId: string, type: string, data: any): Promise<void> {
+  private async notifyParticipants(roomId: string, type: string, data: unknown): Promise<void> {
     // In a real implementation, this would send notifications to participants
     console.log(`Notification sent to room ${roomId}: ${type}`, data);
   }

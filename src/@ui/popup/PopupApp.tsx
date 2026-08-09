@@ -5,22 +5,17 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { ThemeProvider, CssBaseline, Box, Snackbar, Alert } from '@mui/material';
+import { CssBaseline, Box, Snackbar, Alert } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { MaterialThemeProvider, useMaterialTheme } from '../theme';
+import { MaterialThemeProvider } from '../theme';
 import { HeaderCard } from '../components/cards/HeaderCard';
 import { MainCard } from '../components/cards/MainCard';
 import { SecondaryCard } from '../components/cards/SecondaryCard';
 import { FooterCard } from '../components/cards/FooterCard';
 import { PlaylistCard } from './PlaylistCard';
-import { MaterialLoadingIndicator } from '../components/cards/MaterialLoadingIndicator';
 import { PopupAccessibility } from '../accessibility/PopupAccessibility';
 import { browserAPI } from '../utils/browser-api';
-import {
-  useResponsiveDesign,
-  useResponsiveSpacing,
-  useTouchOptimization,
-} from '../hooks/useResponsiveDesign';
+import { useResponsiveDesign, useTouchOptimization } from '../hooks/useResponsiveDesign';
 import { integrationService } from '../services/integration-service';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { LoadingIndicator } from '../components/LoadingIndicator';
@@ -57,6 +52,14 @@ export interface NotificationMessage {
   message: string;
   autoHide?: boolean;
   duration?: number;
+}
+
+interface RuntimeMessage {
+  type: string;
+  status?: PopupState['connectionStatus'];
+  roomInfo?: PopupState['roomInfo'];
+  notificationType?: NotificationMessage['type'];
+  message?: string;
 }
 
 // Responsive styled components
@@ -188,8 +191,7 @@ export const PopupApp: React.FC = () => {
 
   // Responsive design hooks
   const responsive = useResponsiveDesign();
-  const { getPadding } = useResponsiveSpacing();
-  const { isTouchDevice, getTouchTargetSize } = useTouchOptimization();
+  const { getTouchTargetSize } = useTouchOptimization();
 
   // Enhanced error handling and loading with fallback
   const diagnosticLogger = React.useMemo(() => {
@@ -304,18 +306,19 @@ export const PopupApp: React.FC = () => {
 
   // Browser extension message handling
   useEffect(() => {
-    const handleMessage = (message: any) => {
-      switch (message.type) {
+    const handleMessage = (message: unknown) => {
+      const msg = message as RuntimeMessage;
+      switch (msg.type) {
         case 'CONNECTION_STATUS_UPDATE':
-          updateState({ connectionStatus: message.status });
+          updateState({ connectionStatus: msg.status });
           break;
         case 'ROOM_INFO_UPDATE':
-          updateState({ roomInfo: message.roomInfo });
+          updateState({ roomInfo: msg.roomInfo });
           break;
         case 'NOTIFICATION':
           addNotification({
-            type: message.notificationType,
-            message: message.message,
+            type: msg.notificationType ?? 'info',
+            message: msg.message ?? '',
           });
           break;
         default:
@@ -330,7 +333,7 @@ export const PopupApp: React.FC = () => {
 
   // Enhanced error handler for components
   const handleComponentError = useCallback(
-    (error: Error, errorInfo: React.ErrorInfo) => {
+    (error: Error, _errorInfo: React.ErrorInfo) => {
       diagnosticLogger.logComponentError('PopupApp', error);
       addNotification({
         type: 'error',
@@ -409,12 +412,18 @@ export const PopupApp: React.FC = () => {
         // Get stored state from extension storage with fallback
         try {
           if (browserAPI?.storage?.local) {
-            const result = await Promise.race([
+            const result = (await Promise.race([
               browserAPI.storage.local.get(['connectionStatus', 'roomInfo', 'cardStates']),
               new Promise((_, reject) =>
                 setTimeout(() => reject(new Error('Storage timeout')), 3000)
               ),
-            ]);
+            ])) as
+              | {
+                  connectionStatus?: PopupState['connectionStatus'];
+                  roomInfo?: PopupState['roomInfo'];
+                  cardStates?: PopupState['cardStates'];
+                }
+              | undefined;
 
             // Check if result exists and has expected properties
             if (result && typeof result === 'object') {

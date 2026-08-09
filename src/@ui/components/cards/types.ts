@@ -36,8 +36,7 @@ export interface MaterialCardProps extends BaseComponentProps {
 
 // Material Button Props
 export interface MaterialButtonProps
-  extends BaseComponentProps,
-    Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'className'> {
+  extends BaseComponentProps, Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'className'> {
   variant?: 'filled' | 'outlined' | 'text' | 'elevated' | 'tonal';
   size?: 'small' | 'medium' | 'large';
   color?: 'primary' | 'secondary' | 'error' | 'surface';
@@ -49,8 +48,7 @@ export interface MaterialButtonProps
 
 // Material Input Props
 export interface MaterialInputProps
-  extends BaseComponentProps,
-    Omit<InputHTMLAttributes<HTMLInputElement>, 'className' | 'size'> {
+  extends BaseComponentProps, Omit<InputHTMLAttributes<HTMLInputElement>, 'className' | 'size'> {
   label?: string;
   helperText?: string;
   error?: boolean;

@@ -315,7 +315,7 @@ export class AssetSystem {
         return (
           sheet.href && (sheet.href.includes('font-awesome') || sheet.href.includes('fontawesome'))
         );
-      } catch (e) {
+      } catch {
         return false;
       }
     });
@@ -337,7 +337,7 @@ export class AssetSystem {
       document.body.removeChild(testElement);
 
       return fontFamily.includes('Font Awesome');
-    } catch (e) {
+    } catch {
       return false;
     }
   }
@@ -467,19 +467,21 @@ export class AssetSystem {
       const assetManifestUrl = chrome.runtime.getURL('assets/asset-manifest.json');
       fetch(assetManifestUrl)
         .then((response) => response.json())
-        .then((manifest) => {
+        .then((manifest: { assets?: Record<string, Record<string, { path?: string }>> }) => {
           // Validate each asset path
-          Object.values(manifest.assets).forEach((category: any) => {
-            Object.values(category).forEach((asset: any) => {
+          const assets = manifest.assets ?? {};
+          Object.values(assets).forEach((category) => {
+            Object.values(category).forEach((asset) => {
               if (asset.path) {
-                const assetUrl = chrome.runtime.getURL(`assets/${asset.path}`);
-                fetch(assetUrl, { method: 'HEAD' }).catch(() => missing.push(asset.path));
+                const path = asset.path;
+                const assetUrl = chrome.runtime.getURL(`assets/${path}`);
+                fetch(assetUrl, { method: 'HEAD' }).catch(() => missing.push(path));
               }
             });
           });
         })
         .catch(() => missing.push('asset-manifest.json'));
-    } catch (error) {
+    } catch {
       missing.push('asset-manifest.json');
     }
 
@@ -501,7 +503,7 @@ export class AssetSystem {
 
     try {
       await Promise.race([fontPromise, new Promise((resolve) => setTimeout(resolve, timeout))]);
-    } catch (error) {
+    } catch {
       // Continue with SVG fallbacks even if font loading fails
     }
 
@@ -522,11 +524,11 @@ export class AssetSystem {
           setTimeout(() => {
             try {
               document.body.removeChild(div);
-            } catch (e) {
+            } catch {
               // Element might already be removed
             }
           }, cleanupDelay);
-        } catch (error) {
+        } catch {
           // Continue if DOM manipulation fails
         }
       }

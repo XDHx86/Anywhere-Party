@@ -8,6 +8,8 @@ import {
   NotificationsAPI,
 } from './types';
 
+type TabChangeInfoType = Parameters<Parameters<typeof chrome.tabs.onUpdated.addListener>[0]>[1];
+
 /**
  * Chrome-specific browser bridge implementation
  * Handles both Manifest V2 and V3 compatibility
@@ -16,13 +18,18 @@ import {
 class ChromeStorageArea implements StorageArea {
   constructor(private area: chrome.storage.StorageArea) {}
 
-  async get(keys?: string | string[] | Record<string, any> | null): Promise<Record<string, any>> {
+  async get(
+    keys?: string | string[] | Record<string, unknown> | null
+  ): Promise<Record<string, unknown>> {
     return new Promise((resolve) => {
-      this.area.get(keys as any, resolve);
+      this.area.get(
+        keys as string | string[] | Record<string, unknown>,
+        resolve as (items: { [key: string]: unknown }) => void
+      );
     });
   }
 
-  async set(items: Record<string, any>): Promise<void> {
+  async set(items: Record<string, unknown>): Promise<void> {
     return new Promise((resolve) => {
       this.area.set(items, resolve);
     });
@@ -46,7 +53,7 @@ class ChromeRuntimeAPI implements RuntimeAPI {
     return chrome.runtime.id;
   }
 
-  async sendMessage(messageOrExtensionId: any, message?: any): Promise<any> {
+  async sendMessage(messageOrExtensionId: unknown, message?: unknown): Promise<unknown> {
     return new Promise((resolve, reject) => {
       if (typeof messageOrExtensionId === 'string' && message !== undefined) {
         // Extension ID provided
@@ -59,7 +66,7 @@ class ChromeRuntimeAPI implements RuntimeAPI {
         });
       } else {
         // No extension ID, send to own extension
-        chrome.runtime.sendMessage(messageOrExtensionId, (response) => {
+        chrome.runtime.sendMessage(messageOrExtensionId as unknown, (response) => {
           if (chrome.runtime.lastError) {
             reject(new Error(chrome.runtime.lastError.message));
           } else {
@@ -73,22 +80,29 @@ class ChromeRuntimeAPI implements RuntimeAPI {
   onMessage = {
     addListener: (
       callback: (
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- chrome runtime delivers untyped payloads
         message: any,
-        sender: any,
-        sendResponse: (response?: any) => void
-      ) => void | boolean | Promise<any>
+        sender: chrome.runtime.MessageSender | undefined,
+        sendResponse: (response?: unknown) => void
+      ) => void | boolean | Promise<unknown>
     ) => {
       chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const result = callback(message, sender, sendResponse);
         if (result instanceof Promise) {
-          result.then(sendResponse);
+          result.then(sendResponse as (response: unknown) => void);
           return true; // Keep message channel open for async response
         }
         return result;
       });
     },
-    removeListener: (callback: Function) => {
-      chrome.runtime.onMessage.removeListener(callback as any);
+    removeListener: (callback: (...args: unknown[]) => void) => {
+      chrome.runtime.onMessage.removeListener(
+        callback as unknown as (
+          message: unknown,
+          sender: unknown,
+          sendResponse: (response?: unknown) => void
+        ) => void
+      );
     },
   };
 
@@ -104,7 +118,7 @@ class ChromeTabsAPI implements TabsAPI {
     });
   }
 
-  async sendMessage(tabId: number, message: any): Promise<any> {
+  async sendMessage(tabId: number, message: unknown): Promise<unknown> {
     return new Promise((resolve, reject) => {
       chrome.tabs.sendMessage(tabId, message, (response) => {
         if (chrome.runtime.lastError) {
@@ -118,12 +132,18 @@ class ChromeTabsAPI implements TabsAPI {
 
   onUpdated = {
     addListener: (
-      callback: (tabId: number, changeInfo: chrome.tabs.TabChangeInfo, tab: chrome.tabs.Tab) => void
+      callback: (tabId: number, changeInfo: TabChangeInfoType, tab: chrome.tabs.Tab) => void
     ) => {
       chrome.tabs.onUpdated.addListener(callback);
     },
-    removeListener: (callback: Function) => {
-      chrome.tabs.onUpdated.removeListener(callback as any);
+    removeListener: (callback: (...args: unknown[]) => void) => {
+      chrome.tabs.onUpdated.removeListener(
+        callback as unknown as (
+          tabId: number,
+          changeInfo: TabChangeInfoType,
+          tab: chrome.tabs.Tab
+        ) => void
+      );
     },
   };
 }
@@ -153,7 +173,7 @@ class ChromeAlarmsAPI implements AlarmsAPI {
     name: string,
     alarmInfo: { when?: number; delayInMinutes?: number; periodInMinutes?: number }
   ): void {
-    chrome.alarms.create(name, alarmInfo);
+    chrome.alarms.create(name, alarmInfo as chrome.alarms.AlarmCreateInfo);
   }
 
   async clear(name: string): Promise<boolean> {
@@ -168,10 +188,14 @@ class ChromeAlarmsAPI implements AlarmsAPI {
     addListener: (
       callback: (alarm: { name: string; scheduledTime: number; periodInMinutes?: number }) => void
     ) => {
-      chrome.alarms.onAlarm.addListener(callback as any);
+      chrome.alarms.onAlarm.addListener(
+        callback as unknown as (alarm: chrome.alarms.Alarm) => void
+      );
     },
-    removeListener: (callback: Function) => {
-      chrome.alarms.onAlarm.removeListener(callback as any);
+    removeListener: (callback: (...args: unknown[]) => void) => {
+      chrome.alarms.onAlarm.removeListener(
+        callback as unknown as (alarm: chrome.alarms.Alarm) => void
+      );
     },
   };
 }
@@ -191,7 +215,7 @@ class ChromeNotificationsAPI implements NotificationsAPI {
     return new Promise((resolve) => {
       chrome.notifications.create(
         id,
-        options as chrome.notifications.NotificationOptions<true>,
+        options as unknown as chrome.notifications.NotificationCreateOptions,
         (notifId) => {
           resolve(notifId);
         }
@@ -222,8 +246,10 @@ class ChromeNotificationsAPI implements NotificationsAPI {
     addListener: (callback: (notificationId: string) => void) => {
       chrome.notifications.onClicked.addListener(callback);
     },
-    removeListener: (callback: Function) => {
-      chrome.notifications.onClicked.removeListener(callback as any);
+    removeListener: (callback: (...args: unknown[]) => void) => {
+      chrome.notifications.onClicked.removeListener(
+        callback as unknown as (notificationId: string) => void
+      );
     },
   };
 }

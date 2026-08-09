@@ -9,6 +9,19 @@ export class SubtitleParser {
   private static readonly MAX_CUES_PER_FILE = 10000;
 
   /**
+   * Read a regex capturing group as a number. The caller's regex guarantees the
+   * group exists (it is part of a matched pattern), so this only guards the
+   * index-access type without asserting non-null.
+   */
+  private static parseTimeGroup(match: RegExpMatchArray, index: number): number {
+    const raw = match[index];
+    if (raw === undefined) {
+      throw new Error(`Missing subtitle timestamp group at index ${index}`);
+    }
+    return parseInt(raw, 10);
+  }
+
+  /**
    * Parse SRT format subtitle content
    */
   static parseSRT(content: string): SubtitleCue[] {
@@ -23,23 +36,25 @@ export class SubtitleParser {
       const timeLine = lines[1];
       const textLines = lines.slice(2);
 
+      if (!timeLine) continue;
+
       const timeMatch = timeLine.match(
         /(\d{2}):(\d{2}):(\d{2}),(\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2}),(\d{3})/
       );
       if (!timeMatch) continue;
 
       const startTime = this.parseTimeToSeconds(
-        parseInt(timeMatch[1]), // hours
-        parseInt(timeMatch[2]), // minutes
-        parseInt(timeMatch[3]), // seconds
-        parseInt(timeMatch[4]) // milliseconds
+        this.parseTimeGroup(timeMatch, 1), // hours
+        this.parseTimeGroup(timeMatch, 2), // minutes
+        this.parseTimeGroup(timeMatch, 3), // seconds
+        this.parseTimeGroup(timeMatch, 4) // milliseconds
       );
 
       const endTime = this.parseTimeToSeconds(
-        parseInt(timeMatch[5]), // hours
-        parseInt(timeMatch[6]), // minutes
-        parseInt(timeMatch[7]), // seconds
-        parseInt(timeMatch[8]) // milliseconds
+        this.parseTimeGroup(timeMatch, 5), // hours
+        this.parseTimeGroup(timeMatch, 6), // minutes
+        this.parseTimeGroup(timeMatch, 7), // seconds
+        this.parseTimeGroup(timeMatch, 8) // milliseconds
       );
 
       const text = textLines.join('\n').trim();
@@ -72,7 +87,9 @@ export class SubtitleParser {
     let textLines: string[] = [];
 
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
+      const rawLine = lines[i];
+      if (rawLine === undefined) continue;
+      const line = rawLine.trim();
 
       // Skip WEBVTT header and NOTE blocks
       if (line.startsWith('WEBVTT') || line.startsWith('NOTE')) {
@@ -104,17 +121,17 @@ export class SubtitleParser {
       );
       if (timeMatch) {
         const startTime = this.parseTimeToSeconds(
-          parseInt(timeMatch[1]), // hours
-          parseInt(timeMatch[2]), // minutes
-          parseInt(timeMatch[3]), // seconds
-          parseInt(timeMatch[4]) // milliseconds
+          this.parseTimeGroup(timeMatch, 1), // hours
+          this.parseTimeGroup(timeMatch, 2), // minutes
+          this.parseTimeGroup(timeMatch, 3), // seconds
+          this.parseTimeGroup(timeMatch, 4) // milliseconds
         );
 
         const endTime = this.parseTimeToSeconds(
-          parseInt(timeMatch[5]), // hours
-          parseInt(timeMatch[6]), // minutes
-          parseInt(timeMatch[7]), // seconds
-          parseInt(timeMatch[8]) // milliseconds
+          this.parseTimeGroup(timeMatch, 5), // hours
+          this.parseTimeGroup(timeMatch, 6), // minutes
+          this.parseTimeGroup(timeMatch, 7), // seconds
+          this.parseTimeGroup(timeMatch, 8) // milliseconds
         );
 
         currentCue.startTime = startTime;
@@ -194,6 +211,7 @@ export class SubtitleParser {
     // Validate cue timing
     for (let i = 0; i < cues.length; i++) {
       const cue = cues[i];
+      if (!cue) continue;
 
       if (cue.startTime >= cue.endTime) {
         warnings.push(
@@ -214,7 +232,9 @@ export class SubtitleParser {
 
     // Check for overlapping cues
     for (let i = 0; i < cues.length - 1; i++) {
-      if (cues[i].endTime > cues[i + 1].startTime) {
+      const currentCue = cues[i];
+      const nextCue = cues[i + 1];
+      if (currentCue && nextCue && currentCue.endTime > nextCue.startTime) {
         warnings.push(`Cues ${i + 1} and ${i + 2}: Overlapping timing detected`);
       }
     }

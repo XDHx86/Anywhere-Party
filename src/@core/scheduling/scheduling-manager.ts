@@ -4,12 +4,7 @@
  */
 
 import { createBrowserBridge } from '../browser-bridge';
-import {
-  ScheduledSession,
-  SchedulingManagerConfig,
-  SchedulingEvent,
-  ReminderConfig,
-} from './types';
+import { ScheduledSession, SchedulingManagerConfig, SchedulingEvent } from './types';
 
 const DEFAULT_CONFIG: SchedulingManagerConfig = {
   storageKey: 'watchPartyScheduledSessions',
@@ -66,6 +61,7 @@ export class SchedulingManager {
   private async scheduleReminders(session: ScheduledSession): Promise<void> {
     for (let i = 0; i < session.reminders.length; i++) {
       const reminder = session.reminders[i];
+      if (reminder === undefined) continue;
       const alarmName = `reminder-${session.id}-${i}`;
       const triggerTime = session.scheduledTime - reminder.minutesBefore * 60 * 1000;
 
@@ -136,7 +132,8 @@ export class SchedulingManager {
   private async loadSessions(): Promise<void> {
     try {
       const result = await this.browserBridge.storage.local.get(this.config.storageKey);
-      const sessionsArray: ScheduledSession[] = result[this.config.storageKey] || [];
+      const sessionsArray: ScheduledSession[] =
+        (result[this.config.storageKey] as ScheduledSession[] | undefined) || [];
       const now = Date.now();
 
       for (const session of sessionsArray) {

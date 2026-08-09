@@ -8,7 +8,6 @@ import { Box, Typography } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { MaterialCard } from './MaterialCard';
 import { MaterialIcon } from './MaterialIcon';
-import { useMaterialTheme } from '../../theme';
 
 // Styled components
 const HeaderContainer = styled(Box)(({ theme }) => ({
@@ -64,8 +63,6 @@ export const HeaderCard: React.FC<HeaderCardProps> = ({
   className,
   'data-testid': testId,
 }) => {
-  const { theme } = useMaterialTheme();
-
   return (
     <MaterialCard
       elevation="none"

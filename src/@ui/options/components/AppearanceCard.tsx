@@ -28,7 +28,7 @@ export interface AppearanceSettingsData {
 
 export interface AppearanceCardProps {
   data: AppearanceSettingsData;
-  onChange: (field: keyof AppearanceSettingsData, value: any) => void;
+  onChange: (field: keyof AppearanceSettingsData, value: string | boolean) => void;
   onThemePreview?: (mode: ThemeMode) => void;
   className?: string;
 }
@@ -152,7 +152,7 @@ export const AppearanceCard: React.FC<AppearanceCardProps> = ({
   onThemePreview,
   className,
 }) => {
-  const { theme, mode, setTheme, updateThemeSettings, themeSettings } = useMaterialTheme();
+  const { mode, setTheme, updateThemeSettings } = useMaterialTheme();
 
   const themeModeOptions = [
     { value: 'light', label: 'Light Theme' },
@@ -194,7 +194,10 @@ export const AppearanceCard: React.FC<AppearanceCardProps> = ({
     }
   };
 
-  const handleCustomColorChange = async (field: keyof AppearanceSettingsData, value: any) => {
+  const handleCustomColorChange = async (
+    field: keyof AppearanceSettingsData,
+    value: string | boolean
+  ) => {
     onChange(field, value);
 
     // Update theme context for color-related changes
@@ -210,7 +213,10 @@ export const AppearanceCard: React.FC<AppearanceCardProps> = ({
     }
   };
 
-  const handleInterfaceOptionChange = async (field: keyof AppearanceSettingsData, value: any) => {
+  const handleInterfaceOptionChange = async (
+    field: keyof AppearanceSettingsData,
+    value: boolean
+  ) => {
     onChange(field, value);
 
     // Update theme context for interface options

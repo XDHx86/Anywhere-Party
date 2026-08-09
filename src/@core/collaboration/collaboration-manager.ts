@@ -4,10 +4,10 @@
  * Implements requirements 9.1, 9.2, 9.3
  */
 
-import { PollManager, PollManagerOptions } from './poll-manager';
-import { BookmarkManager, BookmarkManagerOptions } from './bookmark-manager';
-import { WhiteboardManager, WhiteboardManagerOptions } from './whiteboard-manager';
-import { ExportManager, ExportManagerOptions } from './export-manager';
+import { PollManager } from './poll-manager';
+import { BookmarkManager } from './bookmark-manager';
+import { WhiteboardManager } from './whiteboard-manager';
+import { ExportManager } from './export-manager';
 import {
   CollaborationManagerOptions,
   CollaborationEvent,
@@ -15,8 +15,16 @@ import {
   Quiz,
   Bookmark,
   Highlight,
+  QuizQuestion,
+  QuizAnswer,
+  PollVote,
+  QuizResponse,
   WhiteboardSession,
+  WhiteboardLayer,
+  WhiteboardAnnotation,
+  WhiteboardAnnotationData,
   ShareableMoment,
+  ShareableLink,
 } from './types';
 
 export class CollaborationManager {
@@ -138,7 +146,7 @@ export class CollaborationManager {
     userName: string,
     roomId: string,
     title: string,
-    questions: any[],
+    questions: Omit<QuizQuestion, 'id'>[],
     videoTimestamp: number,
     duration?: number,
     isAnonymous = false
@@ -155,7 +163,12 @@ export class CollaborationManager {
     );
   }
 
-  answerQuiz(quizId: string, userId: string, userName: string, answers: any[]) {
+  answerQuiz(
+    quizId: string,
+    userId: string,
+    userName: string,
+    answers: Omit<QuizAnswer, 'isCorrect' | 'points'>[]
+  ) {
     return this.pollManager.answerQuiz(quizId, userId, userName, answers);
   }
 
@@ -200,7 +213,11 @@ export class CollaborationManager {
     );
   }
 
-  updateBookmark(bookmarkId: string, userId: string, updates: any): Bookmark {
+  updateBookmark(
+    bookmarkId: string,
+    userId: string,
+    updates: Partial<Pick<Bookmark, 'title' | 'description' | 'tags' | 'isPublic'>>
+  ): Bookmark {
     return this.bookmarkManager.updateBookmark(bookmarkId, userId, updates);
   }
 
@@ -247,7 +264,11 @@ export class CollaborationManager {
     );
   }
 
-  updateHighlight(highlightId: string, userId: string, updates: any): Highlight {
+  updateHighlight(
+    highlightId: string,
+    userId: string,
+    updates: Partial<Pick<Highlight, 'title' | 'description' | 'tags' | 'isPublic'>>
+  ): Highlight {
     return this.bookmarkManager.updateHighlight(highlightId, userId, updates);
   }
 
@@ -298,7 +319,14 @@ export class CollaborationManager {
     return this.whiteboardManager.createLayer(sessionId, userId, name, collaborators);
   }
 
-  updateWhiteboardLayer(sessionId: string, layerId: string, userId: string, updates: any) {
+  updateWhiteboardLayer(
+    sessionId: string,
+    layerId: string,
+    userId: string,
+    updates: Partial<
+      Pick<WhiteboardLayer, 'name' | 'visible' | 'locked' | 'opacity' | 'collaborators'>
+    >
+  ) {
     return this.whiteboardManager.updateLayer(sessionId, layerId, userId, updates);
   }
 
@@ -311,8 +339,8 @@ export class CollaborationManager {
     layerId: string,
     userId: string,
     userName: string,
-    type: any,
-    data: any,
+    type: WhiteboardAnnotation['type'],
+    data: WhiteboardAnnotationData,
     videoTimestamp: number
   ) {
     return this.whiteboardManager.createAnnotation(
@@ -331,7 +359,7 @@ export class CollaborationManager {
     layerId: string,
     annotationId: string,
     userId: string,
-    updates: any
+    updates: Partial<Pick<WhiteboardAnnotation, 'data' | 'visible' | 'locked'>>
   ) {
     return this.whiteboardManager.updateAnnotation(
       sessionId,
@@ -364,11 +392,11 @@ export class CollaborationManager {
   }
 
   // Export and Sharing
-  exportPollResults(poll: Poll, votes: any[], userId: string, userName: string) {
+  exportPollResults(poll: Poll, votes: PollVote[], userId: string, userName: string) {
     return this.exportManager.exportPollResults(poll, votes, userId, userName);
   }
 
-  exportQuizResults(quiz: Quiz, responses: any[], userId: string, userName: string) {
+  exportQuizResults(quiz: Quiz, responses: QuizResponse[], userId: string, userName: string) {
     return this.exportManager.exportQuizResults(quiz, responses, userId, userName);
   }
 
@@ -397,7 +425,7 @@ export class CollaborationManager {
   }
 
   createShareableLink(
-    type: any,
+    type: ShareableLink['type'],
     resourceId: string,
     roomId: string,
     videoTimestamp: number,
@@ -426,7 +454,7 @@ export class CollaborationManager {
     description?: string,
     videoUrl?: string,
     thumbnail?: string,
-    annotations: any[] = [],
+    annotations: WhiteboardAnnotation[] = [],
     polls: Poll[] = [],
     bookmarks: Bookmark[] = [],
     highlights: Highlight[] = []

@@ -79,8 +79,10 @@ export class AccessibilityManager {
    */
   private detectScreenReader(): boolean {
     // Check for common screen reader indicators
+    // speechSynthesis is a standard Web API
+    const win = window as Window & { speechSynthesis?: SpeechSynthesis };
     return !!(
-      (window as any).speechSynthesis ||
+      win.speechSynthesis ||
       navigator.userAgent.includes('NVDA') ||
       navigator.userAgent.includes('JAWS') ||
       navigator.userAgent.includes('VoiceOver')
@@ -270,7 +272,10 @@ export class AccessibilityManager {
     if (this.focusableElements.length === 0) return;
 
     this.currentFocusIndex = (this.currentFocusIndex + 1) % this.focusableElements.length;
-    this.focusableElements[this.currentFocusIndex].focus();
+    const element = this.focusableElements[this.currentFocusIndex];
+    if (element) {
+      element.focus();
+    }
   }
 
   /**
@@ -282,7 +287,10 @@ export class AccessibilityManager {
 
     this.currentFocusIndex =
       this.currentFocusIndex <= 0 ? this.focusableElements.length - 1 : this.currentFocusIndex - 1;
-    this.focusableElements[this.currentFocusIndex].focus();
+    const element = this.focusableElements[this.currentFocusIndex];
+    if (element) {
+      element.focus();
+    }
   }
 
   /**

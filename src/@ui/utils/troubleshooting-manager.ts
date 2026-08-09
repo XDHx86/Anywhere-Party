@@ -148,7 +148,7 @@ export class TroubleshootingManager {
     // Check for storage issues
     try {
       await browserAPI.storage.local.get('test');
-    } catch (error) {
+    } catch {
       steps.push({
         id: 'storage-issues',
         title: 'Storage Access Issues',
@@ -640,7 +640,8 @@ export class TroubleshootingManager {
     // Get performance metrics
     const performanceMetrics = {
       loadingTime: performance.now(),
-      memoryUsage: (performance as any).memory?.usedJSHeapSize,
+      memoryUsage: (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory
+        ?.usedJSHeapSize,
     };
 
     // Get settings info
@@ -655,14 +656,15 @@ export class TroubleshootingManager {
         hasCustomSettings: Object.keys(settings).length > 0,
         settingsCount: Object.keys(settings).length,
       };
-    } catch (error) {
+    } catch {
       // Ignore storage errors
     }
 
     // Get network info
     const networkInfo = {
       online: navigator.onLine,
-      connectionType: (navigator as any).connection?.effectiveType,
+      connectionType: (navigator as unknown as { connection?: { effectiveType?: string } })
+        .connection?.effectiveType,
     };
 
     return {
@@ -670,8 +672,8 @@ export class TroubleshootingManager {
       userAgent: navigator.userAgent,
       browserInfo,
       extensionInfo: {
-        version: manifest.version,
-        manifestVersion: manifest.manifest_version,
+        version: manifest.version ?? 'unknown',
+        manifestVersion: manifest.manifest_version ?? 0,
       },
       errorHistory: [...this.errorHistory],
       performanceMetrics,
@@ -755,19 +757,19 @@ export class TroubleshootingManager {
     if (userAgent.includes('Chrome')) {
       name = 'Chrome';
       const match = userAgent.match(/Chrome\/(\d+)/);
-      version = match ? match[1] : 'Unknown';
+      version = match?.[1] ?? 'Unknown';
     } else if (userAgent.includes('Firefox')) {
       name = 'Firefox';
       const match = userAgent.match(/Firefox\/(\d+)/);
-      version = match ? match[1] : 'Unknown';
+      version = match?.[1] ?? 'Unknown';
     } else if (userAgent.includes('Safari')) {
       name = 'Safari';
       const match = userAgent.match(/Version\/(\d+)/);
-      version = match ? match[1] : 'Unknown';
+      version = match?.[1] ?? 'Unknown';
     } else if (userAgent.includes('Edge')) {
       name = 'Edge';
       const match = userAgent.match(/Edge\/(\d+)/);
-      version = match ? match[1] : 'Unknown';
+      version = match?.[1] ?? 'Unknown';
     }
 
     return {
@@ -788,7 +790,7 @@ export class TroubleshootingManager {
       Edge: 88,
     };
 
-    const minVersion = (minVersions as any)[browserInfo.name];
+    const minVersion = (minVersions as Record<string, number>)[browserInfo.name];
     if (!minVersion) return true;
 
     const currentVersion = parseInt(browserInfo.version);
@@ -805,7 +807,7 @@ export class TroubleshootingManager {
       // Check if there are many extensions by looking at extension-specific APIs
       const hasManagementAPI = 'management' in browserAPI;
       return hasManagementAPI; // Simplified - just check if management API is available
-    } catch (error) {
+    } catch {
       return false;
     }
   }

@@ -103,24 +103,24 @@ export class LoggingManager {
     this.telemetryService.trackPerformanceMetrics(metrics);
   }
   // General logging methods
-  debug(event: string, message?: string, data?: Record<string, any>): void {
+  debug(event: string, message?: string, data?: Record<string, unknown>): void {
     this.logger.debug(event, message, data);
   }
 
-  info(event: string, message?: string, data?: Record<string, any>): void {
+  info(event: string, message?: string, data?: Record<string, unknown>): void {
     this.logger.info(event, message, data);
   }
 
-  warn(event: string, message?: string, data?: Record<string, any>): void {
+  warn(event: string, message?: string, data?: Record<string, unknown>): void {
     this.logger.warn(event, message, data);
   }
 
-  error(event: string, message?: string, data?: Record<string, any>, error?: Error): void {
+  error(event: string, message?: string, data?: Record<string, unknown>, error?: Error): void {
     this.logger.error(event, message, data, error);
   }
 
   // User action tracking
-  trackUserAction(action: string, properties?: Record<string, any>): void {
+  trackUserAction(action: string, properties?: Record<string, unknown>): void {
     this.logger.info('user_action', `User action: ${action}`, properties);
     this.telemetryService.trackUserAction(action, properties);
   }
@@ -140,11 +140,11 @@ export class LoggingManager {
     return await this.logger.exportLogsAsJsonl();
   }
 
-  async exportTelemetryData(): Promise<any[]> {
+  async exportTelemetryData(): Promise<unknown[]> {
     return await this.telemetryService.exportTelemetryData();
   }
 
-  async getLogs(limit?: number): Promise<any[]> {
+  async getLogs(limit?: number): Promise<unknown[]> {
     return await this.logger.getLogs(limit);
   }
 

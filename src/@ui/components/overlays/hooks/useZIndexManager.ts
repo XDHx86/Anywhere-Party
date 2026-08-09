@@ -58,8 +58,9 @@ export const useZIndexManager = (config: ZIndexConfig) => {
   // Release a reserved z-index
   const releaseZIndex = useCallback((componentKey: string) => {
     setReservedZIndexes((prev) => {
-      const { [componentKey]: removed, ...rest } = prev;
-      return rest;
+      const newPrev = { ...prev };
+      delete newPrev[componentKey];
+      return newPrev;
     });
   }, []);
 

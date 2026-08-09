@@ -9,7 +9,7 @@ import {
   DetectionHeuristics,
   PlatformPlayer,
 } from './types';
-import { getPlatformPlayer, PLATFORM_PLAYERS } from './platform-players';
+import { getPlatformPlayer } from './platform-players';
 import { RetryManager } from './retry-logic';
 
 export class VideoDetector {
@@ -74,7 +74,7 @@ export class VideoDetector {
     return new Promise((resolve, reject) => {
       try {
         // Initial detection attempt
-        const videos = this.detectVideos();
+        this.detectVideos();
         const selectedVideo = this.selectPrimaryVideo();
 
         if (selectedVideo) {
@@ -111,7 +111,7 @@ export class VideoDetector {
             }
 
             if (shouldRedetect) {
-              const newVideos = this.detectVideos();
+              this.detectVideos();
               const newSelectedVideo = this.selectPrimaryVideo();
               if (newSelectedVideo && !this.selectedVideo) {
                 console.log('Video detected via MutationObserver');
@@ -245,7 +245,7 @@ export class VideoDetector {
     }
 
     if (videos.length === 1) {
-      this.selectedVideo = videos[0];
+      this.selectedVideo = videos[0] ?? null;
       return this.selectedVideo;
     }
 
@@ -366,11 +366,11 @@ export class VideoDetector {
    */
   private canAccessVideo(video: VideoElement): boolean {
     try {
-      // Try to access video properties
-      const _ = video.currentTime;
-      const __ = video.duration;
+      // Try to access video properties (will throw if cross-origin)
+      void video.currentTime;
+      void video.duration;
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -480,7 +480,7 @@ export class VideoDetector {
     const currentIndex = this.selectedVideo ? videos.indexOf(this.selectedVideo) : -1;
     const nextIndex = (currentIndex + 1) % videos.length;
 
-    this.selectedVideo = videos[nextIndex];
+    this.selectedVideo = videos[nextIndex] ?? null;
     console.log(`Manually selected video ${nextIndex + 1}/${videos.length}`);
   }
 

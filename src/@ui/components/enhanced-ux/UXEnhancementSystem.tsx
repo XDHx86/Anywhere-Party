@@ -187,7 +187,7 @@ export const UXProvider: React.FC<UXProviderProps> = ({ children, context = 'pop
       if (results.some((r) => !r.success)) {
         showFeedback('warning', 'Some assets failed to load. Fallbacks are being used.');
       }
-    } catch (error) {
+    } catch {
       showFeedback('error', 'Failed to preload assets. Some features may load slowly.');
     } finally {
       setLoading('assets', false);
@@ -290,7 +290,7 @@ export const EnhancedButton: React.FC<EnhancedButtonProps> = ({
       if (successMessage) {
         showFeedback('success', successMessage);
       }
-    } catch (error) {
+    } catch {
       const message = errorMessage || 'An error occurred. Please try again.';
       showFeedback('error', message);
     } finally {

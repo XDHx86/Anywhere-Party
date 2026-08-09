@@ -56,7 +56,10 @@ export const UserFeedbackForm: React.FC<UserFeedbackFormProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const handleInputChange = (field: keyof FeedbackFormData, value: any) => {
+  const handleInputChange = (
+    field: keyof FeedbackFormData,
+    value: FeedbackFormData[keyof FeedbackFormData]
+  ) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,

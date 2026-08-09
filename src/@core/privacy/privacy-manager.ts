@@ -5,7 +5,7 @@
  */
 
 import { BrowserBridge } from '../browser-bridge/types';
-import { AuthClient, AuthConfig, UserProfile, AuthState } from '../auth/oauth-client';
+import { AuthClient, AuthConfig, UserProfile } from '../auth/oauth-client';
 import { E2EEncryption, E2EConfig, EncryptedMessage } from '../encryption/e2e-encryption';
 import { DataRetentionManager, PrivacySettings, RetentionPolicy } from './data-retention';
 import {
@@ -213,7 +213,7 @@ export class PrivacyManager {
     await this.dataRetentionManager.anonymizeUserData(userId);
   }
 
-  async getRetentionStats(): Promise<Record<string, any>> {
+  async getRetentionStats(): Promise<Record<string, unknown>> {
     return await this.dataRetentionManager.getRetentionStats();
   }
 
@@ -271,7 +271,7 @@ export class PrivacyManager {
   }
 
   // Room lifecycle methods
-  async onRoomJoined(roomId: string, userId: string, participants: string[]): Promise<void> {
+  async onRoomJoined(roomId: string, userId: string, _participants: string[]): Promise<void> {
     console.log(`Privacy manager: User ${userId} joined room ${roomId}`);
 
     // Exchange encryption keys if enabled
@@ -334,7 +334,7 @@ export class PrivacyManager {
     console.log('Privacy cleanup completed');
   }
 
-  async exportPrivacyReport(userId: string): Promise<Record<string, any>> {
+  async exportPrivacyReport(userId: string): Promise<Record<string, unknown>> {
     const status = this.getPrivacyStatus();
     const retentionStats = await this.getRetentionStats();
     const currentUser = this.getCurrentUser();

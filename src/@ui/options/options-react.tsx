@@ -5,12 +5,16 @@
 
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { OptionsApp } from './OptionsApp';
 import { MaterialThemeProvider } from '../theme/theme-provider';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { reactFallbackHandler, setupGlobalErrorHandlers } from '../utils/react-fallback-handler';
+
+// Webpack provides a `module` global for hot module replacement in development
+declare const module: {
+  hot?: { accept: (path: string, callback?: () => void) => void };
+};
 
 // Error boundary for React errors
 class OptionsErrorBoundary extends React.Component<
@@ -26,11 +30,11 @@ class OptionsErrorBoundary extends React.Component<
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('Options React error:', error, errorInfo);
   }
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       return (
         <div
@@ -127,7 +131,7 @@ function initializeOptionsApp() {
   }
 }
 
-function showOptionsError(container: HTMLElement | null, error?: any) {
+function showOptionsError(container: HTMLElement | null, error?: unknown) {
   const errorContainer = container || document.body;
 
   errorContainer.innerHTML = `
@@ -139,7 +143,7 @@ function showOptionsError(container: HTMLElement | null, error?: any) {
         error
           ? `<details style="margin: 16px 0; text-align: left; max-width: 600px;">
         <summary style="cursor: pointer; font-weight: bold;">Error Details</summary>
-        <pre style="background: #f5f5f5; padding: 12px; border-radius: 4px; overflow: auto; font-size: 12px; margin-top: 8px;">${error.message || String(error)}</pre>
+        <pre style="background: #f5f5f5; padding: 12px; border-radius: 4px; overflow: auto; font-size: 12px; margin-top: 8px;">${error instanceof Error ? error.message : String(error)}</pre>
       </details>`
           : ''
       }
@@ -249,8 +253,8 @@ if (document.readyState === 'loading') {
 }
 
 // Handle hot module replacement in development
-if (typeof module !== 'undefined' && (module as any).hot) {
-  (module as any).hot.accept('./OptionsApp', () => {
+if (typeof module !== 'undefined' && module.hot) {
+  module.hot.accept('./OptionsApp', () => {
     initializeOptionsApp();
   });
 }

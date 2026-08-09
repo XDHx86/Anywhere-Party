@@ -260,7 +260,7 @@ export class DataRetentionManager {
       const allData = await this.browserBridge.storage.local.get();
 
       // Anonymize user references in stored data
-      const anonymizedData: Record<string, any> = {};
+      const anonymizedData: Record<string, unknown> = {};
       const anonymousId = this.generateAnonymousId();
 
       for (const [key, value] of Object.entries(allData)) {
@@ -290,7 +290,7 @@ export class DataRetentionManager {
   /**
    * Get data retention statistics
    */
-  async getRetentionStats(): Promise<Record<string, any>> {
+  async getRetentionStats(): Promise<Record<string, unknown>> {
     try {
       const allData = await this.browserBridge.storage.local.get();
       const stats = {
@@ -340,7 +340,7 @@ export class DataRetentionManager {
     try {
       const stored = await this.browserBridge.storage.local.get('privacySettings');
       if (stored.privacySettings) {
-        const storedSettings = JSON.parse(stored.privacySettings);
+        const storedSettings = JSON.parse(stored.privacySettings as string);
         this.settings = { ...this.settings, ...storedSettings };
       }
     } catch (error) {
@@ -481,9 +481,12 @@ export class DataRetentionManager {
   /**
    * Collect user data for export
    */
-  private async collectUserData(userId: string, dataTypes: string[]): Promise<Record<string, any>> {
+  private async collectUserData(
+    userId: string,
+    dataTypes: string[]
+  ): Promise<Record<string, Record<string, unknown>>> {
     const allData = await this.browserBridge.storage.local.get();
-    const userData: Record<string, any> = {};
+    const userData: Record<string, Record<string, unknown>> = {};
 
     for (const [key, value] of Object.entries(allData)) {
       for (const dataType of dataTypes) {
@@ -502,7 +505,7 @@ export class DataRetentionManager {
   /**
    * Check if data contains user information of specific type
    */
-  private containsUserData(key: string, value: any, userId: string, dataType: string): boolean {
+  private containsUserData(key: string, value: unknown, userId: string, dataType: string): boolean {
     const keyLower = key.toLowerCase();
     const dataTypeLower = dataType.toLowerCase();
 
@@ -519,39 +522,33 @@ export class DataRetentionManager {
   /**
    * Cleanup methods for different data types
    */
-  private async cleanupChatMessages(now: number, retentionDays: number): Promise<void> {
-    const cutoffTime = now - retentionDays * 24 * 60 * 60 * 1000;
-    // Implementation would clean up chat messages older than cutoff time
+  private async cleanupChatMessages(_now: number, retentionDays: number): Promise<void> {
+    // Implementation would clean up chat messages older than the cutoff time
     console.log(`Cleaning up chat messages older than ${retentionDays} days`);
   }
 
-  private async cleanupRoomHistory(now: number, retentionDays: number): Promise<void> {
-    const cutoffTime = now - retentionDays * 24 * 60 * 60 * 1000;
-    // Implementation would clean up room history older than cutoff time
+  private async cleanupRoomHistory(_now: number, retentionDays: number): Promise<void> {
+    // Implementation would clean up room history older than the cutoff time
     console.log(`Cleaning up room history older than ${retentionDays} days`);
   }
 
-  private async cleanupUserSessions(now: number, retentionDays: number): Promise<void> {
-    const cutoffTime = now - retentionDays * 24 * 60 * 60 * 1000;
-    // Implementation would clean up user sessions older than cutoff time
+  private async cleanupUserSessions(_now: number, retentionDays: number): Promise<void> {
+    // Implementation would clean up user sessions older than the cutoff time
     console.log(`Cleaning up user sessions older than ${retentionDays} days`);
   }
 
-  private async cleanupAnnotations(now: number, retentionDays: number): Promise<void> {
-    const cutoffTime = now - retentionDays * 24 * 60 * 60 * 1000;
-    // Implementation would clean up annotations older than cutoff time
+  private async cleanupAnnotations(_now: number, retentionDays: number): Promise<void> {
+    // Implementation would clean up annotations older than the cutoff time
     console.log(`Cleaning up annotations older than ${retentionDays} days`);
   }
 
-  private async cleanupSubtitleTracks(now: number, retentionDays: number): Promise<void> {
-    const cutoffTime = now - retentionDays * 24 * 60 * 60 * 1000;
-    // Implementation would clean up subtitle tracks older than cutoff time
+  private async cleanupSubtitleTracks(_now: number, retentionDays: number): Promise<void> {
+    // Implementation would clean up subtitle tracks older than the cutoff time
     console.log(`Cleaning up subtitle tracks older than ${retentionDays} days`);
   }
 
-  private async cleanupTelemetryData(now: number, retentionDays: number): Promise<void> {
-    const cutoffTime = now - retentionDays * 24 * 60 * 60 * 1000;
-    // Implementation would clean up telemetry data older than cutoff time
+  private async cleanupTelemetryData(_now: number, retentionDays: number): Promise<void> {
+    // Implementation would clean up telemetry data older than the cutoff time
     console.log(`Cleaning up telemetry data older than ${retentionDays} days`);
   }
 
@@ -569,7 +566,7 @@ export class DataRetentionManager {
   private async getDeletionRequests(): Promise<Record<string, DataDeletionRequest>> {
     try {
       const stored = await this.browserBridge.storage.local.get('dataDeletionRequests');
-      return stored.dataDeletionRequests ? JSON.parse(stored.dataDeletionRequests) : {};
+      return stored.dataDeletionRequests ? JSON.parse(stored.dataDeletionRequests as string) : {};
     } catch (error) {
       console.error('Failed to load deletion requests:', error);
       return {};
@@ -579,7 +576,7 @@ export class DataRetentionManager {
   private async getExportRequests(): Promise<Record<string, DataExportRequest>> {
     try {
       const stored = await this.browserBridge.storage.local.get('dataExportRequests');
-      return stored.dataExportRequests ? JSON.parse(stored.dataExportRequests) : {};
+      return stored.dataExportRequests ? JSON.parse(stored.dataExportRequests as string) : {};
     } catch (error) {
       console.error('Failed to load export requests:', error);
       return {};
@@ -620,13 +617,13 @@ export class DataRetentionManager {
     }
   }
 
-  private anonymizeObject(obj: any, userId: string, anonymousId: string): any {
+  private anonymizeObject(obj: unknown, userId: string, anonymousId: string): unknown {
     if (typeof obj === 'string') {
       return this.anonymizeString(obj, userId, anonymousId);
     } else if (Array.isArray(obj)) {
       return obj.map((item) => this.anonymizeObject(item, userId, anonymousId));
     } else if (obj && typeof obj === 'object') {
-      const result: any = {};
+      const result: Record<string, unknown> = {};
       for (const [key, value] of Object.entries(obj)) {
         result[key] = this.anonymizeObject(value, userId, anonymousId);
       }
@@ -639,14 +636,14 @@ export class DataRetentionManager {
     return str.replace(new RegExp(userId, 'g'), anonymousId);
   }
 
-  private formatAsCSV(data: Record<string, any>): string {
+  private formatAsCSV(data: Record<string, unknown>): string {
     // Simple CSV formatting - in a real implementation, this would be more sophisticated
     const rows: string[] = [];
 
     for (const [dataType, typeData] of Object.entries(data)) {
       rows.push(`Data Type: ${dataType}`);
 
-      if (typeof typeData === 'object') {
+      if (typeData !== null && typeof typeData === 'object') {
         for (const [key, value] of Object.entries(typeData)) {
           const valueStr = typeof value === 'string' ? value : JSON.stringify(value);
           rows.push(`${key},${valueStr.replace(/,/g, ';')}`);

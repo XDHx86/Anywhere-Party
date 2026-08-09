@@ -46,7 +46,7 @@ export class Logger {
   private async getAnonymizedUserId(): Promise<string> {
     const result = await this.browserBridge.storage.local.get('anonymizedUserId');
     if (result.anonymizedUserId) {
-      return result.anonymizedUserId;
+      return result.anonymizedUserId as string;
     }
 
     // Generate anonymized ID (hash-like but not reversible)
@@ -56,7 +56,7 @@ export class Logger {
     return anonymizedId;
   }
 
-  setUserId(userId: string): void {
+  setUserId(_userId: string): void {
     // Don't store the actual user ID, keep using anonymized version
     // This method exists for API compatibility but maintains anonymization
   }
@@ -83,7 +83,7 @@ export class Logger {
     event: string,
     level: LogLevel,
     message?: string,
-    data?: Record<string, any>,
+    data?: Record<string, unknown>,
     error?: Error
   ): LogEntry {
     const entry: LogEntry = {
@@ -110,7 +110,7 @@ export class Logger {
     return entry;
   }
 
-  private anonymizeData(data?: Record<string, any>): Record<string, any> | undefined {
+  private anonymizeData(data?: Record<string, unknown>): Record<string, unknown> | undefined {
     if (!data || !this.config.anonymizeData) {
       return data;
     }
@@ -157,7 +157,7 @@ export class Logger {
 
       // Get existing logs from storage
       const result = await this.browserBridge.storage.local.get('watchPartyLogs');
-      const existingLogs: LogEntry[] = result.watchPartyLogs || [];
+      const existingLogs: LogEntry[] = (result.watchPartyLogs as LogEntry[] | undefined) || [];
 
       // Combine and sort by timestamp
       const allLogs = [...existingLogs, ...this.logBuffer].sort(
@@ -214,7 +214,7 @@ export class Logger {
   private async cleanupOldLogs(): Promise<void> {
     try {
       const result = await this.browserBridge.storage.local.get('watchPartyLogs');
-      const existingLogs: LogEntry[] = result.watchPartyLogs || [];
+      const existingLogs: LogEntry[] = (result.watchPartyLogs as LogEntry[] | undefined) || [];
 
       const retainedLogs = this.applyRetentionPolicy(existingLogs);
 
@@ -231,28 +231,28 @@ export class Logger {
   }
 
   // Public logging methods
-  debug(event: string, message?: string, data?: Record<string, any>): void {
+  debug(event: string, message?: string, data?: Record<string, unknown>): void {
     if (this.shouldLog('debug')) {
       const entry = this.createLogEntry(event, 'debug', message, data);
       this.persistLog(entry);
     }
   }
 
-  info(event: string, message?: string, data?: Record<string, any>): void {
+  info(event: string, message?: string, data?: Record<string, unknown>): void {
     if (this.shouldLog('info')) {
       const entry = this.createLogEntry(event, 'info', message, data);
       this.persistLog(entry);
     }
   }
 
-  warn(event: string, message?: string, data?: Record<string, any>): void {
+  warn(event: string, message?: string, data?: Record<string, unknown>): void {
     if (this.shouldLog('warn')) {
       const entry = this.createLogEntry(event, 'warn', message, data);
       this.persistLog(entry);
     }
   }
 
-  error(event: string, message?: string, data?: Record<string, any>, error?: Error): void {
+  error(event: string, message?: string, data?: Record<string, unknown>, error?: Error): void {
     if (this.shouldLog('error')) {
       const entry = this.createLogEntry(event, 'error', message, data, error);
       this.persistLog(entry);
@@ -321,7 +321,7 @@ export class Logger {
   async exportLogsAsJsonl(): Promise<string> {
     try {
       const result = await this.browserBridge.storage.local.get('watchPartyLogs');
-      const logs: LogEntry[] = result.watchPartyLogs || [];
+      const logs: LogEntry[] = (result.watchPartyLogs as LogEntry[] | undefined) || [];
 
       return logs.map((log) => JSON.stringify(log)).join('\n');
     } catch (error) {
@@ -334,7 +334,7 @@ export class Logger {
   async getLogs(limit?: number): Promise<LogEntry[]> {
     try {
       const result = await this.browserBridge.storage.local.get('watchPartyLogs');
-      const logs: LogEntry[] = result.watchPartyLogs || [];
+      const logs: LogEntry[] = (result.watchPartyLogs as LogEntry[] | undefined) || [];
 
       // Sort by timestamp (newest first) and limit if specified
       const sortedLogs = logs.sort((a, b) => b.timestamp - a.timestamp);

@@ -3,6 +3,14 @@
   "reporters": ["html", "clear-text", "progress"],
   "testRunner": "vitest",
   "coverageAnalysis": "perTest",
+
+  "incremental": true,
+  "incrementalFile": ".stryker-incremental.json",
+  "allowConsoleColors": true,
+  "cleanTempDir": true,
+  "tempDirName": ".stryker-tmp",
+  "ignoreStatic": true,
+
   "disableTypeChecks": "{**/*.ts,**/*.tsx}",
   "mutate": [
     "src/@core/**/*.ts",

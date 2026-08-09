@@ -156,7 +156,7 @@ export const MonitoringCard: React.FC<MonitoringCardProps> = ({ className = '' }
     return (
       <div className={`monitoring-card ${className}`}>
         <UserFeedbackForm
-          onSubmit={(feedbackId) => {
+          onSubmit={(_feedbackId) => {
             setShowFeedbackForm(false);
             // Could show a success message here
           }}

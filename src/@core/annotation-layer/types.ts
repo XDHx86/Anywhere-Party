@@ -27,14 +27,7 @@ export interface Annotation {
 }
 
 export type AnnotationType =
-  | 'pen'
-  | 'rectangle'
-  | 'circle'
-  | 'arrow'
-  | 'text'
-  | 'eraser'
-  | 'highlighter'
-  | 'line';
+  'pen' | 'rectangle' | 'circle' | 'arrow' | 'text' | 'eraser' | 'highlighter' | 'line';
 
 export interface AnnotationData {
   // Common properties
@@ -121,8 +114,8 @@ export interface AnnotationAction {
     | 'layer_rename';
   annotationId?: string;
   layerId?: string;
-  previousState?: any;
-  newState?: any;
+  previousState?: unknown;
+  newState?: unknown;
   timestamp: number;
 }
 

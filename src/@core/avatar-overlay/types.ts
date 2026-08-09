@@ -130,7 +130,7 @@ export interface AvatarSyncOptions {
   roomId: string;
   userId: string;
   userName: string;
-  signalingSend?: (message: any) => void;
+  signalingSend?: (message: unknown) => void;
   onAvatarUpdate?: (avatar: Avatar) => void;
   onAvatarAnimate?: (avatarId: string, animationKey: string) => void;
   onChatBubble?: (avatarId: string, message: string) => void;

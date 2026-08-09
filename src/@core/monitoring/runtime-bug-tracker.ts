@@ -5,6 +5,16 @@
 
 import { MonitoringService, RuntimeBugEvent } from './monitoring-service';
 
+interface RoomCreationOptions {
+  password?: string;
+  isPublic?: boolean;
+}
+
+interface RoomCreationServerResponse {
+  status?: number;
+  roomId?: string;
+}
+
 export class RuntimeBugTracker {
   private monitoringService: MonitoringService;
   private userId: string = '';
@@ -159,8 +169,8 @@ export class RuntimeBugTracker {
   async trackRoomCreationFailure(
     component: string,
     error: Error,
-    roomOptions?: any,
-    serverResponse?: any
+    roomOptions?: RoomCreationOptions,
+    serverResponse?: RoomCreationServerResponse
   ): Promise<void> {
     await this.monitoringService.trackRuntimeBug({
       bugType: 'room_creation_failure',
@@ -223,11 +233,7 @@ export class RuntimeBugTracker {
    */
   async trackSuccess(
     operationType:
-      | 'icon_load'
-      | 'api_call'
-      | 'room_creation'
-      | 'state_persistence'
-      | 'video_detection',
+      'icon_load' | 'api_call' | 'room_creation' | 'state_persistence' | 'video_detection',
     responseTime?: number
   ): Promise<void> {
     await this.monitoringService.trackSuccess(operationType, responseTime);

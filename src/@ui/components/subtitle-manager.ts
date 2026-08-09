@@ -7,7 +7,6 @@ import {
   SubtitleTrack,
   SubtitleStyle,
   SubtitleUserPreferences,
-  SubtitleSearchOptions,
 } from '../../@core/subtitle-engine/types';
 
 export interface SubtitleManagerConfig {
@@ -381,13 +380,27 @@ export class SubtitleManager {
       case 'borderRadius':
       case 'padding':
       case 'shadowBlur':
-        (style as any)[property] = parseFloat(value);
+        style[property] = parseFloat(value);
         break;
       case 'opacity':
-        (style as any)[property] = parseFloat(value);
+        style[property] = parseFloat(value);
         break;
       default:
-        (style as any)[property] = value;
+        switch (property) {
+          case 'fontFamily':
+          case 'color':
+          case 'backgroundColor':
+          case 'outlineColor':
+          case 'shadowColor':
+            style[property] = value;
+            break;
+          case 'position':
+          case 'alignment':
+            (style as Record<string, string | number>)[property] = value;
+            break;
+          default:
+            break;
+        }
     }
 
     preferences.defaultStyle = style;
@@ -418,9 +431,9 @@ export class SubtitleManager {
   /**
    * Update user preference
    */
-  private updatePreference(key: keyof SubtitleUserPreferences, value: any): void {
+  private updatePreference(key: keyof SubtitleUserPreferences, value: unknown): void {
     const preferences = this.config.subtitleEngine.getUserPreferences(this.config.userId);
-    (preferences as any)[key] = value;
+    Object.assign(preferences, { [key]: value });
     this.config.subtitleEngine.updateUserPreferences(this.config.userId, preferences);
     this.config.onPreferencesChanged?.(preferences);
   }

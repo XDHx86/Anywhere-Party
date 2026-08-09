@@ -41,7 +41,7 @@ const AvatarContainer = forwardRef<HTMLDivElement, AvatarContainerProps>(
     ref
   ) => {
     const { theme } = useMaterialTheme();
-    const { isHovered, hoverProps } = useHoverAnimation(1.1, 'medium1');
+    const { hoverProps } = useHoverAnimation(1.1, 'medium1');
     const { ripples, createRipple } = useRipple();
     const [isVisible, setIsVisible] = useState(false);
     const [showTooltipState, setShowTooltipState] = useState(false);
@@ -190,11 +190,11 @@ const AvatarContainer = forwardRef<HTMLDivElement, AvatarContainerProps>(
             style={{ ...avatarStyles, ...hoverProps.style }}
             onClick={handleClick}
             onDoubleClick={onDoubleClick}
-            onMouseEnter={(e) => {
+            onMouseEnter={(_e) => {
               handleMouseEnter();
               hoverProps.onMouseEnter?.();
             }}
-            onMouseLeave={(e) => {
+            onMouseLeave={(_e) => {
               handleMouseLeave();
               hoverProps.onMouseLeave?.();
             }}

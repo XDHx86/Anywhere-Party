@@ -5,6 +5,29 @@
 
 import { NetworkConditions, BandwidthTestResult, PerformanceOptimizationConfig } from './types';
 
+// Extend Navigator interface for Network Information API
+interface NavigatorWithConnection extends Navigator {
+  connection?: NetworkInformation;
+}
+
+interface NetworkInformation extends EventTarget {
+  readonly downlink: number;
+  readonly effectiveType: 'slow-2g' | '2g' | '3g' | '4g';
+  readonly rtt: number;
+  readonly saveData: boolean;
+  readonly type: string;
+  addEventListener(
+    type: 'change',
+    listener: (this: NetworkInformation, ev: Event) => unknown,
+    options?: boolean | AddEventListenerOptions
+  ): void;
+  removeEventListener(
+    type: 'change',
+    listener: (this: NetworkInformation, ev: Event) => unknown,
+    options?: boolean | EventListenerOptions
+  ): void;
+}
+
 export class BandwidthMonitor {
   private config: PerformanceOptimizationConfig;
   private currentConditions: NetworkConditions;
@@ -24,9 +47,10 @@ export class BandwidthMonitor {
     this.onConditionsChange = onConditionsChange;
 
     // Detect browser API support
+    const nav = navigator as NavigatorWithConnection;
     this.supportsNetworkAPI = 'navigator' in globalThis && 'connection' in navigator;
     this.supportsConnectionAPI =
-      this.supportsNetworkAPI && 'effectiveType' in (navigator as any).connection;
+      this.supportsNetworkAPI && 'effectiveType' in (nav.connection || {});
 
     // Initialize with default conditions
     this.currentConditions = this.getInitialConditions();
@@ -196,15 +220,18 @@ export class BandwidthMonitor {
   private getInitialConditions(): NetworkConditions {
     // Try to get initial conditions from Network API
     if (this.supportsConnectionAPI) {
-      const connection = (navigator as any).connection;
-      return {
-        bandwidth: this.estimateBandwidthFromEffectiveType(connection.effectiveType),
-        latency: this.estimateLatencyFromEffectiveType(connection.effectiveType),
-        packetLoss: 0,
-        jitter: 0,
-        connectionType: connection.type || 'unknown',
-        effectiveType: connection.effectiveType || '4g',
-      };
+      const nav = navigator as NavigatorWithConnection;
+      const connection = nav.connection;
+      if (connection) {
+        return {
+          bandwidth: this.estimateBandwidthFromEffectiveType(connection.effectiveType),
+          latency: this.estimateLatencyFromEffectiveType(connection.effectiveType),
+          packetLoss: 0,
+          jitter: 0,
+          connectionType: (connection.type as NetworkConditions['connectionType']) || 'unknown',
+          effectiveType: connection.effectiveType || '4g',
+        };
+      }
     }
 
     // Fallback to default conditions
@@ -221,7 +248,9 @@ export class BandwidthMonitor {
   private setupNetworkAPIListeners(): void {
     if (!this.supportsNetworkAPI) return;
 
-    const connection = (navigator as any).connection;
+    const nav = navigator as NavigatorWithConnection;
+    const connection = nav.connection;
+    if (!connection) return;
 
     const handleConnectionChange = () => {
       this.updateConditionsFromNetworkAPI();
@@ -230,32 +259,39 @@ export class BandwidthMonitor {
     connection.addEventListener('change', handleConnectionChange);
 
     // Store reference for cleanup
-    (this as any)._connectionChangeHandler = handleConnectionChange;
+    this._connectionChangeHandler = handleConnectionChange;
   }
+
+  private _connectionChangeHandler: (() => void) | null = null;
 
   private removeNetworkAPIListeners(): void {
     if (!this.supportsNetworkAPI) return;
 
-    const connection = (navigator as any).connection;
-    const handler = (this as any)._connectionChangeHandler;
+    const nav = navigator as NavigatorWithConnection;
+    const connection = nav.connection;
+    const handler = this._connectionChangeHandler;
 
-    if (handler) {
+    if (connection && handler) {
       connection.removeEventListener('change', handler);
-      delete (this as any)._connectionChangeHandler;
+      this._connectionChangeHandler = null;
     }
   }
 
   private updateConditionsFromNetworkAPI(): void {
     if (!this.supportsConnectionAPI) return;
 
-    const connection = (navigator as any).connection;
+    const nav = navigator as NavigatorWithConnection;
+    const connection = nav.connection;
+    if (!connection) return;
 
     const newConditions: NetworkConditions = {
       bandwidth: this.estimateBandwidthFromEffectiveType(connection.effectiveType),
       latency: this.estimateLatencyFromEffectiveType(connection.effectiveType),
       packetLoss: this.currentConditions.packetLoss, // Keep existing value
       jitter: this.currentConditions.jitter, // Keep existing value
-      connectionType: connection.type || this.currentConditions.connectionType,
+      connectionType:
+        (connection.type as NetworkConditions['connectionType']) ||
+        this.currentConditions.connectionType,
       effectiveType: connection.effectiveType || this.currentConditions.effectiveType,
     };
 

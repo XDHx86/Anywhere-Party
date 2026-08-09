@@ -98,7 +98,10 @@ class DiagnosticLogger {
   private loadingMetrics: LoadingMetrics[] = [];
   private sessionId: string;
   private sessionStartTime: number;
-  private componentMetrics: Map<string, any> = new Map();
+  private componentMetrics: Map<
+    string,
+    { renderTime: number; mountTime: number; updateCount: number }
+  > = new Map();
   private performanceObserver: PerformanceObserver | null = null;
 
   constructor() {
@@ -147,7 +150,7 @@ class DiagnosticLogger {
   }
 
   private getBrowserInfo(): BrowserInfo {
-    const nav = navigator as any;
+    const nav = navigator;
 
     // Detect browser name and version
     const userAgent = nav.userAgent;
@@ -157,29 +160,33 @@ class DiagnosticLogger {
     if (userAgent.includes('Chrome')) {
       browserName = 'Chrome';
       const match = userAgent.match(/Chrome\/(\d+)/);
-      browserVersion = match ? match[1] : 'Unknown';
+      browserVersion = match?.[1] ?? 'Unknown';
     } else if (userAgent.includes('Firefox')) {
       browserName = 'Firefox';
       const match = userAgent.match(/Firefox\/(\d+)/);
-      browserVersion = match ? match[1] : 'Unknown';
+      browserVersion = match?.[1] ?? 'Unknown';
     } else if (userAgent.includes('Safari')) {
       browserName = 'Safari';
       const match = userAgent.match(/Version\/(\d+)/);
-      browserVersion = match ? match[1] : 'Unknown';
+      browserVersion = match?.[1] ?? 'Unknown';
     } else if (userAgent.includes('Edge')) {
       browserName = 'Edge';
       const match = userAgent.match(/Edge\/(\d+)/);
-      browserVersion = match ? match[1] : 'Unknown';
+      browserVersion = match?.[1] ?? 'Unknown';
     }
 
     // Get connection info if available
-    let connectionInfo;
-    if ('connection' in nav) {
-      const conn = nav.connection;
+    let connectionInfo: { effectiveType: string; downlink: number; rtt: number } | undefined;
+    const navConnection = (
+      nav as unknown as {
+        connection?: { effectiveType?: string; downlink?: number; rtt?: number };
+      }
+    ).connection;
+    if (navConnection) {
       connectionInfo = {
-        effectiveType: conn.effectiveType || 'unknown',
-        downlink: conn.downlink || 0,
-        rtt: conn.rtt || 0,
+        effectiveType: navConnection.effectiveType || 'unknown',
+        downlink: navConnection.downlink || 0,
+        rtt: navConnection.rtt || 0,
       };
     }
 
@@ -194,19 +201,25 @@ class DiagnosticLogger {
       colorDepth: screen.colorDepth,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       hardwareConcurrency: nav.hardwareConcurrency || 1,
-      deviceMemory: nav.deviceMemory,
+      deviceMemory: (nav as unknown as { deviceMemory?: number }).deviceMemory,
       connection: connectionInfo,
     };
   }
 
   private getMemoryUsage(): { used: number; total: number; limit?: number } {
     if ('memory' in performance) {
-      const memory = (performance as any).memory;
-      return {
-        used: memory.usedJSHeapSize,
-        total: memory.totalJSHeapSize,
-        limit: memory.jsHeapSizeLimit,
-      };
+      const memory = (
+        performance as unknown as {
+          memory?: { usedJSHeapSize: number; totalJSHeapSize: number; jsHeapSizeLimit: number };
+        }
+      ).memory;
+      if (memory) {
+        return {
+          used: memory.usedJSHeapSize,
+          total: memory.totalJSHeapSize,
+          limit: memory.jsHeapSizeLimit,
+        };
+      }
     }
     return { used: 0, total: 0 };
   }
@@ -281,16 +294,20 @@ class DiagnosticLogger {
     this.sendToBackground('LOG_JAVASCRIPT_ERROR', { error: extensionError });
   }
 
-  logPromiseRejection(reason: any): void {
+  logPromiseRejection(reason: unknown): void {
     const errorId = `promise-error-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const reasonObj = (typeof reason === 'object' && reason !== null ? reason : {}) as {
+      message?: string;
+      stack?: string;
+    };
 
     const extensionError: ExtensionError = {
       id: errorId,
       timestamp: Date.now(),
       type: 'javascript',
       component: 'Promise',
-      message: reason?.message || String(reason),
-      stack: reason?.stack,
+      message: reasonObj.message || String(reason),
+      stack: reasonObj.stack,
       browserInfo: this.getBrowserInfo(),
       userAgent: navigator.userAgent,
       url: window.location.href,
@@ -373,6 +390,11 @@ class DiagnosticLogger {
       performance.measure(loadId, `${loadId}-start`, endMark);
       const measure = performance.getEntriesByName(loadId)[0];
 
+      if (!measure) {
+        console.warn('Failed to measure component load time: no performance entry found');
+        return;
+      }
+
       const metrics: LoadingMetrics = {
         componentName,
         loadStartTime: measure.startTime,
@@ -443,8 +465,12 @@ class DiagnosticLogger {
     }));
   }
 
-  private getComponentMetrics(): Record<string, any> {
-    const metrics: Record<string, any> = {};
+  private getComponentMetrics(): Record<
+    string,
+    { renderTime: number; mountTime: number; updateCount: number }
+  > {
+    const metrics: Record<string, { renderTime: number; mountTime: number; updateCount: number }> =
+      {};
     this.componentMetrics.forEach((value, key) => {
       metrics[key] = value;
     });
@@ -506,7 +532,7 @@ class DiagnosticLogger {
     return recommendations;
   }
 
-  private sendToBackground(type: string, data: any): void {
+  private sendToBackground(type: string, data: Record<string, unknown>): void {
     if (typeof chrome !== 'undefined' && chrome.runtime) {
       chrome.runtime.sendMessage({ type, ...data }).catch(() => {
         // Ignore if background script is not available
