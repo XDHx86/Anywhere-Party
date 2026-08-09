@@ -9,7 +9,7 @@ module.exports = {
   extends: [
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
-    'prettier'
+    'plugin:prettier/recommended'
   ],
   rules: {
     'prettier/prettier': 'error',
@@ -19,9 +19,10 @@ module.exports = {
     '@typescript-eslint/no-explicit-any': 'warn',
     '@typescript-eslint/no-non-null-assertion': 'warn',
     '@typescript-eslint/ban-ts-comment': 'warn',
-    '@typescript-eslint/ban-types': 'warn',
     '@typescript-eslint/no-var-requires': 'warn',
-    'no-case-declarations': 'warn'
+    'no-case-declarations': 'warn',
+    '@typescript-eslint/no-unsafe-function-type': 'warn',
+    '@typescript-eslint/no-empty-object-type': 'warn',
   },
   overrides: [
     {
