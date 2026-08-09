@@ -3,13 +3,15 @@
   "compilerOptions": {
     "declaration": false,
     "sourceMap": true,
-    "jsx": "react-jsx"
+    "noEmitOnError": true
   },
   "exclude": [
     "node_modules",
+    "dist",
     "**/*.test.ts",
     "**/*.spec.ts",
     "**/*.test.tsx",
-    "**/*.spec.tsx"
+    "**/*.spec.tsx",
+    "src/test-setup.ts"
   ]
 }

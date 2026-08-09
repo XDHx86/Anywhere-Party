@@ -8,19 +8,25 @@ export default defineConfig({
     testTimeout: 15000,
     hookTimeout: 15000,
     setupFiles: ['./src/test-setup.ts'],
+    css: true,
+    restoreMocks: true,
+    clearMocks: true,
     typecheck: {
       tsconfig: './tsconfig.test.json'
     },
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+      reporter: ['text', 'json', 'html', 'lcov'],
       exclude: [
         'node_modules/',
         'dist/',
         'tests/',
         '**/*.d.ts',
         '**/*.config.*',
-        '**/coverage/**'
+        '**/coverage/**',
+        '**/*.test.*',
+        '**/*.spec.*',
+        '**/test-setup.ts',
       ]
     }
   },

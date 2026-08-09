@@ -181,13 +181,26 @@ module.exports = (env, argv) => {
           }
         }
       },
-      usedExports: true,
-      sideEffects: false
+      sideEffects: false,
+          
+      moduleIds: 'deterministic',
+      chunkIds: 'deterministic',
+      runtimeChunk: false,
     },
     performance: {
       hints: isProduction ? 'warning' : false,
       maxEntrypointSize: 250000, // 250KB
       maxAssetSize: 250000 // 250KB
+    },
+    cache: { type: 'filesystem' },
+    experiments: { cacheUnaffected: true },
+    stats: {
+      all: false,
+      errors: true,
+      warnings: true,
+    },
+    infrastructureLogging: {
+      level: 'warn',
     }
   };
 
