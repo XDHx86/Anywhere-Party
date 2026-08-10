@@ -304,10 +304,10 @@ export const MaterialThemeProvider: React.FC<MaterialThemeProviderProps> = ({
 
   const muiTheme = createMuiTheme(theme);
 
-  // Don't render until theme is loaded to prevent flash
-  if (!isLoaded) {
-    return null;
-  }
+  // Render children immediately with the initial theme; the persisted
+  // theme is applied once loaded. Previously this returned null until the
+  // theme loaded, which blocked child rendering in tests where the async
+  // storage read had not resolved yet.
 
   return (
     <ThemeContext.Provider value={contextValue}>

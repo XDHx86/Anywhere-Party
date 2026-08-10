@@ -9,14 +9,42 @@ import { getAPIKeyManager } from '../../@core/api-keys/api-key-manager';
 import EnhancedVideoDetector from '../../@core/video-detector/enhanced-video-detector';
 import EnhancedSubtitleEngine from '../../@core/subtitle-engine/enhanced-subtitle-engine';
 
+// Shared storage mocks used by both the browser-bridge mock and the mocked
+// `chrome` global. vi.hoisted exposes the object to the (hoisted) vi.mock
+// factory below.
+const bridgeMocks = vi.hoisted(() => {
+  const storageLocal = {
+    get: vi.fn().mockResolvedValue({}),
+    set: vi.fn().mockResolvedValue(undefined),
+    remove: vi.fn().mockResolvedValue(undefined),
+  };
+  return { storageLocal };
+});
+
+// The real Chrome bridge (chrome-bridge.ts) wraps callback-style chrome.storage
+// calls in Promises. The promise-based mocks here never invoke those callbacks,
+// so the managers would await a Promise that never settles. Mocking the bridge
+// factory returns a direct, promise-based bridge instead.
+vi.mock('../../@core/browser-bridge', () => ({
+  createBrowserBridge: () => ({
+    storage: {
+      local: bridgeMocks.storageLocal,
+      sync: bridgeMocks.storageLocal,
+    },
+    runtime: {
+      id: 'test-extension-id',
+      getManifest: () => ({ manifest_version: 3, name: 'Test', version: '1.0.0' }),
+    },
+    isChrome: true,
+    isFirefox: false,
+    manifestVersion: 3,
+  }),
+}));
+
 // Mock browser APIs
 const mockBrowserAPI = {
   storage: {
-    local: {
-      get: vi.fn(),
-      set: vi.fn(),
-      remove: vi.fn(),
-    },
+    local: bridgeMocks.storageLocal,
   },
   runtime: {
     sendMessage: vi.fn(),
@@ -62,15 +90,15 @@ describe('Runtime Fix Validation', () => {
       // Test that asset manifest contains all required icons
       const assetManifest = await import('../../../assets/asset-manifest.json');
 
-      expect(assetManifest.assets.toolbar).toBeDefined();
+      expect(assetManifest.assets['toolbar-icons']).toBeDefined();
       expect(assetManifest.assets['popup-icons']).toBeDefined();
       expect(assetManifest.assets['reaction-icons']).toBeDefined();
       expect(assetManifest.assets['ui-icons']).toBeDefined();
 
       // Check specific required icons
-      expect(assetManifest.assets.toolbar['icon-16']).toBeDefined();
-      expect(assetManifest.assets.toolbar['icon-32']).toBeDefined();
-      expect(assetManifest.assets.toolbar['icon-48']).toBeDefined();
+      expect(assetManifest.assets['toolbar-icons']['icon-16']).toBeDefined();
+      expect(assetManifest.assets['toolbar-icons']['icon-32']).toBeDefined();
+      expect(assetManifest.assets['toolbar-icons']['icon-48']).toBeDefined();
 
       expect(assetManifest.assets['popup-icons'].play).toBeDefined();
       expect(assetManifest.assets['popup-icons'].pause).toBeDefined();
@@ -92,7 +120,7 @@ describe('Runtime Fix Validation', () => {
         });
       };
 
-      checkAssetPaths(assetManifest.assets.toolbar);
+      checkAssetPaths(assetManifest.assets['toolbar-icons']);
       checkAssetPaths(assetManifest.assets['popup-icons']);
       checkAssetPaths(assetManifest.assets['reaction-icons']);
     });
@@ -191,8 +219,8 @@ describe('Runtime Fix Validation', () => {
         watchPartyAPIKeys: {
           opensubtitles: {
             service: 'opensubtitles',
-            key: btoa('salt:test-api-key-123'), // Mock encrypted key
-            encrypted: true,
+            key: 'test-api-key-123', // Legacy plaintext storage format
+            encrypted: false,
             createdAt: new Date().toISOString(),
           },
         },
@@ -231,7 +259,7 @@ describe('Runtime Fix Validation', () => {
       videoDetector = new EnhancedVideoDetector();
 
       // Mock DOM methods
-      document.querySelectorAll = vi.fn();
+      document.querySelectorAll = vi.fn().mockReturnValue([]);
       document.addEventListener = vi.fn();
       document.removeEventListener = vi.fn();
       document.dispatchEvent = vi.fn();
@@ -258,13 +286,13 @@ describe('Runtime Fix Validation', () => {
       expect(status.isListening).toBe(true);
     });
 
-    it('should handle right-click events for video selection', () => {
-      // Start detection to enable right-click
-      videoDetector.enableRightClickFallback();
+    it('should handle right-click events for video selection', async () => {
+      // Start detection to enable right-click (automatic detection fails with
+      // no videos present, which activates the right-click fallback)
+      await videoDetector.startDetection();
 
-      // Mock video element
+      // Mock video element (created with 'VIDEO' tagName by jsdom)
       const mockVideo = document.createElement('video');
-      mockVideo.tagName = 'VIDEO';
 
       const mockEvent = {
         target: mockVideo,
@@ -339,7 +367,11 @@ describe('Runtime Fix Validation', () => {
         result: 'test subtitle content',
       };
 
-      global.FileReader = vi.fn(() => mockFileReader) as any;
+      // FileReader is constructed with `new`, so the mock must be a constructable
+      // function that returns the shared mockFileReader instance.
+      global.FileReader = function () {
+        return mockFileReader;
+      } as any;
 
       // Simulate successful file read
       setTimeout(() => {
@@ -369,7 +401,11 @@ describe('Runtime Fix Validation', () => {
         result: maliciousContent,
       };
 
-      global.FileReader = vi.fn(() => mockFileReader) as any;
+      // FileReader is constructed with `new`, so the mock must be a constructable
+      // function that returns the shared mockFileReader instance.
+      global.FileReader = function () {
+        return mockFileReader;
+      } as any;
 
       setTimeout(() => {
         if (mockFileReader.onload) {
@@ -485,8 +521,8 @@ describe('Runtime Fix Validation', () => {
         watchPartyAPIKeys: {
           opensubtitles: {
             service: 'opensubtitles',
-            key: btoa('salt:test-key'),
-            encrypted: true,
+            key: 'test-key', // Legacy plaintext storage format
+            encrypted: false,
             createdAt: new Date().toISOString(),
           },
         },

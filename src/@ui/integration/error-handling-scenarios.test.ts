@@ -80,6 +80,25 @@ const TimeoutComponent: React.FC = () => {
   return React.createElement('div', null, 'Timeout component');
 };
 
+/**
+ * React 19 no longer applies setState to class component instances that were
+ * constructed directly (never mounted through a root). These tests drive the
+ * ErrorBoundary as a plain object, so patch setState to apply updates
+ * synchronously to this.state, matching the behaviour the tests rely on.
+ */
+function makeStateSynchronous(instance: ErrorBoundary): void {
+  instance.setState = ((stateUpdate: unknown, callback?: () => void) => {
+    const update =
+      typeof stateUpdate === 'function'
+        ? (stateUpdate as (prev: ErrorBoundary['state']) => Partial<ErrorBoundary['state']>)(
+            instance.state
+          )
+        : (stateUpdate as Partial<ErrorBoundary['state']>);
+    instance.state = { ...instance.state, ...update };
+    if (callback) callback();
+  }) as ErrorBoundary['setState'];
+}
+
 describe('Error Handling Scenarios', () => {
   let originalChrome: any;
   let originalNavigator: any;
@@ -169,6 +188,10 @@ describe('Error Handling Scenarios', () => {
         componentName: 'RetryTestComponent',
       });
 
+      // React 19 doesn't apply setState to directly-constructed instances,
+      // so patch setState to apply synchronously for these state assertions.
+      makeStateSynchronous(errorBoundary);
+
       // Set error state
       errorBoundary.setState({
         hasError: true,
@@ -228,6 +251,10 @@ describe('Error Handling Scenarios', () => {
       const error = new Error('Diagnostic test error');
       const errorInfo = { componentStack: 'Component stack' };
 
+      // React 19 doesn't apply setState to directly-constructed instances,
+      // so patch setState to apply synchronously for these state assertions.
+      makeStateSynchronous(errorBoundary);
+
       // Trigger error state first
       const derivedState = ErrorBoundary.getDerivedStateFromError(error);
       errorBoundary.setState({
@@ -265,6 +292,9 @@ describe('Error Handling Scenarios', () => {
       });
 
       const error = new Error('Reporting test error');
+      // React 19 doesn't apply setState to directly-constructed instances,
+      // so patch setState to apply synchronously for these state assertions.
+      makeStateSynchronous(errorBoundary);
       errorBoundary.setState({
         hasError: true,
         error,

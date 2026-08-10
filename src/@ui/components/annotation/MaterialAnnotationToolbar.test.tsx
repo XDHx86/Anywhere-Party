@@ -294,7 +294,7 @@ describe('MaterialAnnotationToolbar', () => {
 
       const layerInput = screen.getByTestId('new-layer-input');
       fireEvent.change(layerInput, { target: { value: 'Enter Layer' } });
-      fireEvent.keyPress(layerInput, { key: 'Enter', code: 'Enter' });
+      fireEvent.keyDown(layerInput, { key: 'Enter', code: 'Enter' });
 
       expect(mockProps.onCreateLayer).toHaveBeenCalledWith('Enter Layer');
     });

@@ -166,8 +166,10 @@ export class MaterialAvatarOverlay {
     );
 
     if (success) {
-      // Store avatar data
-      this.avatars.set(avatar.id, { ...avatar });
+      // Store avatar data with the collision-adjusted position so the recorded
+      // coordinates match where the avatar is actually displayed (consistent
+      // with updateAvatarPosition).
+      this.avatars.set(avatar.id, { ...avatar, ...position });
 
       // Notify event handlers
       this.options.eventHandlers.onAvatarUpdate?.(avatar.id, surfaceConfig);
@@ -364,11 +366,20 @@ export class MaterialAvatarOverlay {
         const dy = adjustedPosition.y - otherPosition.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (distance < collisionRadius && distance > 0) {
+        if (distance < collisionRadius) {
           hasCollision = true;
-          // Push away from collision
-          const pushX = (dx / distance) * (collisionRadius - distance) * 0.6;
-          const pushY = (dy / distance) * (collisionRadius - distance) * 0.6;
+          // Push away from collision. When two avatars share the exact same
+          // anchor point (distance === 0) the direction is undefined, so nudge
+          // diagonally instead of dividing by zero.
+          let pushX: number;
+          let pushY: number;
+          if (distance === 0) {
+            pushX = collisionRadius * 0.6;
+            pushY = collisionRadius * 0.6;
+          } else {
+            pushX = (dx / distance) * (collisionRadius - distance) * 0.6;
+            pushY = (dy / distance) * (collisionRadius - distance) * 0.6;
+          }
 
           adjustedPosition.x = Math.max(0.05, Math.min(0.95, adjustedPosition.x + pushX));
           adjustedPosition.y = Math.max(0.05, Math.min(0.95, adjustedPosition.y + pushY));

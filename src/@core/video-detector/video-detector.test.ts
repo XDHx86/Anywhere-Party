@@ -91,15 +91,15 @@ describe('VideoDetector Property-Based Tests', () => {
   let mockObserver: any;
 
   beforeEach(() => {
-    // Mock MutationObserver
+    // Mock MutationObserver — must be a constructible function, not an arrow function
     mockObserver = {
       observe: vi.fn(),
       disconnect: vi.fn(),
     };
-    vi.stubGlobal(
-      'MutationObserver',
-      vi.fn(() => mockObserver)
-    );
+    const MockMutationObserver = vi.fn(function () {
+      return mockObserver;
+    });
+    vi.stubGlobal('MutationObserver', MockMutationObserver);
 
     // Mock console methods
     vi.spyOn(console, 'log').mockImplementation(() => {});

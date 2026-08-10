@@ -754,6 +754,10 @@ export function getChromeCompatibilityManager(): ChromeCompatibilityManager {
   return chromeCompatibilityManager;
 }
 
+export function resetChromeCompatibilityManager(): void {
+  chromeCompatibilityManager = null;
+}
+
 export function createChromeCompatibilityManager(): ChromeCompatibilityManager {
   return new ChromeCompatibilityManager();
 }

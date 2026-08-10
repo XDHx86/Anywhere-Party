@@ -11,28 +11,30 @@ import { CollaborativeAnnotationLayer } from '../../../@core/annotation-layer/co
 
 // Mock the collaborative annotation layer
 vi.mock('../../../@core/annotation-layer/collaborative-annotation-layer', () => ({
-  CollaborativeAnnotationLayer: vi.fn().mockImplementation(() => ({
-    injectOverlay: vi.fn(() => true),
-    removeOverlay: vi.fn(),
-    isActive: vi.fn(() => true),
-    isCrossOriginBlocked: vi.fn(() => false),
-    setTool: vi.fn(),
-    setCurrentLayer: vi.fn(),
-    setLayerVisibility: vi.fn(),
-    undo: vi.fn(() => true),
-    redo: vi.fn(() => true),
-    clearAllAnnotations: vi.fn(),
-    createLayer: vi.fn(() => true),
-    deleteLayer: vi.fn(() => true),
-    handleSyncMessage: vi.fn(),
-    getSyncStats: vi.fn(() => ({
-      isConnected: true,
-      lastSyncTime: Date.now(),
-      pendingMessages: 0,
-      participantCount: 2,
-      syncErrors: [],
-    })),
-  })),
+  CollaborativeAnnotationLayer: vi.fn().mockImplementation(function () {
+    return {
+      injectOverlay: vi.fn(() => true),
+      removeOverlay: vi.fn(),
+      isActive: vi.fn(() => true),
+      isCrossOriginBlocked: vi.fn(() => false),
+      setTool: vi.fn(),
+      setCurrentLayer: vi.fn(),
+      setLayerVisibility: vi.fn(),
+      undo: vi.fn(() => true),
+      redo: vi.fn(() => true),
+      clearAllAnnotations: vi.fn(),
+      createLayer: vi.fn(() => true),
+      deleteLayer: vi.fn(() => true),
+      handleSyncMessage: vi.fn(),
+      getSyncStats: vi.fn(() => ({
+        isConnected: true,
+        lastSyncTime: Date.now(),
+        pendingMessages: 0,
+        participantCount: 2,
+        syncErrors: [],
+      })),
+    };
+  }),
 }));
 
 // Mock Material Design components
@@ -96,28 +98,30 @@ describe('AnnotationSystem', () => {
     vi.clearAllMocks();
 
     // Reset the mock to the default implementation so per-test overrides don't leak
-    CollaborativeAnnotationLayer.mockImplementation(() => ({
-      injectOverlay: vi.fn(() => true),
-      removeOverlay: vi.fn(),
-      isActive: vi.fn(() => true),
-      isCrossOriginBlocked: vi.fn(() => false),
-      setTool: vi.fn(),
-      setCurrentLayer: vi.fn(),
-      setLayerVisibility: vi.fn(),
-      undo: vi.fn(() => true),
-      redo: vi.fn(() => true),
-      clearAllAnnotations: vi.fn(),
-      createLayer: vi.fn(() => true),
-      deleteLayer: vi.fn(() => true),
-      handleSyncMessage: vi.fn(),
-      getSyncStats: vi.fn(() => ({
-        isConnected: true,
-        lastSyncTime: Date.now(),
-        pendingMessages: 0,
-        participantCount: 2,
-        syncErrors: [],
-      })),
-    }));
+    CollaborativeAnnotationLayer.mockImplementation(function () {
+      return {
+        injectOverlay: vi.fn(() => true),
+        removeOverlay: vi.fn(),
+        isActive: vi.fn(() => true),
+        isCrossOriginBlocked: vi.fn(() => false),
+        setTool: vi.fn(),
+        setCurrentLayer: vi.fn(),
+        setLayerVisibility: vi.fn(),
+        undo: vi.fn(() => true),
+        redo: vi.fn(() => true),
+        clearAllAnnotations: vi.fn(),
+        createLayer: vi.fn(() => true),
+        deleteLayer: vi.fn(() => true),
+        handleSyncMessage: vi.fn(),
+        getSyncStats: vi.fn(() => ({
+          isConnected: true,
+          lastSyncTime: Date.now(),
+          pendingMessages: 0,
+          participantCount: 2,
+          syncErrors: [],
+        })),
+      };
+    });
     syncMessages = [];
 
     mockVideo = new MockVideoElement();
@@ -210,19 +214,21 @@ describe('AnnotationSystem', () => {
   describe('Cross-Origin Handling', () => {
     test('should handle cross-origin blocked scenario', () => {
       // Mock the annotation layer to simulate cross-origin blocking
-      CollaborativeAnnotationLayer.mockImplementation(() => ({
-        injectOverlay: vi.fn(() => false),
-        removeOverlay: vi.fn(),
-        isActive: vi.fn(() => false),
-        isCrossOriginBlocked: vi.fn(() => true),
-        getSyncStats: vi.fn(() => ({
-          isConnected: false,
-          lastSyncTime: 0,
-          pendingMessages: 0,
-          participantCount: 0,
-          syncErrors: [],
-        })),
-      }));
+      CollaborativeAnnotationLayer.mockImplementation(function () {
+        return {
+          injectOverlay: vi.fn(() => false),
+          removeOverlay: vi.fn(),
+          isActive: vi.fn(() => false),
+          isCrossOriginBlocked: vi.fn(() => true),
+          getSyncStats: vi.fn(() => ({
+            isConnected: false,
+            lastSyncTime: 0,
+            pendingMessages: 0,
+            participantCount: 0,
+            syncErrors: [],
+          })),
+        };
+      });
 
       render(<AnnotationSystem {...mockProps} />);
 
@@ -246,20 +252,22 @@ describe('AnnotationSystem', () => {
 
     test('should show disconnected state', async () => {
       // Mock disconnected state
-      CollaborativeAnnotationLayer.mockImplementation(() => ({
-        injectOverlay: vi.fn(() => true),
-        removeOverlay: vi.fn(),
-        isActive: vi.fn(() => true),
-        isCrossOriginBlocked: vi.fn(() => false),
-        setTool: vi.fn(),
-        getSyncStats: vi.fn(() => ({
-          isConnected: false,
-          lastSyncTime: 0,
-          pendingMessages: 0,
-          participantCount: 0,
-          syncErrors: ['Connection failed'],
-        })),
-      }));
+      CollaborativeAnnotationLayer.mockImplementation(function () {
+        return {
+          injectOverlay: vi.fn(() => true),
+          removeOverlay: vi.fn(),
+          isActive: vi.fn(() => true),
+          isCrossOriginBlocked: vi.fn(() => false),
+          setTool: vi.fn(),
+          getSyncStats: vi.fn(() => ({
+            isConnected: false,
+            lastSyncTime: 0,
+            pendingMessages: 0,
+            participantCount: 0,
+            syncErrors: ['Connection failed'],
+          })),
+        };
+      });
 
       render(<AnnotationSystem {...mockProps} />);
 
@@ -272,20 +280,22 @@ describe('AnnotationSystem', () => {
 
     test('should hide sync status when no participants and no errors', async () => {
       // Mock empty state
-      CollaborativeAnnotationLayer.mockImplementation(() => ({
-        injectOverlay: vi.fn(() => true),
-        removeOverlay: vi.fn(),
-        isActive: vi.fn(() => true),
-        isCrossOriginBlocked: vi.fn(() => false),
-        setTool: vi.fn(),
-        getSyncStats: vi.fn(() => ({
-          isConnected: true,
-          lastSyncTime: Date.now(),
-          pendingMessages: 0,
-          participantCount: 0,
-          syncErrors: [],
-        })),
-      }));
+      CollaborativeAnnotationLayer.mockImplementation(function () {
+        return {
+          injectOverlay: vi.fn(() => true),
+          removeOverlay: vi.fn(),
+          isActive: vi.fn(() => true),
+          isCrossOriginBlocked: vi.fn(() => false),
+          setTool: vi.fn(),
+          getSyncStats: vi.fn(() => ({
+            isConnected: true,
+            lastSyncTime: Date.now(),
+            pendingMessages: 0,
+            participantCount: 0,
+            syncErrors: [],
+          })),
+        };
+      });
 
       render(<AnnotationSystem {...mockProps} />);
 
@@ -399,7 +409,7 @@ describe('AnnotationSystem', () => {
   describe('Error Handling', () => {
     test('should handle annotation layer initialization errors', () => {
       // Mock annotation layer to throw error
-      CollaborativeAnnotationLayer.mockImplementation(() => {
+      CollaborativeAnnotationLayer.mockImplementation(function () {
         throw new Error('Initialization failed');
       });
 

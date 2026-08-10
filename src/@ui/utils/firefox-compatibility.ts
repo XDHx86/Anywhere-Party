@@ -824,6 +824,10 @@ export function getFirefoxCompatibilityManager(): FirefoxCompatibilityManager {
   return firefoxCompatibilityManager;
 }
 
+export function resetFirefoxCompatibilityManager(): void {
+  firefoxCompatibilityManager = null;
+}
+
 export function createFirefoxCompatibilityManager(): FirefoxCompatibilityManager {
   return new FirefoxCompatibilityManager();
 }

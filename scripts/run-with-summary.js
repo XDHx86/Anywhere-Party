@@ -24,13 +24,15 @@ const child = spawn(cmd, cArgs, {
 let out = "";
 
 child.stdout.on("data", (d) => { 
-  out += d.toString(); 
-  process.stdout.write(d); 
+  const str = d.toString();
+  out += str; 
+  process.stdout.write(isTerminal ? str : stripAnsi(str)); 
 });
 
 child.stderr.on("data", (d) => { 
-  out += d.toString(); 
-  process.stderr.write(d); 
+  const str = d.toString();
+  out += str; 
+  process.stderr.write(isTerminal ? str : stripAnsi(str)); 
 });
 
 child.on("close", (code) => {

@@ -6,9 +6,20 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi, Mock } from 'vitest';
 import { getBrowserAPI } from '../utils/browser-api';
-import { getChromeCompatibilityManager } from '../utils/chrome-compatibility';
-import { getFirefoxCompatibilityManager } from '../utils/firefox-compatibility';
-import { getCrossBrowserInitializer } from '../utils/cross-browser-initializer';
+import {
+  getChromeCompatibilityManager,
+  resetChromeCompatibilityManager,
+} from '../utils/chrome-compatibility';
+import {
+  getFirefoxCompatibilityManager,
+  resetFirefoxCompatibilityManager,
+} from '../utils/firefox-compatibility';
+import { resetBrowserCompatibilityManager } from '../utils/browser-compatibility';
+import { resetBrowserInitializationManager } from '../utils/browser-initialization';
+import {
+  getCrossBrowserInitializer,
+  resetCrossBrowserInitializer,
+} from '../utils/cross-browser-initializer';
 import { fallbackUIManager } from '../utils/fallback-ui-manager';
 import { getDiagnosticLogger } from '../utils/diagnostic-logger';
 
@@ -139,6 +150,18 @@ describe('Cross-Browser Functionality', () => {
     // Reset mocks
     vi.clearAllMocks();
 
+    // Reset singleton state so browser detection and fallback UI re-run fresh.
+    // These singletons cache results (isActive flag, detected capabilities,
+    // initialization results) and even retain references to each other, so the
+    // whole group must be reset together to avoid leaking state across tests.
+    (global as any).browser = undefined;
+    resetBrowserCompatibilityManager();
+    resetBrowserInitializationManager();
+    resetChromeCompatibilityManager();
+    resetFirefoxCompatibilityManager();
+    resetCrossBrowserInitializer();
+    fallbackUIManager.reset();
+
     // Set up DOM
     document.body.innerHTML = '<div id="root"></div>';
   });
@@ -148,6 +171,7 @@ describe('Cross-Browser Functionality', () => {
     (global as any).chrome = originalChrome;
     (global as any).navigator = originalNavigator;
     (global as any).performance = originalPerformance;
+    (global as any).browser = undefined;
     global.console = originalConsole;
 
     // Clean up DOM
@@ -342,6 +366,7 @@ describe('Cross-Browser Functionality', () => {
     it('should apply browser-specific polyfills', async () => {
       // Test Chrome polyfills
       (global as any).chrome = createChromeMock();
+      (global as any).browser = undefined;
       (global as any).navigator = { userAgent: CHROME_USER_AGENT };
 
       const crossBrowserInitializer = getCrossBrowserInitializer();
@@ -352,10 +377,19 @@ describe('Cross-Browser Functionality', () => {
       expect(browserAPI.browserName).toBe('chrome');
 
       // Test Firefox polyfills
+      // Reinitialize all singletons so detection re-runs against the new
+      // environment (the cached managers keep the previous browser's results).
       (global as any).chrome = createFirefoxMock();
+      (global as any).browser = createFirefoxMock();
       (global as any).navigator = { userAgent: FIREFOX_USER_AGENT };
+      resetBrowserCompatibilityManager();
+      resetBrowserInitializationManager();
+      resetChromeCompatibilityManager();
+      resetFirefoxCompatibilityManager();
+      resetCrossBrowserInitializer();
 
-      await crossBrowserInitializer.reinitialize();
+      const firefoxInitializer = getCrossBrowserInitializer();
+      await firefoxInitializer.initialize();
 
       // Verify Firefox-specific setup
       const firefoxBrowserAPI = getBrowserAPI();
@@ -376,6 +410,12 @@ describe('Cross-Browser Functionality', () => {
       diagnosticLogger.logComponentError('TestComponent', testError);
 
       expect(chromeLogSpy).toHaveBeenCalledWith('TestComponent', testError);
+      expect(chromeLogSpy).toHaveBeenCalledTimes(1);
+
+      // Restore the first spy before spying on the same method again.
+      // Otherwise the second spy wraps the first and a single call is
+      // recorded by both spies.
+      chromeLogSpy.mockRestore();
 
       // Test in Firefox
       (global as any).chrome = createFirefoxMock();
@@ -385,9 +425,6 @@ describe('Cross-Browser Functionality', () => {
       diagnosticLogger.logComponentError('TestComponent', testError);
 
       expect(firefoxLogSpy).toHaveBeenCalledWith('TestComponent', testError);
-
-      // Verify consistent behavior
-      expect(chromeLogSpy).toHaveBeenCalledTimes(1);
       expect(firefoxLogSpy).toHaveBeenCalledTimes(1);
     });
 
@@ -471,6 +508,8 @@ describe('Cross-Browser Functionality', () => {
 
         document.body.innerHTML = '<div id="root"></div>';
 
+        // Reset before each browser so the singleton can re-activate
+        fallbackUIManager.reset();
         await fallbackUIManager.initialize('popup');
         await fallbackUIManager.activatePopupFallback(`${browserName} test`);
 
@@ -499,6 +538,8 @@ describe('Cross-Browser Functionality', () => {
 
         document.body.innerHTML = '<div id="options-root"></div>';
 
+        // Reset before each browser so the singleton can re-activate
+        fallbackUIManager.reset();
         await fallbackUIManager.initialize('options');
         await fallbackUIManager.activateOptionsFallback(`${browserName} test`);
 
@@ -523,6 +564,8 @@ describe('Cross-Browser Functionality', () => {
 
         document.body.innerHTML = '<div id="root"></div>';
 
+        // Reset before each browser so the singleton can re-activate
+        fallbackUIManager.reset();
         await fallbackUIManager.initialize('popup');
         await fallbackUIManager.activatePopupFallback('Accessibility test');
 
@@ -633,7 +676,9 @@ describe('Cross-Browser Functionality', () => {
 
     it('should handle Firefox addon context loss', async () => {
       (global as any).chrome = createFirefoxMock();
-      const mockChrome = (global as any).chrome;
+      // Firefox detection requires the `browser` WebExtensions global
+      (global as any).browser = createFirefoxMock();
+      const mockChrome = (global as any).browser;
 
       // Simulate addon context loss
       mockChrome.runtime.sendMessage.mockRejectedValue(new Error('Addon context lost'));

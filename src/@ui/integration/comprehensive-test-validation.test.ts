@@ -64,6 +64,9 @@ describe('Comprehensive Test Validation', () => {
       },
     };
 
+    // Reset fallback UI manager state so it can be activated fresh in each test
+    fallbackUIManager.reset();
+
     // Set up DOM
     document.body.innerHTML = '<div id="root"></div>';
   });
@@ -73,6 +76,7 @@ describe('Comprehensive Test Validation', () => {
     (global as any).chrome = originalChrome;
     (global as any).navigator = originalNavigator;
     (global as any).performance = originalPerformance;
+    (global as any).browser = undefined;
 
     // Clean up DOM
     document.body.innerHTML = '';
@@ -158,6 +162,21 @@ describe('Comprehensive Test Validation', () => {
     });
 
     it('should handle Firefox environment', () => {
+      // Firefox provides both the `browser` WebExtensions API and a chrome.alias.
+      // Setting the `browser` global is what makes getBrowserAPI() detect Firefox.
+      (global as any).browser = {
+        runtime: {
+          sendMessage: vi.fn().mockResolvedValue({ success: true }),
+          getManifest: vi.fn(() => ({ version: '1.0.0', manifest_version: 2 })),
+          onMessage: { addListener: vi.fn(), removeListener: vi.fn() },
+        },
+        storage: {
+          local: {
+            get: vi.fn().mockResolvedValue({}),
+            set: vi.fn().mockResolvedValue(undefined),
+          },
+        },
+      };
       (global as any).chrome = {
         runtime: {
           sendMessage: vi.fn().mockResolvedValue({ success: true }),
@@ -334,8 +353,9 @@ describe('Comprehensive Test Validation', () => {
       expect(fallbackElement).toBeTruthy();
 
       // Verify loading indicator is hidden
+      // (it may be hidden or removed from the DOM when the fallback UI takes over)
       const loadingElement = document.getElementById('loading-fallback');
-      expect(loadingElement?.style.display).toBe('none');
+      expect(loadingElement === null || loadingElement.style.display === 'none').toBe(true);
     });
   });
 

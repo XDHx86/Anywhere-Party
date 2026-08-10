@@ -21,7 +21,7 @@ const mockChrome = {
 const mockFetch = vi.fn();
 
 // Mock performance API with consistent timing
-let mockTime = 1000;
+let mockTime = 1_000_000;
 const mockPerformance = {
   now: vi.fn(() => {
     mockTime += 10; // Increment by 10ms each call for consistent timing
