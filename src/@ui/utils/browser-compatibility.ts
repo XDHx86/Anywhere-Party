@@ -604,6 +604,14 @@ export function getBrowserCompatibilityManager(): BrowserCompatibilityManager {
   return browserCompatibilityManager;
 }
 
+/**
+ * Reset the cached singleton so the next call re-detects browser capabilities.
+ * Used for test isolation where the navigator environment changes between tests.
+ */
+export function resetBrowserCompatibilityManager(): void {
+  browserCompatibilityManager = null;
+}
+
 export function createBrowserCompatibilityManager(): BrowserCompatibilityManager {
   return new BrowserCompatibilityManager();
 }

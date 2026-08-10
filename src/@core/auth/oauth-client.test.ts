@@ -58,6 +58,14 @@ describe('AuthClient', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
+    // Restore default storage implementations. Tests reassign these fns
+    // directly (vi.restoreAllMocks does not revert property reassignment),
+    // so without this a rejecting set/get leaks into later tests.
+    mockBrowserBridge.storage.local.get.mockResolvedValue({});
+    mockBrowserBridge.storage.local.set.mockResolvedValue(undefined);
+    mockBrowserBridge.storage.local.remove.mockResolvedValue(undefined);
+    mockBrowserBridge.storage.local.clear.mockResolvedValue(undefined);
+
     config = {
       allowAnonymous: true,
       sessionDuration: 24 * 60 * 60 * 1000,

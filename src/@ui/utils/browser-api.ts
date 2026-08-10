@@ -274,27 +274,82 @@ export const getBrowserAPI = (): BrowserAPI => {
       storage: {
         local: {
           get: async (keys?: string[] | string | null) => {
+            if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+              try {
+                return (await chrome.storage.local.get(keys)) as Record<string, unknown>;
+              } catch (error) {
+                console.warn('Chrome storage.get failed:', error);
+                return {};
+              }
+            }
+            // localStorage fallback when chrome.storage is unavailable
             try {
-              return (await chrome.storage.local.get(keys)) as Record<string, unknown>;
+              if (typeof keys === 'string') {
+                const value = localStorage.getItem(keys);
+                return { [keys]: value !== null ? JSON.parse(value) : undefined };
+              } else if (Array.isArray(keys)) {
+                const result: Record<string, unknown> = {};
+                keys.forEach((key) => {
+                  const value = localStorage.getItem(key);
+                  result[key] = value !== null ? JSON.parse(value) : undefined;
+                });
+                return result;
+              } else {
+                const result: Record<string, unknown> = {};
+                for (let i = 0; i < localStorage.length; i++) {
+                  const key = localStorage.key(i);
+                  if (key) {
+                    const value = localStorage.getItem(key);
+                    result[key] = value !== null ? JSON.parse(value) : undefined;
+                  }
+                }
+                return result;
+              }
             } catch (error) {
-              console.warn('Chrome storage.get failed:', error);
+              console.error('localStorage fallback failed:', error);
               return {};
             }
           },
           set: async (items: Record<string, unknown>) => {
+            if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+              try {
+                await chrome.storage.local.set(items);
+                return;
+              } catch (error) {
+                console.warn('Chrome storage.set failed:', error);
+                throw new Error(`Chrome storage error: ${error}`);
+              }
+            }
+            // localStorage fallback when chrome.storage is unavailable
             try {
-              await chrome.storage.local.set(items);
+              Object.entries(items).forEach(([key, value]) => {
+                if (value === undefined) {
+                  localStorage.removeItem(key);
+                } else {
+                  localStorage.setItem(key, JSON.stringify(value));
+                }
+              });
             } catch (error) {
-              console.warn('Chrome storage.set failed:', error);
-              throw new Error(`Chrome storage error: ${error}`);
+              console.error('localStorage fallback failed:', error);
+              throw new Error(`Storage fallback error: ${error}`);
             }
           },
           clear: async () => {
+            if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+              try {
+                await chrome.storage.local.clear();
+                return;
+              } catch (error) {
+                console.warn('Chrome storage.clear failed:', error);
+                throw new Error(`Chrome storage error: ${error}`);
+              }
+            }
+            // localStorage fallback when chrome.storage is unavailable
             try {
-              await chrome.storage.local.clear();
+              localStorage.clear();
             } catch (error) {
-              console.warn('Chrome storage.clear failed:', error);
-              throw new Error(`Chrome storage error: ${error}`);
+              console.error('localStorage fallback failed:', error);
+              throw new Error(`Storage fallback error: ${error}`);
             }
           },
         },

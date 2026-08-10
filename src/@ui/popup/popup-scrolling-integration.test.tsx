@@ -9,30 +9,31 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { PopupApp } from './PopupApp';
 import '@testing-library/jest-dom';
 
-// Mock browser API
-const mockBrowserAPI = {
-  runtime: {
-    onMessage: {
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
+// Mock browser API and integration service. vi.hoisted exposes the objects to
+// the (hoisted) vi.mock factories below, which run before module-body statements.
+const { mockBrowserAPI, mockIntegrationService } = vi.hoisted(() => ({
+  mockBrowserAPI: {
+    runtime: {
+      onMessage: {
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+      },
+      sendMessage: vi.fn(),
     },
-    sendMessage: vi.fn(),
-  },
-  storage: {
-    local: {
-      get: vi.fn().mockResolvedValue({}),
-      set: vi.fn().mockResolvedValue(undefined),
+    storage: {
+      local: {
+        get: vi.fn().mockResolvedValue({}),
+        set: vi.fn().mockResolvedValue(undefined),
+      },
     },
   },
-};
-
-// Mock integration service
-const mockIntegrationService = {
-  connectPopup: vi.fn().mockResolvedValue(true),
-  getIntegrationStatus: vi.fn().mockReturnValue({
-    config: { backgroundScriptConnected: true },
-  }),
-};
+  mockIntegrationService: {
+    connectPopup: vi.fn().mockResolvedValue(true),
+    getIntegrationStatus: vi.fn().mockReturnValue({
+      config: { backgroundScriptConnected: true },
+    }),
+  },
+}));
 
 // Mock theme provider
 vi.mock('../theme', () => ({
@@ -67,18 +68,112 @@ vi.mock('../hooks/useResponsiveDesign', () => ({
   }),
 }));
 
-// Mock Material-UI components
-vi.mock('@mui/material/styles', () => ({
-  ThemeProvider: ({ children }: { children: React.ReactNode }) => children,
-  styled: (component: any) => (styles: any) => component,
-}));
+// Mock Material-UI components. `styled` applies the resolved style object as
+// inline styles (media queries / nested selectors are skipped) so components
+// like PopupContainer still expose their flex layout to toHaveStyle.
+vi.mock('@mui/material/styles', () => {
+  // Minimal MUI theme so styled templates that read theme tokens resolve
+  // without a real ThemeProvider.
+  const grey: Record<number, string> = {};
+  [50, 100, 200, 300, 400, 500, 600, 700, 800, 900].forEach((tone) => {
+    grey[tone] = `rgb(${tone}, ${tone}, ${tone})`;
+  });
+  const defaultTheme: any = {
+    palette: {
+      mode: 'light',
+      primary: { main: '#6200ee', light: '#9a6fff', dark: '#3700b3', contrastText: '#fff' },
+      secondary: { main: '#03dac6', light: '#66fff9', dark: '#00a896', contrastText: '#000' },
+      error: { main: '#f44336', light: '#ff7961', dark: '#ba000d', contrastText: '#fff' },
+      warning: { main: '#ff9800', light: '#ffc947', dark: '#c66900', contrastText: '#000' },
+      info: { main: '#2196f3', light: '#64b5f6', dark: '#0b79d0', contrastText: '#fff' },
+      success: { main: '#4caf50', light: '#81c784', dark: '#388e3c', contrastText: '#fff' },
+      background: { default: '#ffffff', paper: '#ffffff' },
+      text: {
+        primary: 'rgba(0, 0, 0, 0.87)',
+        secondary: 'rgba(0, 0, 0, 0.6)',
+        disabled: 'rgba(0, 0, 0, 0.38)',
+      },
+      divider: 'rgba(0, 0, 0, 0.12)',
+      grey,
+    },
+    spacing: (factor: number) => `${factor * 8}px`,
+    breakpoints: {
+      keys: ['xs', 'sm', 'md', 'lg', 'xl'],
+      values: { xs: 0, sm: 600, md: 900, lg: 1200, xl: 1536 },
+      up: (key: string) => `@media (min-width:${key}px)`,
+      down: (key: string) => `@media (max-width:${key}px)`,
+      between: () => '@media (min-width:0px)',
+      only: () => '@media (min-width:0px)',
+    },
+    typography: {
+      fontFamily: 'Roboto, Inter, system-ui, sans-serif',
+      fontSize: 14,
+      body1: { fontSize: 16, lineHeight: 1.5 },
+      body2: { fontSize: 14, lineHeight: 1.43 },
+      button: { fontSize: 14, lineHeight: 1.75 },
+    },
+    shape: { borderRadius: 4 },
+    direction: 'ltr',
+    zIndex: {
+      mobileStepper: 1000,
+      fab: 1050,
+      appBar: 1100,
+      drawer: 1200,
+      modal: 1300,
+      snackbar: 1400,
+      tooltip: 1500,
+    },
+    mixins: {},
+    transitions: {
+      easing: { easeInOut: 'cubic-bezier(0.4, 0, 0.2, 1)' },
+      duration: { short: 250, standard: 300 },
+    },
+  };
 
-vi.mock('@mui/material', () => ({
-  CssBaseline: () => null,
-  Box: ({ children, ...props }: any) => <div {...props}>{children}</div>,
-  Snackbar: ({ children, open }: any) => (open ? <div>{children}</div> : null),
-  Alert: ({ children, ...props }: any) => <div {...props}>{children}</div>,
-}));
+  const applyStyles = (styles: any): any => {
+    if (!styles || typeof styles !== 'object' || Array.isArray(styles)) return {};
+    const flat: any = {};
+    for (const [key, value] of Object.entries(styles)) {
+      // Skip media queries, nested selectors, pseudo-classes and other
+      // non-inline-style-able entries.
+      if (key.startsWith('@') || key.startsWith('&') || key.startsWith(':')) continue;
+      if (
+        value === undefined ||
+        value === null ||
+        typeof value === 'object' ||
+        typeof value === 'function'
+      )
+        continue;
+      flat[key] = value;
+    }
+    return flat;
+  };
+
+  return {
+    ThemeProvider: ({ children }: { children: React.ReactNode }) => children,
+    useTheme: () => defaultTheme,
+    styled: (component: any) => (styleArg: any) => (props: any) => {
+      const resolved =
+        typeof styleArg === 'function' ? styleArg({ theme: defaultTheme, ...props }) : styleArg;
+      const Wrapped = component;
+      return <Wrapped {...props} style={{ ...applyStyles(resolved), ...(props?.style as any) }} />;
+    },
+  };
+});
+
+vi.mock('@mui/material', async (importOriginal) => {
+  // Proxy the real module so transitively-imported components (Icon, SvgIcon,
+  // CircularProgress, Typography, ...) still resolve, while keeping the few
+  // heavy/container components lightweight for this DOM-scrolling test.
+  const actual = await importOriginal<typeof import('@mui/material')>();
+  return {
+    ...actual,
+    CssBaseline: () => null,
+    Box: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+    Snackbar: ({ children, open }: any) => (open ? <div>{children}</div> : null),
+    Alert: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+  };
+});
 
 // Mock card components
 vi.mock('../components/cards/HeaderCard', () => ({
@@ -97,8 +192,10 @@ vi.mock('../components/cards/FooterCard', () => ({
   FooterCard: (props: any) => <div data-testid="footer-card">Footer Card</div>,
 }));
 
-vi.mock('../components/cards/MaterialLoadingIndicator', () => ({
-  MaterialLoadingIndicator: () => <div data-testid="loading-indicator">Loading...</div>,
+// PopupApp imports { LoadingIndicator } from '../components/LoadingIndicator'.
+// The cards-level MaterialLoadingIndicator is not in the popup render path.
+vi.mock('../components/LoadingIndicator', () => ({
+  LoadingIndicator: () => <div data-testid="loading-indicator">Loading...</div>,
 }));
 
 vi.mock('../accessibility/PopupAccessibility', () => ({
@@ -337,8 +434,11 @@ describe('Popup Scrolling Integration', () => {
 
     render(<PopupApp />);
 
-    // Should show loading indicator initially
-    expect(screen.getByTestId('loading-indicator')).toBeInTheDocument();
+    // Should show loading indicator while the initial-load effect is pending.
+    // The load effect sets the loading state asynchronously, so poll for it.
+    await waitFor(() => {
+      expect(screen.getByTestId('loading-indicator')).toBeInTheDocument();
+    });
 
     // Wait for loading to complete
     await waitFor(

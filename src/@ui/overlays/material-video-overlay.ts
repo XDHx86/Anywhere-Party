@@ -131,9 +131,12 @@ export class MaterialVideoOverlay {
     // Remove existing surface with same ID
     this.removeSurface(id);
 
-    // Check concurrent surface limit
+    // Enforce the concurrent surface limit by evicting the oldest surface
+    // synchronously. The normal removeSurface() path defers deletion until
+    // the exit animation completes, so waiting on it here would never shrink
+    // the map and would loop forever.
     while (this.surfaces.size >= this.options.maxConcurrentSurfaces) {
-      this.cleanupOldestSurface();
+      if (!this.cleanupOldestSurface()) break;
     }
 
     const surface = this.createMaterialSurface({
@@ -666,7 +669,7 @@ export class MaterialVideoOverlay {
     });
   }
 
-  private cleanupOldestSurface(): void {
+  private cleanupOldestSurface(): boolean {
     let oldestId: string | null = null;
     let oldestTime = Date.now();
 
@@ -678,8 +681,28 @@ export class MaterialVideoOverlay {
     });
 
     if (oldestId) {
-      this.removeSurface(oldestId);
+      this.evictSurface(oldestId);
+      return true;
     }
+    return false;
+  }
+
+  /**
+   * Remove a surface immediately, without playing its exit animation.
+   * Used by cleanupOldestSurface() so that capacity enforcement happens in the
+   * same tick as the eviction decision (removeSurface() alone defers deletion
+   * to an animation callback and cannot back an eviction loop).
+   */
+  private evictSurface(id: string): void {
+    const surface = this.surfaces.get(id);
+    if (!surface) return;
+
+    this.animationQueue.delete(id);
+    if (surface.element && surface.element.parentNode) {
+      surface.element.parentNode.removeChild(surface.element);
+    }
+    this.surfaces.delete(id);
+    this.options.onSurfaceDestroy(surface);
   }
 }
 

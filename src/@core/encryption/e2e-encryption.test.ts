@@ -284,10 +284,12 @@ describe('E2EEncryption', () => {
 
       mockCrypto.subtle.importKey.mockResolvedValue(mockSymmetricKey);
 
-      // Mock TextDecoder
-      global.TextDecoder = vi.fn().mockImplementation(() => ({
-        decode: vi.fn().mockReturnValue('decrypted message'),
-      }));
+      // Mock TextDecoder (class so `new TextDecoder()` works)
+      global.TextDecoder = class {
+        decode() {
+          return 'decrypted message';
+        }
+      } as unknown as typeof TextDecoder;
 
       const result = await encryption.decryptMessage(mockEncryptedMessage);
       expect(result).toBe('decrypted message');
