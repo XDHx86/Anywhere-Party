@@ -71,6 +71,10 @@ if (typeof (globalThis as any).chrome === 'undefined') {
     storage: {
       local: chromeStorageLocal,
       sync: { ...chromeStorageLocal },
+      onChanged: {
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+      },
     },
     tabs: {
       query: vi.fn().mockResolvedValue([]),
@@ -149,15 +153,9 @@ Object.defineProperty(window, 'matchMedia', {
   }),
 });
 
-// Mock window.getComputedStyle
-Object.defineProperty(window, 'getComputedStyle', {
-  value: () => ({
-    getPropertyValue: () => '',
-    display: 'block',
-    flexDirection: 'row',
-    borderRadius: '0px',
-  }),
-});
+// Let jsdom's real getComputedStyle handle style computation.
+// Previously this was overridden to return hardcoded values which broke
+// toHaveStyle assertions and CSS layout checks.
 
 // Mock performance.memory if not available
 if (typeof performance !== 'undefined' && !('memory' in performance)) {

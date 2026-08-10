@@ -46,7 +46,7 @@ describe('TelemetryService', () => {
     config = {
       enabled: true,
       optOut: true, // Default to opt-out as per requirement 16.2
-      endpoint: 'https://telemetry.example.com/events',
+      endpoint: undefined, // Store telemetry locally (no remote endpoint in tests)
       batchSize: 10,
       flushInterval: 5000,
       retryAttempts: 3,
@@ -71,7 +71,7 @@ describe('TelemetryService', () => {
       (mockBrowserBridge.storage.local.get as any).mockResolvedValue({});
 
       const service = new TelemetryService(mockBrowserBridge, config);
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       // Should set opt-out to true by default
       expect(mockBrowserBridge.storage.local.set).toHaveBeenCalledWith({
@@ -86,14 +86,14 @@ describe('TelemetryService', () => {
       });
 
       const service = new TelemetryService(mockBrowserBridge, config);
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       const optOutStatus = await service.getOptOutStatus();
       expect(optOutStatus).toBe(false);
     });
 
     it('should not track events when opted out', async () => {
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       telemetryService.trackUserAction('test_action', { key: 'value' });
 
@@ -108,13 +108,13 @@ describe('TelemetryService', () => {
 
     it('should track events when opted in', async () => {
       await telemetryService.setOptOut(false);
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       telemetryService.trackUserAction('test_action', { key: 'value' });
 
       // Advance timers to trigger flush
       vi.advanceTimersByTime(5000);
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       // Should store telemetry data
       expect(mockBrowserBridge.storage.local.set).toHaveBeenCalledWith(
@@ -128,7 +128,7 @@ describe('TelemetryService', () => {
   describe('Data Anonymization (Requirement 16.5)', () => {
     beforeEach(async () => {
       await telemetryService.setOptOut(false); // Enable tracking for these tests
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
     });
 
     it('should anonymize sensitive properties', async () => {
@@ -144,7 +144,7 @@ describe('TelemetryService', () => {
       telemetryService.trackUserAction('test_action', sensitiveProperties);
 
       vi.advanceTimersByTime(5000);
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       const setCall = (mockBrowserBridge.storage.local.set as any).mock.calls.find(
         (call) => call[0].watchPartyTelemetry
@@ -164,13 +164,13 @@ describe('TelemetryService', () => {
       config.anonymizeData = false;
       const service = new TelemetryService(mockBrowserBridge, config);
       await service.setOptOut(false);
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       const properties = { userId: 'user123', username: 'john_doe' };
       service.trackUserAction('test_action', properties);
 
       vi.advanceTimersByTime(5000);
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       const setCall = (mockBrowserBridge.storage.local.set as any).mock.calls.find(
         (call) => call[0].watchPartyTelemetry
@@ -186,7 +186,7 @@ describe('TelemetryService', () => {
       telemetryService.trackUserAction('test_action');
 
       vi.advanceTimersByTime(5000);
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       const setCall = (mockBrowserBridge.storage.local.set as any).mock.calls.find(
         (call) => call[0].watchPartyTelemetry
@@ -201,7 +201,7 @@ describe('TelemetryService', () => {
   describe('Event Tracking', () => {
     beforeEach(async () => {
       await telemetryService.setOptOut(false);
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
     });
 
     it('should track sync events with metrics', async () => {
@@ -216,7 +216,7 @@ describe('TelemetryService', () => {
       });
 
       vi.advanceTimersByTime(5000);
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       const setCall = (mockBrowserBridge.storage.local.set as any).mock.calls.find(
         (call) => call[0].watchPartyTelemetry
@@ -240,7 +240,7 @@ describe('TelemetryService', () => {
       });
 
       vi.advanceTimersByTime(5000);
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       const setCall = (mockBrowserBridge.storage.local.set as any).mock.calls.find(
         (call) => call[0].watchPartyTelemetry
@@ -265,7 +265,7 @@ describe('TelemetryService', () => {
       });
 
       vi.advanceTimersByTime(5000);
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       const setCall = (mockBrowserBridge.storage.local.set as any).mock.calls.find(
         (call) => call[0].watchPartyTelemetry
@@ -283,19 +283,19 @@ describe('TelemetryService', () => {
   describe('Batch Processing', () => {
     beforeEach(async () => {
       await telemetryService.setOptOut(false);
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
     });
 
     it('should flush when batch size is reached', async () => {
       config.batchSize = 2;
       const service = new TelemetryService(mockBrowserBridge, config);
       await service.setOptOut(false);
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       service.trackUserAction('action1');
       service.trackUserAction('action2'); // Should trigger flush
 
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       const setCall = (mockBrowserBridge.storage.local.set as any).mock.calls.find(
         (call) => call[0].watchPartyTelemetry
@@ -315,7 +315,7 @@ describe('TelemetryService', () => {
 
       // Advance timer to trigger flush
       vi.advanceTimersByTime(5000);
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       const setCall = (mockBrowserBridge.storage.local.set as any).mock.calls.find(
         (call) => call[0].watchPartyTelemetry
@@ -341,7 +341,7 @@ describe('TelemetryService', () => {
 
       // Advance timer - should not flush since opted out
       vi.advanceTimersByTime(5000);
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       const telemetryCall = (mockBrowserBridge.storage.local.set as any).mock.calls.find(
         (call) => call[0].watchPartyTelemetry

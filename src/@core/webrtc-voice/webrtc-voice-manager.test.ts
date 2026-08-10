@@ -7,13 +7,38 @@
  * Requirements: 4.1, 4.2, 4.3, 4.4, 4.5
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi, Mock } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { WebRTCVoiceManager, WebRTCVoiceConfig } from './webrtc-voice-manager';
 
 // Mock WebRTC APIs
 const mockGetUserMedia = vi.fn();
 const mockRTCPeerConnection = vi.fn();
 const mockAudioContext = vi.fn();
+
+// Track reference is shared across getTracks()/getAudioTracks() calls: the
+// manager mutates `track.enabled` and tests must assert on the same object.
+const mockAudioTrack = {
+  enabled: true,
+  stop: vi.fn(),
+  kind: 'audio',
+};
+
+// Minimal DOM audio element created by the manager
+function createMockAudioElement(): any {
+  return {
+    id: '',
+    autoplay: false,
+    style: { display: '' },
+    volume: 1,
+    srcObject: null,
+    remove: vi.fn(),
+  };
+}
+
+// Document mock with a working addEventListener/dispatchEvent pair so the
+// push-to-talk key handlers registered by the manager actually fire.
+const mockDocumentListeners: Record<string, Array<(event: any) => void>> = {};
+const mockGetElementById = vi.fn();
 
 // Mock browser APIs
 Object.defineProperty(global, 'navigator', {
@@ -37,14 +62,20 @@ Object.defineProperty(global, 'AudioContext', {
 
 Object.defineProperty(global, 'document', {
   value: {
-    addEventListener: vi.fn(),
-    createElement: vi.fn(() => ({
-      id: '',
-      autoplay: false,
-      style: { display: '' },
-      volume: 1,
-    })),
-    getElementById: vi.fn(),
+    addEventListener: vi.fn((event: string, handler: (event: any) => void) => {
+      if (!mockDocumentListeners[event]) {
+        mockDocumentListeners[event] = [];
+      }
+      mockDocumentListeners[event].push(handler);
+    }),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn((event: any) => {
+      const listeners = mockDocumentListeners[event.type] || [];
+      listeners.forEach((handler) => handler(event));
+      return true;
+    }),
+    createElement: vi.fn(() => createMockAudioElement()),
+    getElementById: mockGetElementById,
     body: {
       appendChild: vi.fn(),
     },
@@ -59,8 +90,14 @@ describe('WebRTCVoiceManager', () => {
   let mockPeerConnection: any;
 
   beforeEach(() => {
-    // Reset mocks
+    // Reset mocks. Note vi.clearAllMocks() only clears calls/results, so mock
+    // implementations set inside tests (e.g. getElementById.mockReturnValue)
+    // must be explicitly reset here to avoid leaking into later tests.
     vi.clearAllMocks();
+    mockGetElementById.mockReset();
+    for (const key of Object.keys(mockDocumentListeners)) {
+      delete mockDocumentListeners[key];
+    }
 
     // Mock configuration
     mockConfig = {
@@ -81,22 +118,12 @@ describe('WebRTCVoiceManager', () => {
       },
     };
 
-    // Mock MediaStream
+    // Mock MediaStream. Both accessors must return the SAME track objects
+    // (fresh arrays each call would get new objects and the manager's
+    // `enabled` mutations would never be observable to the tests).
     mockStream = {
-      getTracks: vi.fn(() => [
-        {
-          enabled: true,
-          stop: vi.fn(),
-          kind: 'audio',
-        },
-      ]),
-      getAudioTracks: vi.fn(() => [
-        {
-          enabled: true,
-          stop: vi.fn(),
-          kind: 'audio',
-        },
-      ]),
+      getTracks: vi.fn(() => [mockAudioTrack]),
+      getAudioTracks: vi.fn(() => [mockAudioTrack]),
     } as any;
 
     // Mock RTCPeerConnection
@@ -117,8 +144,11 @@ describe('WebRTCVoiceManager', () => {
       onicegatheringstatechange: null,
     };
 
-    // Mock successful ICE gathering for most tests
-    mockRTCPeerConnection.mockImplementation(() => {
+    // Mock successful ICE gathering for most tests.
+    // Must be a regular function (not an arrow) so `new RTCPeerConnection()`
+    // inside the manager can construct it (vi.fn arrow implementations throw
+    // "is not a constructor").
+    mockRTCPeerConnection.mockImplementation(function () {
       const pc = { ...mockPeerConnection };
 
       // Simulate successful ICE gathering after a short delay
@@ -153,7 +183,10 @@ describe('WebRTCVoiceManager', () => {
       })),
     };
 
-    mockAudioContext.mockImplementation(() => mockAudioContextInstance);
+    // Regular function: `new AudioContext()` in the manager must construct it
+    mockAudioContext.mockImplementation(function () {
+      return mockAudioContextInstance;
+    });
 
     voiceManager = new WebRTCVoiceManager(mockConfig);
   });
@@ -332,6 +365,8 @@ describe('WebRTCVoiceManager', () => {
   describe('Volume Controls', () => {
     beforeEach(async () => {
       await voiceManager.initialize();
+      // setParticipantVolume only applies to an existing participant
+      await voiceManager.connectToParticipant('test-user-1', false);
     });
 
     it('should set participant volume', () => {
@@ -339,9 +374,9 @@ describe('WebRTCVoiceManager', () => {
       const userId = 'test-user-1';
       const volume = 0.5;
 
-      // Mock audio element
-      const mockAudioElement = { volume: 1 };
-      (document.getElementById as Mock).mockReturnValue(mockAudioElement);
+      // Mock audio element (must be removable so afterEach destroy() works)
+      const mockAudioElement = { volume: 1, remove: vi.fn() };
+      mockGetElementById.mockReturnValue(mockAudioElement);
 
       voiceManager.setParticipantVolume(userId, volume);
 
@@ -384,14 +419,16 @@ describe('WebRTCVoiceManager', () => {
 
       await voiceManager.connectToParticipant(userId, false);
 
-      // Simulate incoming audio stream
-      const mockIncomingStream = { ...mockStream };
-      if (mockPeerConnection.ontrack) {
-        mockPeerConnection.ontrack({ streams: [mockIncomingStream] });
+      // Trigger the ontrack handler the manager registered on the actual peer
+      // connection (mockPeerConnection is a template; the manager wires its own
+      // handlers onto the instance it created).
+      const remoteStream = { ...mockStream };
+      const peerConnection = voiceManager.getParticipants()[0].peerConnection;
+      if (peerConnection.ontrack) {
+        peerConnection.ontrack({ streams: [remoteStream] });
       }
 
-      // Voice activity detection is set up asynchronously
-      // In a real test, we would wait for the detection to trigger
+      // Voice activity detection is set up synchronously on track arrival
       expect(mockAudioContext).toHaveBeenCalled();
     });
   });
@@ -427,7 +464,7 @@ describe('WebRTCVoiceManager', () => {
       const userId = 'test-user-1';
       const mockAudioElement = { remove: vi.fn() };
 
-      (document.getElementById as Mock).mockReturnValue(mockAudioElement);
+      mockGetElementById.mockReturnValue(mockAudioElement);
 
       await voiceManager.initialize();
       await voiceManager.connectToParticipant(userId, false);

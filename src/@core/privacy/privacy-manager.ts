@@ -155,7 +155,9 @@ export class PrivacyManager {
   }
 
   isUserAuthenticated(): boolean {
-    return this.authClient.isAuthenticated();
+    // Anonymous sessions are signed in but not authenticated via OAuth.
+    const user = this.authClient.getCurrentUser();
+    return this.authClient.isAuthenticated() && user ? !user.isAnonymous : false;
   }
 
   async updateUserProfile(
@@ -361,6 +363,9 @@ export class PrivacyManager {
     const errors: string[] = [];
 
     // Validate auth configuration
+    if (this.config.auth.enabled && Object.keys(this.config.auth.providers ?? {}).length === 0) {
+      errors.push('At least one OAuth provider must be configured when auth is enabled');
+    }
     if (this.config.auth.minUsernameLength < 1) {
       errors.push('Minimum username length must be at least 1');
     }

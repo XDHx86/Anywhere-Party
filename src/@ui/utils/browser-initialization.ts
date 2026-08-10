@@ -503,6 +503,10 @@ export function getBrowserInitializationManager(): BrowserInitializationManager 
   return browserInitializationManager;
 }
 
+export function resetBrowserInitializationManager(): void {
+  browserInitializationManager = null;
+}
+
 export function createBrowserInitializationManager(): BrowserInitializationManager {
   return new BrowserInitializationManager();
 }

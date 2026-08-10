@@ -56,8 +56,13 @@ describe('Logger', () => {
       autoCleanup: true,
     };
 
-    // Mock storage responses
-    (mockBrowserBridge.storage.local.get as any).mockResolvedValue({});
+    // Mock storage responses. Pre-seed an anonymized user ID so
+    // initializeLogger() returns it without issuing a storage.set() — that set
+    // call would otherwise land first on the mock and the tests (which read
+    // calls[0]) would pick up the wrong call.
+    (mockBrowserBridge.storage.local.get as any).mockResolvedValue({
+      anonymizedUserId: 'anon_preexisting',
+    });
     (mockBrowserBridge.storage.local.set as any).mockResolvedValue(undefined);
 
     logger = new Logger(mockBrowserBridge, config, retentionPolicy);

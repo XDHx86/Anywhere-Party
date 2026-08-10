@@ -50,13 +50,40 @@ Object.defineProperty(document, 'createElement', {
     if (tagName === 'canvas') {
       return mockCanvas;
     }
+    const styleValues: Record<string, string> = {};
+    // Mimic CSSStyleDeclaration: unset properties read as '' not undefined
+    const style = new Proxy(styleValues, {
+      get(target, prop) {
+        if (typeof prop === 'string' && prop in target) return target[prop];
+        return '';
+      },
+      set(target, prop, value) {
+        if (typeof prop === 'string') target[prop] = String(value);
+        return true;
+      },
+    });
     return {
-      style: {},
+      style,
+      className: '',
+      id: '',
+      textContent: '',
+      innerHTML: '',
+      parentNode: null,
+      setAttribute: vi.fn(),
+      getAttribute: vi.fn(() => null),
+      removeAttribute: vi.fn(),
       appendChild: vi.fn(),
+      removeChild: vi.fn(),
+      insertBefore: vi.fn(),
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
-      id: '',
-      parentNode: null,
+      classList: {
+        add: vi.fn(),
+        remove: vi.fn(),
+        toggle: vi.fn(),
+        contains: vi.fn(() => false),
+      },
+      getBoundingClientRect: () => ({ width: 0, height: 0, left: 0, top: 0 }),
     };
   },
 });

@@ -294,39 +294,59 @@ export class ResourceMonitor {
   }
 
   private interceptResourceCreation(): void {
+    // Helper: wrap a window timer function while preserving any own property
+    // descriptors (e.g. sinon's `hadOwnProperty` flag used by vitest's fake
+    // timer restore) so that the test runner can correctly track and undo
+    // the replacement.
+    const wrapTimer = <T extends (...args: never[]) => unknown>(original: T, wrapper: T): void => {
+      // Copy descriptors (hadOwnProperty, clock, etc.) from original to wrapper
+      Object.defineProperties(
+        wrapper as unknown as object,
+        Object.getOwnPropertyDescriptors(original as unknown as object)
+      );
+    };
+
     // Intercept setTimeout
     const originalSetTimeout = window.setTimeout;
-    window.setTimeout = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) => {
+    const wrappedSetTimeout = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) => {
       const id = originalSetTimeout(handler, timeout, ...args);
       this.trackedTimers.add(id);
       return id;
     }) as unknown as typeof window.setTimeout;
+    wrapTimer(originalSetTimeout, wrappedSetTimeout);
+    window.setTimeout = wrappedSetTimeout;
 
     // Intercept setInterval
     const originalSetInterval = window.setInterval;
-    window.setInterval = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) => {
+    const wrappedSetInterval = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) => {
       const id = originalSetInterval(handler, timeout, ...args);
       this.trackedIntervals.add(id);
       return id;
     }) as unknown as typeof window.setInterval;
+    wrapTimer(originalSetInterval, wrappedSetInterval);
+    window.setInterval = wrappedSetInterval;
 
     // Intercept clearTimeout
     const originalClearTimeout = window.clearTimeout;
-    window.clearTimeout = ((id?: number) => {
+    const wrappedClearTimeout = ((id?: number) => {
       if (id !== undefined) {
         this.trackedTimers.delete(id);
         originalClearTimeout(id);
       }
     }) as unknown as typeof window.clearTimeout;
+    wrapTimer(originalClearTimeout, wrappedClearTimeout);
+    window.clearTimeout = wrappedClearTimeout;
 
     // Intercept clearInterval
     const originalClearInterval = window.clearInterval;
-    window.clearInterval = ((id?: number) => {
+    const wrappedClearInterval = ((id?: number) => {
       if (id !== undefined) {
         this.trackedIntervals.delete(id);
         originalClearInterval(id);
       }
     }) as unknown as typeof window.clearInterval;
+    wrapTimer(originalClearInterval, wrappedClearInterval);
+    window.clearInterval = wrappedClearInterval;
   }
 
   private async runCleanupTasks(): Promise<void> {

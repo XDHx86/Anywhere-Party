@@ -6,7 +6,7 @@
  * Requirements: 4.1, 4.2, 4.3, 4.4, 4.5
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi, Mock } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { VoiceIntegration, VoiceIntegrationConfig } from './voice-integration';
 import { WebRTCVoiceManager } from './webrtc-voice-manager';
 
@@ -45,26 +45,29 @@ class MockWebSocket {
   }
 }
 
-// Mock WebRTCVoiceManager
+// Mock WebRTCVoiceManager. Implementation must be a regular function (not an
+// arrow) so `new WebRTCVoiceManager(...)` inside voice-integration constructs it.
 vi.mock('./webrtc-voice-manager', () => ({
-  WebRTCVoiceManager: vi.fn().mockImplementation(() => ({
-    initialize: vi.fn().mockResolvedValue({ connected: true, connectionType: 'stun' }),
-    connectToParticipant: vi.fn().mockResolvedValue(undefined),
-    handleOffer: vi.fn().mockResolvedValue(undefined),
-    handleAnswer: vi.fn().mockResolvedValue(undefined),
-    handleIceCandidate: vi.fn().mockResolvedValue(undefined),
-    disconnectParticipant: vi.fn(),
-    setMuted: vi.fn(),
-    isMutedState: vi.fn().mockReturnValue(false),
-    enablePushToTalk: vi.fn(),
-    setParticipantVolume: vi.fn(),
-    getParticipantVolume: vi.fn().mockReturnValue(0.8),
-    getParticipants: vi.fn().mockReturnValue([]),
-    getConnectionStatus: vi.fn().mockReturnValue({ connected: true, connectionType: 'stun' }),
-    destroy: vi.fn(),
-    on: vi.fn(),
-    off: vi.fn(),
-  })),
+  WebRTCVoiceManager: vi.fn().mockImplementation(function () {
+    return {
+      initialize: vi.fn().mockResolvedValue({ connected: true, connectionType: 'stun' }),
+      connectToParticipant: vi.fn().mockResolvedValue(undefined),
+      handleOffer: vi.fn().mockResolvedValue(undefined),
+      handleAnswer: vi.fn().mockResolvedValue(undefined),
+      handleIceCandidate: vi.fn().mockResolvedValue(undefined),
+      disconnectParticipant: vi.fn(),
+      setMuted: vi.fn(),
+      isMutedState: vi.fn().mockReturnValue(false),
+      enablePushToTalk: vi.fn(),
+      setParticipantVolume: vi.fn(),
+      getParticipantVolume: vi.fn().mockReturnValue(0.8),
+      getParticipants: vi.fn().mockReturnValue([]),
+      getConnectionStatus: vi.fn().mockReturnValue({ connected: true, connectionType: 'stun' }),
+      destroy: vi.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+    };
+  }),
 }));
 
 // Set up global WebSocket mock
@@ -171,6 +174,11 @@ describe('VoiceIntegration', () => {
           })
         );
       }
+
+      // handleSignalingMessage is async and awaits connectToParticipant before
+      // emitting; flush the microtask queue so the emit lands before asserting.
+      await Promise.resolve();
+      await Promise.resolve();
 
       expect(mockVoiceManager.connectToParticipant).toHaveBeenCalledWith('other-user-789', true);
       expect(mockCallback).toHaveBeenCalledWith('other-user-789');
@@ -285,15 +293,15 @@ describe('VoiceIntegration', () => {
       // Trigger the callback
       onCall[1](offerData);
 
-      expect(sendSpy).toHaveBeenCalledWith(
-        JSON.stringify({
-          type: 'offer',
-          fromUserId: mockConfig.userId,
-          toUserId: 'other-user-789',
-          data: offerData.offer,
-          timestamp: expect.any(Number),
-        })
-      );
+      expect(sendSpy).toHaveBeenCalledTimes(1);
+      const sent = JSON.parse(sendSpy.mock.calls[0][0] as string);
+      expect(sent).toEqual({
+        type: 'offer',
+        fromUserId: mockConfig.userId,
+        toUserId: 'other-user-789',
+        data: offerData.offer,
+        timestamp: expect.any(Number),
+      });
     });
 
     it('should forward mute state changes to signaling server', () => {
@@ -307,14 +315,14 @@ describe('VoiceIntegration', () => {
 
       onCall[1](muteData);
 
-      expect(sendSpy).toHaveBeenCalledWith(
-        JSON.stringify({
-          type: 'voice-state',
-          fromUserId: mockConfig.userId,
-          data: { muted: true },
-          timestamp: expect.any(Number),
-        })
-      );
+      expect(sendSpy).toHaveBeenCalledTimes(1);
+      const sent = JSON.parse(sendSpy.mock.calls[0][0] as string);
+      expect(sent).toEqual({
+        type: 'voice-state',
+        fromUserId: mockConfig.userId,
+        data: { muted: true },
+        timestamp: expect.any(Number),
+      });
     });
 
     it('should forward voice activity events', () => {
@@ -397,12 +405,25 @@ describe('VoiceIntegration', () => {
 
   describe('Error Handling', () => {
     it('should handle signaling connection timeout', async () => {
-      // Mock WebSocket that doesn't connect
-      class TimeoutWebSocket extends MockWebSocket {
-        constructor(url: string) {
-          super(url);
-          this.readyState = MockWebSocket.CONNECTING;
-          // Don't call onopen to simulate timeout
+      // A WebSocket that never opens (the mock WebSocket above auto-connects
+      // after 10ms, which would bypass the timeout entirely).
+      class TimeoutWebSocket {
+        static readonly CONNECTING = 0;
+        static readonly OPEN = 1;
+        static readonly CLOSING = 2;
+        static readonly CLOSED = 3;
+
+        readyState = TimeoutWebSocket.CONNECTING;
+        onopen: ((event: Event) => void) | null = null;
+        onmessage: ((event: MessageEvent) => void) | null = null;
+        onerror: ((event: Event) => void) | null = null;
+        onclose: ((event: CloseEvent) => void) | null = null;
+
+        constructor(public url: string) {}
+
+        send(): void {}
+        close(): void {
+          this.readyState = TimeoutWebSocket.CLOSED;
         }
       }
 
@@ -411,12 +432,39 @@ describe('VoiceIntegration', () => {
         writable: true,
       });
 
-      const config = { ...mockConfig, signalingEndpoint: 'ws://timeout-server:8080' };
-      const integration = new VoiceIntegration(config);
+      vi.useFakeTimers();
 
-      await expect(integration.initialize()).rejects.toThrow('Signaling connection timeout');
+      try {
+        const config = { ...mockConfig, signalingEndpoint: 'ws://timeout-server:8080' };
+        const integration = new VoiceIntegration(config);
+        const mockCallback = vi.fn();
+        integration.on('initializationFailed', mockCallback);
 
-      integration.destroy();
+        const initPromise = integration.initialize();
+
+        // Let initialize() reach connectToSignalingServer so its 10s timeout
+        // is scheduled, then fast-forward past it. initialize() surfaces the
+        // failure via the initializationFailed event (it does not rethrow).
+        await Promise.resolve();
+        await Promise.resolve();
+        await vi.advanceTimersByTimeAsync(10000);
+        await initPromise;
+
+        expect(mockCallback).toHaveBeenCalledTimes(1);
+        expect(mockCallback.mock.calls[0][0]).toMatchObject({
+          connected: false,
+          connectionType: 'failed',
+        });
+        expect(String(mockCallback.mock.calls[0][0].error)).toContain(
+          'Signaling connection timeout'
+        );
+      } finally {
+        vi.useRealTimers();
+        Object.defineProperty(global, 'WebSocket', {
+          value: MockWebSocket,
+          writable: true,
+        });
+      }
     });
 
     it('should handle malformed signaling messages', async () => {

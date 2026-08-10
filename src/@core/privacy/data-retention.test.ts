@@ -315,10 +315,11 @@ describe('DataRetentionManager', () => {
     it('should skip anonymization when disabled', async () => {
       await dataRetentionManager.updateSettings({ anonymizeData: false });
 
+      // anonymizeUserData must not read stored data when anonymization is off
+      // (initialize() and updateSettings() above already issued reads).
+      const getCallsBefore = mockBrowserBridge.storage.local.get.mock.calls.length;
       await dataRetentionManager.anonymizeUserData('test-user');
-
-      // Should not attempt to anonymize
-      expect(mockBrowserBridge.storage.local.get).not.toHaveBeenCalled();
+      expect(mockBrowserBridge.storage.local.get.mock.calls.length).toBe(getCallsBefore);
     });
 
     it('should handle anonymization errors', async () => {
@@ -464,14 +465,16 @@ describe('DataRetentionManager', () => {
     });
 
     it('should stop cleanup interval on shutdown', () => {
-      // Mock setInterval to track if it's cleared
-      const mockClearInterval = vi.fn();
-      global.clearInterval = mockClearInterval;
+      // Mock setInterval to track if it's cleared.
+      // Use vi.spyOn so restoreMocks: true restores the global afterwards and
+      // the poisoned globalThis.clearInterval does not leak into other tests.
+      const mockClearInterval = vi.spyOn(globalThis, 'clearInterval').mockImplementation(() => {});
 
       dataRetentionManager.shutdown();
 
       // Should attempt to clear interval (even if none was set in test)
       // This tests the shutdown logic
+      expect(mockClearInterval).toHaveBeenCalled();
       expect(() => dataRetentionManager.shutdown()).not.toThrow();
     });
   });

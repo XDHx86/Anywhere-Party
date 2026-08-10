@@ -613,13 +613,16 @@ export function isServerMessage(message: unknown): message is ServerMessage {
 }
 
 export function validateMessage(message: unknown): { valid: boolean; error?: string } {
-  if (
-    !message ||
-    typeof message !== 'object' ||
-    !('type' in message) ||
-    typeof message.type !== 'string'
-  ) {
-    return { valid: false, error: 'Message must be an object with a string type field' };
+  if (!message || typeof message !== 'object') {
+    return { valid: false, error: 'Message must be an object' };
+  }
+
+  if (!('type' in message)) {
+    return { valid: false, error: 'Message must have a string type field' };
+  }
+
+  if (typeof message.type !== 'string') {
+    return { valid: false, error: 'Message must have a string type field' };
   }
 
   // Check if message type is valid

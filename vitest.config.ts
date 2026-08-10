@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig, defaultExclude } from 'vitest/config';
 import path from 'path';
 
 export default defineConfig({
@@ -11,6 +11,7 @@ export default defineConfig({
     css: true,
     restoreMocks: true,
     clearMocks: true,
+    exclude: [...defaultExclude, '**/*.e2e.test.ts', '.stryker-tmp/**'],
     typecheck: {
       tsconfig: './tsconfig.test.json'
     },

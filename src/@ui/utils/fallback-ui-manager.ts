@@ -125,6 +125,16 @@ export class FallbackUIManager {
   }
 
   /**
+   * Reset the fallback UI manager state so it can be re-activated.
+   * Primarily used for test isolation, but also useful when recovering
+   * from a reloaded page context.
+   */
+  public reset(): void {
+    this.isActive = false;
+    this.currentPage = null;
+  }
+
+  /**
    * Render basic HTML-based popup interface
    */
   private async renderBasicPopup(): Promise<void> {

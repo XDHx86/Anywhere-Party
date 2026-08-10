@@ -359,6 +359,6 @@ export class Logger {
   // Update configuration
   updateConfig(config: Partial<LoggingConfig>): void {
     this.config = { ...this.config, ...config };
-    this.info('log_config', 'Logging configuration updated', { config });
+    this.info('log_config', 'Logging configuration updated', config);
   }
 }

@@ -136,7 +136,7 @@ export class CollaborativeAnnotationLayer extends AnnotationLayer {
         opacity: data.opacity || 1.0,
         x: position.x,
         y: position.y,
-        // Note: timestamp and userName are not in AnnotationData, they're handled separately
+        userName: this.collaborativeOptions.userName,
       },
       visible: true,
       createdAt: Date.now(),
@@ -190,6 +190,7 @@ export class CollaborativeAnnotationLayer extends AnnotationLayer {
         y,
         startX: x,
         startY: y,
+        userName: this.collaborativeOptions.userName,
       },
       visible: true,
       createdAt: Date.now(),

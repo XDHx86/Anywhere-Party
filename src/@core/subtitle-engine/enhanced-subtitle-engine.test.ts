@@ -6,18 +6,23 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EnhancedSubtitleEngine } from './enhanced-subtitle-engine';
-import { getAPIKeyManager } from '../api-keys/api-key-manager';
 
-// Mock the API key manager
-vi.mock('../api-keys/api-key-manager', () => ({
-  getAPIKeyManager: vi.fn(() => ({
+// Mock the API key manager as a single shared instance. The engine captures
+// getAPIKeyManager() in a class field, so every caller must receive the same
+// object for the test's per-test mock setup to take effect.
+const { mockAPIKeyManager } = vi.hoisted(() => ({
+  mockAPIKeyManager: {
     getAPIKey: vi.fn(),
     validateAPIKey: vi.fn(),
     storeAPIKey: vi.fn(),
     removeAPIKey: vi.fn(),
     listStoredKeys: vi.fn(),
     testAPIConnection: vi.fn(),
-  })),
+  },
+}));
+
+vi.mock('../api-keys/api-key-manager', () => ({
+  getAPIKeyManager: () => mockAPIKeyManager,
 }));
 
 // Mock chrome runtime for settings page
@@ -32,12 +37,10 @@ const mockChrome = {
 
 describe('EnhancedSubtitleEngine Error Handling', () => {
   let engine: EnhancedSubtitleEngine;
-  let mockAPIKeyManager: any;
   let errorCallback: vi.Mock;
 
   beforeEach(() => {
     engine = new EnhancedSubtitleEngine();
-    mockAPIKeyManager = getAPIKeyManager();
     errorCallback = vi.fn();
 
     // Subscribe to error notifications

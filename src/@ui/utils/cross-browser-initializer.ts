@@ -554,6 +554,14 @@ export function getCrossBrowserInitializer(): CrossBrowserInitializer {
   return crossBrowserInitializer;
 }
 
+/**
+ * Reset the cached singleton so the next call re-initializes from a clean state.
+ * Used for test isolation where the browser environment changes between tests.
+ */
+export function resetCrossBrowserInitializer(): void {
+  crossBrowserInitializer = null;
+}
+
 export function createCrossBrowserInitializer(): CrossBrowserInitializer {
   return new CrossBrowserInitializer();
 }

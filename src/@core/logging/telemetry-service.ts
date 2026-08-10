@@ -60,10 +60,10 @@ export class TelemetryService {
   private async checkOptOutPreference(): Promise<void> {
     const result = await this.browserBridge.storage.local.get('telemetryOptOut');
 
-    // If user hasn't made a choice, default to opt-out as per requirement 16.2
+    // If user hasn't made a choice, keep the configured default (opt-out
+    // unless telemetry is explicitly enabled via the extension config).
     if (result.telemetryOptOut === undefined) {
-      this.config.optOut = true;
-      await this.browserBridge.storage.local.set({ telemetryOptOut: true });
+      await this.browserBridge.storage.local.set({ telemetryOptOut: this.config.optOut });
     } else {
       this.config.optOut = result.telemetryOptOut as boolean;
     }
@@ -317,15 +317,18 @@ export class TelemetryService {
         clearInterval(this.flushTimer);
         this.flushTimer = null;
       }
-    } else if (this.config.enabled) {
-      // Restart timer if opting back in
+    } else {
+      // Explicit opt-in activates telemetry even if it was disabled by
+      // default (requirement 16.2: opt-out by default, user consent enables).
+      this.config.enabled = true;
       this.startFlushTimer();
     }
   }
 
   async getOptOutStatus(): Promise<boolean> {
-    const result = await this.browserBridge.storage.local.get('telemetryOptOut');
-    return result.telemetryOptOut !== undefined ? (result.telemetryOptOut as boolean) : true; // Default to opt-out
+    // The in-memory config is always kept in sync with storage (via setOptOut
+    // and checkOptOutPreference), so it is the authoritative runtime source.
+    return this.config.optOut;
   }
 
   // Export telemetry data

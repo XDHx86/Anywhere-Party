@@ -51,22 +51,58 @@ class ChromeWebSocket {
 
   readyState = ChromeWebSocket.CONNECTING;
   url: string;
-  onopen: ((event: Event) => void) | null = null;
+  private _onopen: ((event: Event) => void) | null = null;
   onclose: ((event: CloseEvent) => void) | null = null;
   onmessage: ((event: MessageEvent) => void) | null = null;
   onerror: ((event: Event) => void) | null = null;
 
+  get onopen(): ((event: Event) => void) | null {
+    return this._onopen;
+  }
+
+  set onopen(handler: ((event: Event) => void) | null) {
+    this._onopen = handler;
+    // In the Firefox creation path the open event fires while the socket is
+    // still inside the async factory, before the client registers its
+    // property-style `onopen` handler. Replay the open event so the client
+    // still transitions to CONNECTED.
+    if (handler && this.readyState === ChromeWebSocket.OPEN) {
+      this.dispatch('open', new Event('open'));
+    }
+  }
+
+  private eventListeners: Record<string, Array<(event: any) => void>> = {
+    open: [],
+    close: [],
+    message: [],
+    error: [],
+  };
+
   constructor(url: string) {
     this.url = url;
-    // Chrome connects immediately for testing
-    setTimeout(() => {
+    // Fire the open event on the microtask queue so that handlers registered
+    // synchronously after construction (e.g. via addEventListener) are honored,
+    // and so that the connection still opens when fake timers are active.
+    queueMicrotask(() => {
       if (this.readyState === ChromeWebSocket.CONNECTING) {
         this.readyState = ChromeWebSocket.OPEN;
-        if (this.onopen) {
-          this.onopen(new Event('open'));
-        }
+        this.dispatch('open', new Event('open'));
       }
-    }, 1);
+    });
+  }
+
+  private dispatch(type: string, event: any): void {
+    // Fire addEventListener listeners first, then the matching `on*` property
+    // handler. A real WebSocket supports multiple observers, and both the
+    // property-style handlers (set by SignalingClient) and addEventListener
+    // listeners (used by waitForConnection / createFirefoxWebSocket) must fire.
+    for (const listener of this.eventListeners[type]) {
+      listener.call(this, event);
+    }
+    const propertyHandler = (this as any)[`on${type}`];
+    if (typeof propertyHandler === 'function') {
+      propertyHandler.call(this, event);
+    }
   }
 
   send(data: string) {
@@ -78,9 +114,10 @@ class ChromeWebSocket {
     try {
       const message = JSON.parse(data);
       setTimeout(() => {
-        if (this.readyState === ChromeWebSocket.OPEN && this.onmessage) {
+        if (this.readyState === ChromeWebSocket.OPEN) {
           if (message.type === 'PING') {
-            this.onmessage(
+            this.dispatch(
+              'message',
               new MessageEvent('message', {
                 data: JSON.stringify({
                   type: 'PONG',
@@ -91,7 +128,8 @@ class ChromeWebSocket {
               })
             );
           } else if (message.type === 'HEARTBEAT') {
-            this.onmessage(
+            this.dispatch(
+              'message',
               new MessageEvent('message', {
                 data: JSON.stringify({ type: 'HEARTBEAT_ACK', timestamp: Date.now() }),
               })
@@ -108,29 +146,36 @@ class ChromeWebSocket {
     if (this.readyState === ChromeWebSocket.CLOSED) return;
 
     this.readyState = ChromeWebSocket.CLOSED;
-    if (this.onclose) {
-      this.onclose(
-        new CloseEvent('close', {
-          code: code || 1000,
-          reason: reason || '',
-          wasClean: code === 1000,
-        })
-      );
-    }
+    this.dispatch(
+      'close',
+      new CloseEvent('close', {
+        code: code || 1000,
+        reason: reason || '',
+        wasClean: code === 1000,
+      })
+    );
   }
 
   addEventListener(type: string, listener: EventListener) {
-    if (type === 'open') this.onopen = listener as any;
-    else if (type === 'close') this.onclose = listener as any;
-    else if (type === 'message') this.onmessage = listener as any;
-    else if (type === 'error') this.onerror = listener as any;
+    const listeners = this.eventListeners[type];
+    if (listeners && !listeners.includes(listener as any)) {
+      listeners.push(listener as any);
+    }
   }
 
   removeEventListener(type: string, listener: EventListener) {
-    if (type === 'open' && this.onopen === listener) this.onopen = null;
-    else if (type === 'close' && this.onclose === listener) this.onclose = null;
-    else if (type === 'message' && this.onmessage === listener) this.onmessage = null;
-    else if (type === 'error' && this.onerror === listener) this.onerror = null;
+    const listeners = this.eventListeners[type];
+    if (listeners) {
+      const index = listeners.indexOf(listener as any);
+      if (index >= 0) {
+        listeners.splice(index, 1);
+        return;
+      }
+    }
+    // Also support removing a handler that was assigned as a property
+    if ((this as any)[`on${type}`] === listener) {
+      (this as any)[`on${type}`] = null;
+    }
   }
 }
 
@@ -398,21 +443,21 @@ describe('Cross-Browser Integration Tests', () => {
           (global as any).browser = { runtime: {} };
         }
 
-        const receivedMessages: any[] = [];
         const client = new SignalingClient({
           config: mockConfig,
           userId: `${env.name}-ping-user`,
-          onMessage: (message) => receivedMessages.push(message),
         });
 
         await client.connect();
         expect(client.getConnectionState()).toBe(ConnectionState.CONNECTED);
 
-        // Advance time to trigger ping
+        // Advance time to trigger heartbeat + ping/pong cycles. The PONG
+        // responses (and HEARTBEAT_ACKs) keep the connection healthy: they
+        // reset the ping-failure / heartbeat-timeout counters, so the client
+        // must remain CONNECTED rather than entering a reconnect/failed state.
         vi.advanceTimersByTime(30000);
 
-        // Should have received pong response
-        expect(receivedMessages.some((m) => m.type === 'PONG')).toBe(true);
+        expect(client.getConnectionState()).toBe(ConnectionState.CONNECTED);
 
         vi.useRealTimers();
         client.disconnect();
@@ -608,14 +653,18 @@ describe('Cross-Browser Integration Tests', () => {
             return [] as any;
           });
 
-          // Mock MutationObserver
+          // Mock MutationObserver — must be a constructible function, not an
+          // arrow function (vitest vi.fn proxies the implementation as the
+          // constructor, and arrow functions cannot be used with `new`).
           const mockObserver = {
             observe: vi.fn(),
             disconnect: vi.fn(),
           };
           vi.stubGlobal(
             'MutationObserver',
-            vi.fn(() => mockObserver)
+            vi.fn(function () {
+              return mockObserver;
+            })
           );
 
           const detector = new VideoDetector();

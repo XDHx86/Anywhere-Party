@@ -142,6 +142,12 @@ export const MaterialAnnotationToolbar: React.FC<MaterialAnnotationToolbarProps>
 
   // handleLayerSelect is defined above with opacity tracking
 
+  const handleClear = useCallback(() => {
+    if (window.confirm('Clear all annotations?')) {
+      onClear();
+    }
+  }, [onClear]);
+
   const handleCreateLayer = useCallback(() => {
     if (newLayerName.trim()) {
       const layerId = `layer_${Date.now()}`;
@@ -384,7 +390,7 @@ export const MaterialAnnotationToolbar: React.FC<MaterialAnnotationToolbarProps>
               value={newLayerName}
               onChange={(e) => setNewLayerName(e.target.value)}
               className="w-full p-2 text-sm border border-gray-300 rounded-md mb-2"
-              onKeyPress={(e) => e.key === 'Enter' && handleCreateLayer()}
+              onKeyDown={(e) => e.key === 'Enter' && handleCreateLayer()}
               data-testid="new-layer-input"
             />
             <div className="flex gap-2">
@@ -444,7 +450,7 @@ export const MaterialAnnotationToolbar: React.FC<MaterialAnnotationToolbarProps>
           variant="outlined"
           size="small"
           color="error"
-          onClick={onClear}
+          onClick={handleClear}
           startIcon={<MaterialIcon name="clear_all" size="small" />}
           className="w-full mt-2"
           data-testid="clear-all-btn"

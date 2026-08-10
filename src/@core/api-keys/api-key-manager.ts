@@ -296,7 +296,14 @@ export class APIKeyManager {
   private async getAllStoredKeys(): Promise<Record<string, APIKeyConfig>> {
     try {
       const result = await this.browserBridge.storage.local.get(this.STORAGE_KEY);
-      const keys = (result[this.STORAGE_KEY] as Record<string, APIKeyConfig>) || {};
+      const rawKeys = result[this.STORAGE_KEY];
+      // Guard against corrupted/non-object data (e.g. an unparsed string left
+      // by an earlier version) so callers get an empty record instead of
+      // iterating over string indices.
+      const keys =
+        rawKeys && typeof rawKeys === 'object' && !Array.isArray(rawKeys)
+          ? (rawKeys as Record<string, APIKeyConfig>)
+          : {};
 
       // Convert date strings back to Date objects
       Object.values(keys).forEach((keyConfig: APIKeyConfig) => {

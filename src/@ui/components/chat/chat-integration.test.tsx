@@ -75,13 +75,13 @@ describe('Chat Components - Material Design 3 Implementation', () => {
             onReaction={vi.fn()}
             onRemoveReaction={vi.fn()}
             currentUserId="current-user"
+            data-testid="received-message"
           />
         </TestWrapper>
       );
 
-      const receivedElement = screen
-        .getByText('Hello, this is a test message!')
-        .closest('[data-testid]');
+      const receivedElement = screen.getByTestId('received-message');
+      const receivedClass = receivedElement.className;
 
       rerender(
         <TestWrapper>
@@ -90,17 +90,16 @@ describe('Chat Components - Material Design 3 Implementation', () => {
             onReaction={vi.fn()}
             onRemoveReaction={vi.fn()}
             currentUserId="current-user"
+            data-testid="sent-message"
           />
         </TestWrapper>
       );
 
-      const sentElement = screen
-        .getByText('Hello, this is a test message!')
-        .closest('[data-testid]');
-
-      // Both should exist but have different styling (tested via CSS classes)
-      expect(receivedElement).toBeInTheDocument();
+      const sentElement = screen.getByTestId('sent-message');
       expect(sentElement).toBeInTheDocument();
+
+      // Sent and received messages should use different styling (CSS classes)
+      expect(sentElement.className).not.toBe(receivedClass);
     });
   });
 

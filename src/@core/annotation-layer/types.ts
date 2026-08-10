@@ -34,6 +34,7 @@ export interface AnnotationData {
   color: string;
   strokeWidth: number;
   opacity: number;
+  userName?: string;
 
   // Pen-specific
   points?: Point[];
