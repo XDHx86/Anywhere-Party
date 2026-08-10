@@ -198,7 +198,7 @@ describe('KeyboardNavigation', () => {
 
     it('should activate elements with Enter', () => {
       const button = container.querySelector('#btn1') as HTMLButtonElement;
-      const clickSpy = jest.spyOn(button, 'click');
+      const clickSpy = vi.spyOn(button, 'click');
       button.focus();
 
       const enterEvent = new KeyboardEvent('keydown', { key: 'Enter' });
@@ -209,7 +209,7 @@ describe('KeyboardNavigation', () => {
 
     it('should activate elements with Space', () => {
       const button = container.querySelector('#btn1') as HTMLButtonElement;
-      const clickSpy = jest.spyOn(button, 'click');
+      const clickSpy = vi.spyOn(button, 'click');
       button.focus();
 
       const spaceEvent = new KeyboardEvent('keydown', { key: ' ' });
@@ -330,7 +330,7 @@ describe('KeyboardNavigation', () => {
   });
 
   describe('dynamic content', () => {
-    it('should update when DOM changes', (done) => {
+    it('should update when DOM changes', async () => {
       const initialCount = keyboardNavigation.getFocusableElements().length;
 
       // Add new focusable element
@@ -338,12 +338,12 @@ describe('KeyboardNavigation', () => {
       newButton.textContent = 'Dynamic Button';
       container.appendChild(newButton);
 
-      // Wait for MutationObserver to trigger
-      setTimeout(() => {
-        const newCount = keyboardNavigation.getFocusableElements().length;
-        expect(newCount).toBe(initialCount + 1);
-        done();
-      }, 100);
+      // Wait for MutationObserver to trigger and refresh the focusable list.
+      // vi.waitFor polls the condition and cleans up its internal timer, which
+      // avoids leaving a dangling setTimeout that could fire after teardown.
+      await vi.waitFor(() => {
+        expect(keyboardNavigation.getFocusableElements().length).toBe(initialCount + 1);
+      });
     });
   });
 
@@ -368,7 +368,7 @@ describe('KeyboardNavigation', () => {
 
   describe('cleanup', () => {
     it('should clean up event listeners on destroy', () => {
-      const removeEventListenerSpy = jest.spyOn(container, 'removeEventListener');
+      const removeEventListenerSpy = vi.spyOn(container, 'removeEventListener');
 
       keyboardNavigation.destroy();
 

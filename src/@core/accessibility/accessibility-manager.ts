@@ -36,6 +36,10 @@ export class AccessibilityManager {
   private focusableElements: HTMLElement[] = [];
   private currentFocusIndex = -1;
   private announcer: HTMLElement | null = null;
+  // Bound once so destroy() can remove the exact listener registered by
+  // setupKeyboardNavigation() (a fresh .bind() would not match).
+  private readonly handleKeyDownBound = this.handleKeyDown.bind(this);
+  private readonly handleFocusInBound = this.handleFocusIn.bind(this);
 
   constructor() {
     this.settings = this.getDefaultSettings();
@@ -129,8 +133,8 @@ export class AccessibilityManager {
    * Setup keyboard navigation
    */
   private setupKeyboardNavigation(): void {
-    document.addEventListener('keydown', this.handleKeyDown.bind(this));
-    document.addEventListener('focusin', this.handleFocusIn.bind(this));
+    document.addEventListener('keydown', this.handleKeyDownBound);
+    document.addEventListener('focusin', this.handleFocusInBound);
 
     // Update focusable elements when DOM changes
     const observer = new MutationObserver(() => {
@@ -715,7 +719,7 @@ export class AccessibilityManager {
       this.announcer.remove();
     }
 
-    document.removeEventListener('keydown', this.handleKeyDown.bind(this));
-    document.removeEventListener('focusin', this.handleFocusIn.bind(this));
+    document.removeEventListener('keydown', this.handleKeyDownBound);
+    document.removeEventListener('focusin', this.handleFocusInBound);
   }
 }

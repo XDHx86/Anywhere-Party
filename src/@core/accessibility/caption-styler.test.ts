@@ -142,7 +142,8 @@ describe('CaptionStyler', () => {
       captionStyler.applyStyle(element, customStyle);
 
       expect(element.style.fontSize).toBe('20px');
-      expect(element.style.color).toBe('#ff0000');
+      // Browser normalizes hex colors to rgb() format when reading from style.color
+      expect(element.style.color).toMatch(/^(#ff0000|rgb\(255,\s*0,\s*0\))$/i);
       expect(element.style.backgroundColor).toBe('rgba(0, 0, 0, 0.9)');
       expect(element.classList.contains('caption-text')).toBe(true);
     });
@@ -196,7 +197,10 @@ describe('CaptionStyler', () => {
       const presetButtons = container.querySelectorAll('.preset-btn');
       expect(presetButtons.length).toBeGreaterThan(0);
 
-      const defaultButton = Array.from(presetButtons).find((btn) => btn.textContent === 'Default');
+      // Template literal includes whitespace, so textContent may have leading/trailing space
+      const defaultButton = Array.from(presetButtons).find(
+        (btn) => btn.textContent?.trim() === 'Default'
+      );
       expect(defaultButton).toBeTruthy();
     });
 

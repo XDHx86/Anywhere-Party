@@ -2,20 +2,21 @@
  * Tests for AccessibilityManager
  */
 
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AccessibilityManager, AccessibilitySettings } from './accessibility-manager';
 
 // Mock DOM methods
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: jest.fn().mockImplementation((query) => ({
+  value: vi.fn().mockImplementation((query) => ({
     matches: false,
     media: query,
     onchange: null,
-    addListener: jest.fn(),
-    removeListener: jest.fn(),
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
-    dispatchEvent: jest.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
   })),
 });
 
@@ -106,10 +107,12 @@ describe('AccessibilityManager', () => {
     });
 
     it('should close modal on Escape', () => {
-      // Add a modal
+      // Add a modal without a close button. closeModal() prefers clicking a
+      // `.modal-close` button, so a button without a handler would never hide
+      // the modal; the bare-modal fallback hides it directly.
       document.body.innerHTML += `
         <div class="modal" role="dialog">
-          <button class="modal-close">Close</button>
+          <p>Modal content</p>
         </div>
       `;
 
@@ -233,7 +236,7 @@ describe('AccessibilityManager', () => {
     });
 
     it('should create accessible button', () => {
-      const onClick = jest.fn();
+      const onClick = vi.fn();
       const button = accessibilityManager.createAccessibleButton('Test Button', onClick, {
         description: 'This is a test button',
         shortcut: 'Ctrl+T',
@@ -286,15 +289,15 @@ describe('AccessibilityManager', () => {
   describe('system preference detection', () => {
     it('should detect high contrast preference', () => {
       // Mock matchMedia for high contrast
-      (window.matchMedia as jest.Mock).mockImplementation((query) => ({
+      (window.matchMedia as vi.Mock).mockImplementation((query) => ({
         matches: query === '(prefers-contrast: high)',
         media: query,
         onchange: null,
-        addListener: jest.fn(),
-        removeListener: jest.fn(),
-        addEventListener: jest.fn(),
-        removeEventListener: jest.fn(),
-        dispatchEvent: jest.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
       }));
 
       const newManager = new AccessibilityManager();
@@ -307,15 +310,15 @@ describe('AccessibilityManager', () => {
 
     it('should detect reduced motion preference', () => {
       // Mock matchMedia for reduced motion
-      (window.matchMedia as jest.Mock).mockImplementation((query) => ({
+      (window.matchMedia as vi.Mock).mockImplementation((query) => ({
         matches: query === '(prefers-reduced-motion: reduce)',
         media: query,
         onchange: null,
-        addListener: jest.fn(),
-        removeListener: jest.fn(),
-        addEventListener: jest.fn(),
-        removeEventListener: jest.fn(),
-        dispatchEvent: jest.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
       }));
 
       const newManager = new AccessibilityManager();
