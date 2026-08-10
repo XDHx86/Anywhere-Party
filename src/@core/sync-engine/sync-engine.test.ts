@@ -217,8 +217,15 @@ describe('SyncEngine Deterministic Tests', () => {
 
       syncEngine.handleSyncMessage(hostMessage);
 
-      // Advance time up to convergence timeout
-      vi.advanceTimersByTime(config.SYNC_TIMEOUT_MS);
+      // Interleave clock advancement with simulated playback so the mock
+      // reflects a client actually playing at 1x through the timeout window.
+      // Advancing the fake clock without also advancing the video would make
+      // checkDrift see the client fall behind and snap it back to the seek time.
+      const stepMs = 100;
+      for (let elapsed = 0; elapsed < config.SYNC_TIMEOUT_MS; elapsed += stepMs) {
+        await vi.advanceTimersByTimeAsync(stepMs);
+        mockVideo.simulateTimeUpdate(stepMs);
+      }
 
       // Calculate expected time after timeout (30.0 + 5.0 seconds elapsed)
       const expectedTimeAfterTimeout = 30.0 + config.SYNC_TIMEOUT_MS / 1000;

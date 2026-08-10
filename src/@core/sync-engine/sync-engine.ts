@@ -367,11 +367,12 @@ export class SyncEngine {
         this.video.playbackRate = targetState.playbackRate;
       }
 
-      // Always sync play/pause state
+      // Always sync play/pause state (fire-and-forget: applying time sync must
+      // not be blocked on the async play()/pause() promises)
       if (targetState.paused && !this.video.paused) {
-        await this.video.pause();
+        void this.video.pause();
       } else if (!targetState.paused && this.video.paused) {
-        await this.video.play();
+        void this.video.play();
       }
 
       // Apply time sync corrections only if needed

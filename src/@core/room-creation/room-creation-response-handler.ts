@@ -238,9 +238,9 @@ export class RoomCreationResponseHandler {
     if (error) {
       if (error.name === 'SyntaxError') {
         userFriendlyMessage = 'Server response format error. Please try again.';
-      } else if (error.message.includes('timeout')) {
+      } else if (error.message.toLowerCase().includes('timeout')) {
         userFriendlyMessage = 'Request timed out. Please check your connection and try again.';
-      } else if (error.message.includes('network')) {
+      } else if (error.message.toLowerCase().includes('network')) {
         userFriendlyMessage = 'Network error. Please check your internet connection.';
       }
     }
@@ -263,8 +263,8 @@ export class RoomCreationResponseHandler {
 
     const trimmed = roomId.trim();
 
-    // Room ID should be 6 characters, alphanumeric
-    const roomIdPattern = /^[A-Z0-9]{6}$/;
+    // Room ID should be 6-7 uppercase alphanumeric characters
+    const roomIdPattern = /^[A-Z0-9]{6,7}$/;
     return roomIdPattern.test(trimmed);
   }
 

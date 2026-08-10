@@ -4,26 +4,32 @@
  * Requirements: 35.5, 44.5
  */
 
-// Mock browser APIs before importing
-const mockStorage = {
-  get: jest.fn().mockResolvedValue({}),
-  set: jest.fn().mockResolvedValue(undefined),
-  remove: jest.fn().mockResolvedValue(undefined),
-  clear: jest.fn().mockResolvedValue(undefined),
-};
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+// Mock browser APIs before importing. vi.hoisted exposes the mock object to the
+// (hoisted) vi.mock factory below, which runs before module-body statements.
+const { mockStorage } = vi.hoisted(() => {
+  const mockStorage = {
+    get: vi.fn().mockResolvedValue({}),
+    set: vi.fn().mockResolvedValue(undefined),
+    remove: vi.fn().mockResolvedValue(undefined),
+    clear: vi.fn().mockResolvedValue(undefined),
+  };
+  return { mockStorage };
+});
 
 // Mock the browser bridge creation
-jest.mock('../browser-bridge', () => ({
+vi.mock('../browser-bridge', () => ({
   createBrowserBridge: () => ({
     storage: { local: mockStorage },
     runtime: { id: 'test-extension' },
-    tabs: { query: jest.fn(), sendMessage: jest.fn() },
+    tabs: { query: vi.fn(), sendMessage: vi.fn() },
     manifestVersion: 3,
   }),
 }));
 
 // Mock fetch for API testing
-global.fetch = jest.fn();
+global.fetch = vi.fn();
 
 import { APIKeyManager } from './api-key-manager';
 
@@ -31,7 +37,9 @@ describe('APIKeyManager - Core Functionality', () => {
   let apiKeyManager: APIKeyManager;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    // Reset implementations so mockRejectedValue/mockResolvedValue from a
+    // previous test do not leak into the next one.
+    vi.resetAllMocks();
     apiKeyManager = new APIKeyManager();
   });
 
@@ -94,14 +102,14 @@ describe('APIKeyManager - Core Functionality', () => {
 
   describe('API Key Validation', () => {
     beforeEach(() => {
-      (fetch as jest.Mock).mockClear();
+      (fetch as vi.Mock).mockClear();
     });
 
     it('should validate OpenSubtitles API key', async () => {
       const service = 'opensubtitles';
       const key = 'valid-key';
 
-      (fetch as jest.Mock).mockResolvedValue({
+      (fetch as vi.Mock).mockResolvedValue({
         ok: true,
         json: async () => ({ user: { id: 123 } }),
       });
@@ -123,7 +131,7 @@ describe('APIKeyManager - Core Functionality', () => {
       const service = 'opensubtitles';
       const key = 'invalid-key';
 
-      (fetch as jest.Mock).mockResolvedValue({
+      (fetch as vi.Mock).mockResolvedValue({
         ok: false,
         status: 401,
         text: async () => 'Unauthorized',
@@ -138,7 +146,7 @@ describe('APIKeyManager - Core Functionality', () => {
       const service = 'opensubtitles';
       const key = 'test-key';
 
-      (fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
+      (fetch as vi.Mock).mockRejectedValue(new Error('Network error'));
 
       const isValid = await apiKeyManager.validateAPIKey(service, key);
 
@@ -215,15 +223,20 @@ describe('APIKeyManager - Core Functionality', () => {
 
   describe('Error Handling', () => {
     it('should handle storage errors', async () => {
-      mockStorage.get.mockRejectedValue(new Error('Storage error'));
+      // storeAPIKey swallows read errors (getAllStoredKeys returns {}) but
+      // re-throws when the write fails, so reject on `set`.
+      mockStorage.get.mockResolvedValue({});
+      mockStorage.set.mockRejectedValue(new Error('Storage error'));
 
-      await expect(apiKeyManager.storeAPIKey('service', 'key')).rejects.toThrow();
+      await expect(apiKeyManager.storeAPIKey('service', 'key')).rejects.toThrow(
+        'Failed to store API key for service'
+      );
     });
 
     it('should handle encryption errors gracefully', async () => {
       // Mock btoa to throw error
       const originalBtoa = global.btoa;
-      global.btoa = jest.fn().mockImplementation(() => {
+      global.btoa = vi.fn().mockImplementation(() => {
         throw new Error('Encryption error');
       });
 

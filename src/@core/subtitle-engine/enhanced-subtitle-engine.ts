@@ -189,8 +189,11 @@ export class EnhancedSubtitleEngine {
       const data = await response.json();
       return this.parseOpenSubtitlesResponse(data);
     } catch (error) {
-      // If it's not already handled, create a generic error
-      if (!(error instanceof Error && error.message.includes('API key'))) {
+      // API key, rate limit and API error failures are already reported inside
+      // the try block — only surface genuinely unexpected failures as a generic
+      // network error so each failed request produces a single notification.
+      const message = error instanceof Error ? error.message : String(error);
+      if (!/API key|rate limit|API error/i.test(message)) {
         const errorResponse = this.createErrorResponse(
           'network_error',
           'Failed to search subtitles. Check your internet connection.',
