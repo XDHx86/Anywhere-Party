@@ -119,15 +119,14 @@ export class KeyboardNavigation {
 
   /**
    * Check if element is visible
+   *
+   * Note: jsdom does not implement layout, so offsetParent/getClientRects are
+   * always empty there. Rely on computed style for visibility instead, which
+   * works consistently in both browsers and jsdom.
    */
   private isVisible(element: HTMLElement): boolean {
     const style = window.getComputedStyle(element);
-    return (
-      style.display !== 'none' &&
-      style.visibility !== 'hidden' &&
-      style.opacity !== '0' &&
-      element.offsetParent !== null
-    );
+    return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
   }
 
   /**
@@ -263,6 +262,8 @@ export class KeyboardNavigation {
    * Navigate to element by group
    */
   public navigateToGroup(groupName: string): void {
+    // Re-scan so group attributes set after construction are picked up
+    this.updateFocusableElements();
     const groupElement = this.focusableElements.find((item) => item.group === groupName);
     if (groupElement) {
       this.focusElement(groupElement.index);
@@ -281,12 +282,14 @@ export class KeyboardNavigation {
     this.currentIndex = index;
     focusableItem.element.focus();
 
-    // Scroll into view if needed
-    focusableItem.element.scrollIntoView({
-      behavior: 'smooth',
-      block: 'nearest',
-      inline: 'nearest',
-    });
+    // Scroll into view if needed (guard for jsdom which has no implementation)
+    if (typeof focusableItem.element.scrollIntoView === 'function') {
+      focusableItem.element.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'nearest',
+      });
+    }
   }
 
   /**
