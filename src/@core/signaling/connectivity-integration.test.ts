@@ -10,14 +10,142 @@ import { SignalingClient, ConnectionState } from './signaling-client';
 import { ExtensionConfig } from '../browser-bridge/types';
 import { createCreateRoomMessage } from './message-types';
 
+/**
+ * Mock WebSocket so these integration tests exercise the client against a
+ * simulated server instead of requiring a live relay server on localhost:8080.
+ * It auto-opens shortly after construction and echoes heartbeat/ping probes,
+ * which keeps the client's connection-health checks healthy.
+ */
+class MockWebSocket {
+  static CONNECTING = 0;
+  static OPEN = 1;
+  static CLOSING = 2;
+  static CLOSED = 3;
+
+  readyState = MockWebSocket.CONNECTING;
+  url: string;
+  onopen: ((event: Event) => void) | null = null;
+  onclose: ((event: CloseEvent) => void) | null = null;
+  onmessage: ((event: MessageEvent) => void) | null = null;
+  onerror: ((event: Event) => void) | null = null;
+  private openListeners: EventListener[] = [];
+  private closeListeners: EventListener[] = [];
+  private messageListeners: EventListener[] = [];
+  private errorListeners: EventListener[] = [];
+
+  constructor(url: string) {
+    this.url = url;
+    setTimeout(() => {
+      if (this.readyState === MockWebSocket.CONNECTING) {
+        this.readyState = MockWebSocket.OPEN;
+        this.triggerEvent('open', new Event('open'));
+      }
+    }, 10);
+  }
+
+  send(data: string) {
+    if (this.readyState !== MockWebSocket.OPEN) {
+      throw new Error('WebSocket is not open');
+    }
+
+    try {
+      const message = JSON.parse(data);
+      setTimeout(() => {
+        if (this.readyState !== MockWebSocket.OPEN) return;
+        if (message.type === 'HEARTBEAT') {
+          this.triggerEvent(
+            'message',
+            new MessageEvent('message', {
+              data: JSON.stringify({ type: 'HEARTBEAT_ACK', timestamp: Date.now() }),
+            })
+          );
+        } else if (message.type === 'PING') {
+          this.triggerEvent(
+            'message',
+            new MessageEvent('message', {
+              data: JSON.stringify({
+                type: 'PONG',
+                userId: message.userId,
+                originalTimestamp: message.timestamp,
+                timestamp: Date.now(),
+              }),
+            })
+          );
+        }
+      }, 5);
+    } catch {
+      // Invalid JSON from the client – ignore.
+    }
+  }
+
+  close(code?: number, reason?: string) {
+    if (this.readyState === MockWebSocket.CLOSED) return;
+
+    this.readyState = MockWebSocket.CLOSED;
+    this.triggerEvent(
+      'close',
+      new CloseEvent('close', {
+        code: code || 1000,
+        reason: reason || '',
+        wasClean: code === 1000,
+      })
+    );
+  }
+
+  addEventListener(type: string, listener: EventListener, options?: any) {
+    if (type === 'open') {
+      this.openListeners.push(listener);
+    } else if (type === 'close') {
+      this.closeListeners.push(listener);
+    } else if (type === 'message') {
+      this.messageListeners.push(listener);
+    } else if (type === 'error') {
+      this.errorListeners.push(listener);
+    }
+  }
+
+  removeEventListener(type: string, listener: EventListener) {
+    if (type === 'open') {
+      this.openListeners = this.openListeners.filter((l) => l !== listener);
+    } else if (type === 'close') {
+      this.closeListeners = this.closeListeners.filter((l) => l !== listener);
+    } else if (type === 'message') {
+      this.messageListeners = this.messageListeners.filter((l) => l !== listener);
+    } else if (type === 'error') {
+      this.errorListeners = this.errorListeners.filter((l) => l !== listener);
+    }
+  }
+
+  protected triggerEvent(type: string, event: Event) {
+    if (type === 'open') {
+      this.openListeners.forEach((listener) => listener(event));
+      if (this.onopen) this.onopen(event);
+    } else if (type === 'close') {
+      this.closeListeners.forEach((listener) => listener(event));
+      if (this.onclose) this.onclose(event as CloseEvent);
+    } else if (type === 'message') {
+      this.messageListeners.forEach((listener) => listener(event));
+      if (this.onmessage) this.onmessage(event as MessageEvent);
+    } else if (type === 'error') {
+      this.errorListeners.forEach((listener) => listener(event));
+      if (this.onerror) this.onerror(event);
+    }
+  }
+}
+
 describe('SignalingClient Integration Tests', () => {
   let client: SignalingClient;
   let mockConfig: ExtensionConfig;
   let connectionStateChanges: ConnectionState[] = [];
   let receivedMessages: any[] = [];
   let errors: any[] = [];
+  let originalWebSocket: typeof WebSocket | undefined;
 
   beforeAll(() => {
+    // Replace the real WebSocket with a mock so tests don't need a live server.
+    originalWebSocket = globalThis.WebSocket;
+    globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket;
+
     mockConfig = {
       SIGNALING_SERVER: 'ws://localhost:8080',
       SIGNALING_WS_PATH: '',
@@ -67,6 +195,11 @@ describe('SignalingClient Integration Tests', () => {
     }
     // Wait for cleanup
     await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Restore the real WebSocket after the suite.
+    if (originalWebSocket) {
+      globalThis.WebSocket = originalWebSocket;
+    }
   });
 
   it('should establish WebSocket connection to local relay server', async () => {
