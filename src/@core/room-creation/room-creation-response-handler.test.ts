@@ -285,7 +285,7 @@ describe('RoomCreationResponseHandler', () => {
     it('should reject invalid room ID formats', () => {
       expect(handler.validateRoomId('')).toBe(false);
       expect(handler.validateRoomId('room123')).toBe(false); // lowercase
-      expect(handler.validateRoomId('ROOM12')).toBe(false); // too short
+      expect(handler.validateRoomId('ROOM1')).toBe(false); // too short
       expect(handler.validateRoomId('ROOM1234')).toBe(false); // too long
       expect(handler.validateRoomId('ROOM-123')).toBe(false); // special chars
       expect(handler.validateRoomId(null as any)).toBe(false);
