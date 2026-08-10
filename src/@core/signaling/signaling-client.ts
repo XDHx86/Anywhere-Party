@@ -102,14 +102,17 @@ export class SignalingClient {
       const serverUrl = this.buildServerUrl();
       console.log(`Connecting to signaling server: ${serverUrl} (Firefox: ${this.isFirefox})`);
 
-      // Firefox-specific WebSocket creation with additional error handling
-      if (this.isFirefox) {
-        this.ws = await this.createFirefoxWebSocket(serverUrl);
-      } else {
-        this.ws = new WebSocket(serverUrl);
-      }
-
+      // Create the socket and attach handlers *before* waiting for open.
+      // This avoids a race in the old path where createFirefoxWebSocket
+      // could resolve with an already-opened socket before setupWebSocketHandlers
+      // ran, leaving the implementation's onopen handler unattached.
+      this.ws = new WebSocket(serverUrl);
       this.setupWebSocketHandlers();
+
+      // Firefox-specific readiness check (timeout / early error detection)
+      if (this.isFirefox) {
+        await this.waitForFirefoxWebSocketReady();
+      }
 
       // Wait for connection to be established with timeout
       await this.waitForConnection();
@@ -384,18 +387,27 @@ export class SignalingClient {
 
       const onOpen = () => {
         clearTimeout(timeout);
+        this.ws?.removeEventListener('open', onOpen);
+        this.ws?.removeEventListener('error', onError);
+        this.ws?.removeEventListener('close', onClose);
         console.log('WebSocket connection established within timeout');
         resolve();
       };
 
       const onError = (error: Event) => {
         clearTimeout(timeout);
+        this.ws?.removeEventListener('open', onOpen);
+        this.ws?.removeEventListener('error', onError);
+        this.ws?.removeEventListener('close', onClose);
         console.error('WebSocket connection failed during establishment:', error);
         reject(new Error('WebSocket connection failed'));
       };
 
       const onClose = (event: CloseEvent) => {
         clearTimeout(timeout);
+        this.ws?.removeEventListener('open', onOpen);
+        this.ws?.removeEventListener('error', onError);
+        this.ws?.removeEventListener('close', onClose);
         console.error(
           'WebSocket closed during connection establishment:',
           event.code,
@@ -404,9 +416,9 @@ export class SignalingClient {
         reject(new Error(`WebSocket closed during connection: ${event.code} ${event.reason}`));
       };
 
-      this.ws.addEventListener('open', onOpen, { once: true });
-      this.ws.addEventListener('error', onError, { once: true });
-      this.ws.addEventListener('close', onClose, { once: true });
+      this.ws.addEventListener('open', onOpen);
+      this.ws.addEventListener('error', onError);
+      this.ws.addEventListener('close', onClose);
     });
   }
 
@@ -754,52 +766,50 @@ export class SignalingClient {
     return false;
   }
 
-  private async createFirefoxWebSocket(url: string): Promise<WebSocket> {
+  private waitForFirefoxWebSocketReady(): Promise<void> {
     return new Promise((resolve, reject) => {
-      try {
-        const ws = new WebSocket(url);
+      if (!this.ws) {
+        reject(new Error('WebSocket not initialized'));
+        return;
+      }
 
-        // Firefox may need additional time for WebSocket creation
-        const creationTimeout = setTimeout(() => {
-          reject(new Error('Firefox WebSocket creation timeout'));
-        }, 5000);
+      // Firefox may need additional time for WebSocket creation
+      const creationTimeout = setTimeout(() => {
+        reject(new Error('Firefox WebSocket creation timeout'));
+      }, 5000);
 
-        // Set up event listeners to detect when WebSocket is ready
-        const onOpen = () => {
-          clearTimeout(creationTimeout);
-          ws.removeEventListener('open', onOpen);
-          ws.removeEventListener('error', onError);
-          ws.removeEventListener('close', onClose);
-          resolve(ws);
-        };
+      const onOpen = () => {
+        clearTimeout(creationTimeout);
+        this.ws?.removeEventListener('open', onOpen);
+        this.ws?.removeEventListener('error', onError);
+        this.ws?.removeEventListener('close', onClose);
+        resolve();
+      };
 
-        const onError = (_error: Event) => {
-          clearTimeout(creationTimeout);
-          ws.removeEventListener('open', onOpen);
-          ws.removeEventListener('error', onError);
-          ws.removeEventListener('close', onClose);
-          reject(new Error('Firefox WebSocket failed to initialize'));
-        };
+      const onError = (_error: Event) => {
+        clearTimeout(creationTimeout);
+        this.ws?.removeEventListener('open', onOpen);
+        this.ws?.removeEventListener('error', onError);
+        this.ws?.removeEventListener('close', onClose);
+        reject(new Error('Firefox WebSocket failed to initialize'));
+      };
 
-        const onClose = (_event: CloseEvent) => {
-          clearTimeout(creationTimeout);
-          ws.removeEventListener('open', onOpen);
-          ws.removeEventListener('error', onError);
-          ws.removeEventListener('close', onClose);
-          reject(new Error('Firefox WebSocket closed during creation'));
-        };
+      const onClose = (_event: CloseEvent) => {
+        clearTimeout(creationTimeout);
+        this.ws?.removeEventListener('open', onOpen);
+        this.ws?.removeEventListener('error', onError);
+        this.ws?.removeEventListener('close', onClose);
+        reject(new Error('Firefox WebSocket closed during creation'));
+      };
 
-        ws.addEventListener('open', onOpen);
-        ws.addEventListener('error', onError);
-        ws.addEventListener('close', onClose);
+      this.ws.addEventListener('open', onOpen);
+      this.ws.addEventListener('error', onError);
+      this.ws.addEventListener('close', onClose);
 
-        // If WebSocket is already open (unlikely but possible)
-        if (ws.readyState === WebSocket.OPEN) {
-          clearTimeout(creationTimeout);
-          resolve(ws);
-        }
-      } catch (error) {
-        reject(new Error(`Firefox WebSocket creation failed: ${error}`));
+      // If WebSocket is already open (unlikely but possible)
+      if (this.ws.readyState === WebSocket.OPEN) {
+        clearTimeout(creationTimeout);
+        resolve();
       }
     });
   }

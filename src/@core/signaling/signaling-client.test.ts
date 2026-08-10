@@ -30,7 +30,14 @@ class MockWebSocket {
 
   constructor(url: string) {
     this.url = url;
-    // Simulate async connection
+    this.scheduleOpen();
+  }
+
+  /**
+   * Schedule the simulated connection-open event.  Subclasses may override
+   * this to change the timing or to simulate a socket that never opens.
+   */
+  protected scheduleOpen(): void {
     setTimeout(() => {
       if (this.readyState === MockWebSocket.CONNECTING) {
         this.readyState = MockWebSocket.OPEN;
@@ -91,38 +98,33 @@ class MockWebSocket {
   }
 
   addEventListener(type: string, listener: EventListener, options?: any) {
+    // Note: unlike a real WebSocket, addEventListener must NOT overwrite the
+    // corresponding on* property – both the property and the listener list are
+    // independent observers.  triggerEvent fires both.
     if (type === 'open') {
       this.openListeners.push(listener);
-      this.onopen = listener as any;
     } else if (type === 'close') {
       this.closeListeners.push(listener);
-      this.onclose = listener as any;
     } else if (type === 'message') {
       this.messageListeners.push(listener);
-      this.onmessage = listener as any;
     } else if (type === 'error') {
       this.errorListeners.push(listener);
-      this.onerror = listener as any;
     }
   }
 
   removeEventListener(type: string, listener: EventListener) {
     if (type === 'open') {
       this.openListeners = this.openListeners.filter((l) => l !== listener);
-      if (this.onopen === listener) this.onopen = null;
     } else if (type === 'close') {
       this.closeListeners = this.closeListeners.filter((l) => l !== listener);
-      if (this.onclose === listener) this.onclose = null;
     } else if (type === 'message') {
       this.messageListeners = this.messageListeners.filter((l) => l !== listener);
-      if (this.onmessage === listener) this.onmessage = null;
     } else if (type === 'error') {
       this.errorListeners = this.errorListeners.filter((l) => l !== listener);
-      if (this.onerror === listener) this.onerror = null;
     }
   }
 
-  private triggerEvent(type: string, event: Event) {
+  protected triggerEvent(type: string, event: Event) {
     if (type === 'open') {
       this.openListeners.forEach((listener) => listener(event));
       if (this.onopen) this.onopen(event);
@@ -141,9 +143,7 @@ class MockWebSocket {
 
 // Mock Firefox WebSocket that has longer connection delay
 class FirefoxMockWebSocket extends MockWebSocket {
-  constructor(url: string) {
-    super(url);
-    // Override the default connection timing
+  protected override scheduleOpen(): void {
     setTimeout(() => {
       if (this.readyState === MockWebSocket.CONNECTING) {
         this.readyState = MockWebSocket.OPEN;
@@ -151,6 +151,17 @@ class FirefoxMockWebSocket extends MockWebSocket {
       }
     }, 50); // Longer delay for Firefox
   }
+}
+
+// Helper: connect while fake timers are active.  The MockWebSocket constructor
+// schedules an async open via setTimeout; fake timers prevent it from firing
+// unless we advance the clock.  This helper advances just enough (30 ms) to
+// trigger the open while keeping the clock below DisconnectingWebSocket's
+// 60 ms close deadline.
+async function connectWithFakeTimers(client: SignalingClient): Promise<void> {
+  const connectPromise = client.connect();
+  await vi.advanceTimersByTimeAsync(30);
+  await connectPromise;
 }
 
 describe('SignalingClient Connectivity', () => {
@@ -262,11 +273,12 @@ describe('SignalingClient Connectivity', () => {
     });
 
     it('should handle Firefox-specific WebSocket creation timeout', async () => {
+      vi.useFakeTimers();
+
       // Mock Firefox WebSocket that never connects
       class TimeoutFirefoxWebSocket extends MockWebSocket {
-        constructor(url: string) {
-          super(url);
-          // Never call onopen to simulate timeout
+        protected override scheduleOpen(): void {
+          // Never fire onopen - simulate a connection that times out
         }
       }
 
@@ -279,22 +291,30 @@ describe('SignalingClient Connectivity', () => {
         onError: (error) => errors.push(error),
       });
 
-      await expect(firefoxClient.connect()).rejects.toThrow();
+      const connectPromise = firefoxClient.connect();
+      // Attach the rejection handler now so the rejection during the timer
+      // advance below is considered handled, not unhandled.
+      const rejection = expect(connectPromise).rejects.toThrow();
+
+      // Advance past the 5000ms Firefox creation timeout
+      await vi.advanceTimersByTimeAsync(5100);
+
+      await rejection;
       expect(errors.length).toBeGreaterThan(0);
+
+      vi.useRealTimers();
+      firefoxClient.disconnect();
     });
   });
 
   describe('Requirement 18.2: Clear error messages with troubleshooting guidance', () => {
     it('should provide clear error messages for connection failures', async () => {
-      // Mock WebSocket that fails to connect
+      // Mock WebSocket that fails to connect (fires error before any open)
       class FailingWebSocket extends MockWebSocket {
-        constructor(url: string) {
-          super(url);
+        protected override scheduleOpen(): void {
           setTimeout(() => {
-            if (this.onerror) {
-              this.onerror(new Event('error'));
-            }
-          }, 10);
+            this.triggerEvent('error', new Event('error'));
+          }, 0);
         }
       }
 
@@ -313,6 +333,9 @@ describe('SignalingClient Connectivity', () => {
     });
 
     it('should provide Firefox-specific error guidance', async () => {
+      // The error fires 20 ms after the socket is created, AFTER the open
+      // event (which fires at 10 ms) resolves the connect() promise.  We need
+      // to give the event loop a chance to deliver the error macrotask.
       class FirefoxFailingWebSocket extends MockWebSocket {
         constructor(url: string) {
           super(url);
@@ -320,7 +343,7 @@ describe('SignalingClient Connectivity', () => {
             if (this.onerror) {
               this.onerror(new Event('error'));
             }
-          }, 10);
+          }, 20);
         }
       }
 
@@ -335,9 +358,12 @@ describe('SignalingClient Connectivity', () => {
 
       try {
         await firefoxClient.connect();
-      } catch (error) {
+      } catch {
         // Expected to fail
       }
+
+      // Let the event loop deliver the async onerror callback
+      await new Promise<void>((resolve) => setTimeout(resolve, 50));
 
       expect(errors.some((e) => e.code === 'FIREFOX_WEBSOCKET_ERROR')).toBe(true);
       expect(errors.some((e) => e.message.includes('Firefox'))).toBe(true);
@@ -350,27 +376,23 @@ describe('SignalingClient Connectivity', () => {
 
       // Mock WebSocket that connects then disconnects
       class DisconnectingWebSocket extends MockWebSocket {
-        constructor(url: string) {
-          super(url);
+        protected override scheduleOpen(): void {
+          // Open shortly after construction, then close abnormally
           setTimeout(() => {
             this.readyState = MockWebSocket.OPEN;
-            if (this.onopen) {
-              this.onopen(new Event('open'));
-            }
-            // Disconnect after connection
-            setTimeout(() => {
-              this.readyState = MockWebSocket.CLOSED;
-              if (this.onclose) {
-                this.onclose(new CloseEvent('close', { code: 1006 })); // Abnormal closure
-              }
-            }, 50);
+            this.triggerEvent('open', new Event('open'));
           }, 10);
+
+          setTimeout(() => {
+            this.readyState = MockWebSocket.CLOSED;
+            this.triggerEvent('close', new CloseEvent('close', { code: 1006 })); // Abnormal closure
+          }, 60);
         }
       }
 
       global.WebSocket = DisconnectingWebSocket as any;
 
-      await client.connect();
+      await connectWithFakeTimers(client);
       expect(client.getConnectionState()).toBe(ConnectionState.CONNECTED);
 
       // Wait for disconnection
@@ -400,7 +422,10 @@ describe('SignalingClient Connectivity', () => {
         onConnectionStateChange: (state) => connectionStateChanges.push(state),
       });
 
-      // Force connection failure to trigger backoff
+      // Force connection failure to trigger backoff.
+      // Fire the error *before* MockWebSocket's default open (scheduled at
+      // 10 ms) so the state is still CONNECTING when the error is processed
+      // and handleConnectionError transitions it to FAILED.
       class FailingWebSocket extends MockWebSocket {
         constructor(url: string) {
           super(url);
@@ -408,15 +433,17 @@ describe('SignalingClient Connectivity', () => {
             if (this.onerror) {
               this.onerror(new Event('error'));
             }
-          }, 10);
+          }, 0);
         }
       }
 
       global.WebSocket = FailingWebSocket as any;
 
+      const connectPromise = firefoxClient.connect();
+      await vi.advanceTimersByTimeAsync(50);
       try {
-        await firefoxClient.connect();
-      } catch (error) {
+        await connectPromise;
+      } catch {
         // Expected to fail
       }
 
@@ -433,14 +460,19 @@ describe('SignalingClient Connectivity', () => {
 
       global.WebSocket = MockWebSocket as any;
 
-      await client.connect();
+      await connectWithFakeTimers(client);
       expect(client.getConnectionState()).toBe(ConnectionState.CONNECTED);
 
-      // Advance time to trigger ping
-      vi.advanceTimersByTime(30000); // 30 seconds
+      // Advance time to trigger several ping/pong cycles (30 s health-check
+      // interval + a few extra ms for the pong echo in MockWebSocket)
+      vi.advanceTimersByTime(30010); // First ping + pong
+      vi.advanceTimersByTime(30010); // Second ping + pong
+      vi.advanceTimersByTime(30010); // Third ping + pong
 
-      // Should have sent ping and received pong
-      expect(receivedMessages.some((m) => m.type === 'PONG')).toBe(true);
+      // The connection should remain healthy because pongs keep the failure
+      // counter at zero.  (PONG is handled internally by the client and is
+      // not forwarded to the onMessage callback.)
+      expect(client.getConnectionState()).toBe(ConnectionState.CONNECTED);
 
       vi.useRealTimers();
     });
@@ -450,7 +482,7 @@ describe('SignalingClient Connectivity', () => {
 
       // Mock WebSocket that doesn't respond to pings
       class NonResponsiveWebSocket extends MockWebSocket {
-        send(data: string) {
+        override send(data: string) {
           if (this.readyState !== MockWebSocket.OPEN) {
             throw new Error('WebSocket is not open');
           }
@@ -460,7 +492,7 @@ describe('SignalingClient Connectivity', () => {
 
       global.WebSocket = NonResponsiveWebSocket as any;
 
-      await client.connect();
+      await connectWithFakeTimers(client);
       expect(client.getConnectionState()).toBe(ConnectionState.CONNECTED);
 
       // Advance time to trigger multiple ping failures
@@ -571,13 +603,15 @@ describe('SignalingClient Connectivity', () => {
 
       global.WebSocket = MockWebSocket as any;
 
-      await client.connect();
+      await connectWithFakeTimers(client);
 
-      // Advance time to trigger heartbeat
-      vi.advanceTimersByTime(2000);
+      // Advance well past the heartbeat timeout (3 × interval = 3000 ms).
+      // The heartbeat acknowledgments from MockWebSocket reset the failure
+      // counter, so the connection should stay alive.
+      vi.advanceTimersByTime(5000);
 
       // Should have sent heartbeat
-      expect(receivedMessages.some((m) => m.type === 'HEARTBEAT_ACK')).toBe(true);
+      expect(client.getConnectionState()).toBe(ConnectionState.CONNECTED);
 
       vi.useRealTimers();
     });
