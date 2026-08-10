@@ -71,6 +71,10 @@ export class DataRetentionManager {
   private browserBridge: BrowserBridge;
   private settings: PrivacySettings;
   private cleanupInterval: ReturnType<typeof setInterval> | null = null;
+  // In-memory cache of requests, hydrated once from storage and written through
+  // on every mutation so status lookups stay consistent with updates.
+  private deletionRequestsCache: Record<string, DataDeletionRequest> | null = null;
+  private exportRequestsCache: Record<string, DataExportRequest> | null = null;
 
   constructor(browserBridge: BrowserBridge, settings: PrivacySettings) {
     this.browserBridge = browserBridge;
@@ -522,9 +526,43 @@ export class DataRetentionManager {
   /**
    * Cleanup methods for different data types
    */
-  private async cleanupChatMessages(_now: number, retentionDays: number): Promise<void> {
-    // Implementation would clean up chat messages older than the cutoff time
-    console.log(`Cleaning up chat messages older than ${retentionDays} days`);
+  private async cleanupChatMessages(now: number, retentionDays: number): Promise<void> {
+    const cutoff = now - retentionDays * 24 * 60 * 60 * 1000;
+
+    try {
+      const allData = await this.browserBridge.storage.local.get();
+      const retained: Record<string, unknown> = {};
+
+      for (const [key, value] of Object.entries(allData)) {
+        if (!key.toLowerCase().includes('chat') && !key.toLowerCase().includes('message')) {
+          retained[key] = value;
+          continue;
+        }
+
+        let timestamp: number | undefined;
+        if (typeof value === 'string') {
+          try {
+            timestamp = JSON.parse(value)?.timestamp;
+          } catch {
+            // Not JSON — keep it untouched
+          }
+        }
+
+        // Drop chat data older than the retention cutoff
+        if (typeof timestamp === 'number' && timestamp < cutoff) {
+          continue;
+        }
+        retained[key] = value;
+      }
+
+      if (Object.keys(retained).length !== Object.keys(allData).length) {
+        await this.browserBridge.storage.local.set(retained);
+      }
+
+      console.log(`Cleaning up chat messages older than ${retentionDays} days`);
+    } catch (error) {
+      console.error('Failed to clean up chat messages:', error);
+    }
   }
 
   private async cleanupRoomHistory(_now: number, retentionDays: number): Promise<void> {
@@ -564,23 +602,35 @@ export class DataRetentionManager {
   }
 
   private async getDeletionRequests(): Promise<Record<string, DataDeletionRequest>> {
+    if (this.deletionRequestsCache) {
+      return this.deletionRequestsCache;
+    }
     try {
       const stored = await this.browserBridge.storage.local.get('dataDeletionRequests');
-      return stored.dataDeletionRequests ? JSON.parse(stored.dataDeletionRequests as string) : {};
+      this.deletionRequestsCache = stored.dataDeletionRequests
+        ? JSON.parse(stored.dataDeletionRequests as string)
+        : {};
     } catch (error) {
       console.error('Failed to load deletion requests:', error);
-      return {};
+      this.deletionRequestsCache = {};
     }
+    return this.deletionRequestsCache ?? {};
   }
 
   private async getExportRequests(): Promise<Record<string, DataExportRequest>> {
+    if (this.exportRequestsCache) {
+      return this.exportRequestsCache;
+    }
     try {
       const stored = await this.browserBridge.storage.local.get('dataExportRequests');
-      return stored.dataExportRequests ? JSON.parse(stored.dataExportRequests as string) : {};
+      this.exportRequestsCache = stored.dataExportRequests
+        ? JSON.parse(stored.dataExportRequests as string)
+        : {};
     } catch (error) {
       console.error('Failed to load export requests:', error);
-      return {};
+      this.exportRequestsCache = {};
     }
+    return this.exportRequestsCache ?? {};
   }
 
   private async updateDeletionRequestStatus(

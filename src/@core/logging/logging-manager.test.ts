@@ -55,7 +55,7 @@ describe('LoggingManager', () => {
       ANNOTATION_RENDER_INTERVAL_MS: 16,
       RECONNECT_INTERVAL_MS: 5000,
       ROOM_STATE_TTL_MS: 300000,
-      LOCAL_DEV_MODE: false,
+      LOCAL_DEV_MODE: true, // Store telemetry locally (no remote endpoint in tests)
       OAUTH_ENABLED: false,
       OAUTH_PROVIDERS: {},
       ALLOW_ANONYMOUS_USERS: true,
@@ -84,7 +84,7 @@ describe('LoggingManager', () => {
 
   describe('Initialization', () => {
     it('should initialize with correct telemetry opt-out default', async () => {
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       const optOutStatus = await loggingManager.getTelemetryOptOutStatus();
       expect(optOutStatus).toBe(true); // Should default to opt-out when TELEMETRY_ENABLED is false
@@ -93,7 +93,7 @@ describe('LoggingManager', () => {
     it('should enable telemetry when explicitly configured', async () => {
       config.TELEMETRY_ENABLED = true;
       const manager = new LoggingManager(mockBrowserBridge, config);
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       // Should still default to opt-out even when enabled
       const optOutStatus = await manager.getTelemetryOptOutStatus();
@@ -103,7 +103,7 @@ describe('LoggingManager', () => {
 
   describe('Sync Event Logging (Requirement 16.1)', () => {
     it('should log sync events with required fields', async () => {
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       loggingManager.logSyncEvent({
         type: 'drift_correction',
@@ -115,7 +115,7 @@ describe('LoggingManager', () => {
         participantCount: 3,
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       // Check that logs were stored
       const setCall = (mockBrowserBridge.storage.local.set as any).mock.calls.find(
@@ -135,7 +135,7 @@ describe('LoggingManager', () => {
 
     it('should track sync events in telemetry when opted in', async () => {
       await loggingManager.setTelemetryOptOut(false);
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       loggingManager.logSyncEvent({
         type: 'play',
@@ -145,7 +145,7 @@ describe('LoggingManager', () => {
       });
 
       vi.advanceTimersByTime(30000); // Trigger telemetry flush
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       const telemetryCall = (mockBrowserBridge.storage.local.set as any).mock.calls.find(
         (call) => call[0].watchPartyTelemetry
@@ -156,7 +156,7 @@ describe('LoggingManager', () => {
 
   describe('Connection Event Logging (Requirement 16.1)', () => {
     it('should log connection state changes', async () => {
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       loggingManager.logConnectionEvent({
         state: 'connected',
@@ -164,7 +164,7 @@ describe('LoggingManager', () => {
         duration: 1500,
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       const setCall = (mockBrowserBridge.storage.local.set as any).mock.calls.find(
         (call) => call[0].watchPartyLogs
@@ -181,7 +181,7 @@ describe('LoggingManager', () => {
 
   describe('Error Event Logging (Requirement 16.1)', () => {
     it('should log error conditions', async () => {
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       loggingManager.logErrorEvent({
         component: 'sync-engine',
@@ -191,7 +191,7 @@ describe('LoggingManager', () => {
         context: { drift: 1000 },
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       const setCall = (mockBrowserBridge.storage.local.set as any).mock.calls.find(
         (call) => call[0].watchPartyLogs
@@ -210,7 +210,7 @@ describe('LoggingManager', () => {
 
   describe('Performance Monitoring (Requirement 16.3)', () => {
     it('should log performance metrics', async () => {
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       loggingManager.logPerformanceMetrics({
         syncLatency: 50,
@@ -221,7 +221,7 @@ describe('LoggingManager', () => {
         cpuUsage: 25,
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       const setCall = (mockBrowserBridge.storage.local.set as any).mock.calls.find(
         (call) => call[0].watchPartyLogs
@@ -239,22 +239,23 @@ describe('LoggingManager', () => {
   describe('User Action Tracking', () => {
     it('should track user actions in both logs and telemetry', async () => {
       await loggingManager.setTelemetryOptOut(false);
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       loggingManager.trackUserAction('create_room', {
         hasPassword: true,
         isPublic: false,
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
       vi.advanceTimersByTime(30000);
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
-      // Check logs
-      const logCall = (mockBrowserBridge.storage.local.set as any).mock.calls.find(
+      // Check logs. Each log write persists independently, and opting in above
+      // writes a telemetry_config entry first, so search across all log batches.
+      const logCalls = (mockBrowserBridge.storage.local.set as any).mock.calls.filter(
         (call) => call[0].watchPartyLogs
       );
-      const logs = logCall[0].watchPartyLogs;
+      const logs = logCalls.flatMap((call) => call[0].watchPartyLogs as any[]);
       const actionLog = logs.find((log: any) => log.event === 'user_action');
       expect(actionLog).toBeDefined();
 
@@ -298,14 +299,14 @@ describe('LoggingManager', () => {
 
   describe('Room and User Management', () => {
     it('should set user and room IDs for both logger and telemetry', async () => {
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       loggingManager.setUserId('user123');
       loggingManager.setRoomId('room456');
 
       loggingManager.info('test_event', 'Test message');
 
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       const setCall = (mockBrowserBridge.storage.local.set as any).mock.calls.find(
         (call) => call[0].watchPartyLogs
@@ -320,7 +321,7 @@ describe('LoggingManager', () => {
 
   describe('Configuration Updates', () => {
     it('should allow updating logging configuration', async () => {
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       loggingManager.updateLoggingConfig({
         level: 'debug',
@@ -328,7 +329,7 @@ describe('LoggingManager', () => {
       });
 
       // Should log the configuration update
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       const setCall = (mockBrowserBridge.storage.local.set as any).mock.calls.find(
         (call) => call[0].watchPartyLogs
@@ -341,14 +342,14 @@ describe('LoggingManager', () => {
     });
 
     it('should allow updating telemetry configuration', async () => {
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       loggingManager.updateTelemetryConfig({
         batchSize: 100,
         flushInterval: 60000,
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.advanceTimersByTimeAsync(10);
 
       const setCall = (mockBrowserBridge.storage.local.set as any).mock.calls.find(
         (call) => call[0].watchPartyLogs

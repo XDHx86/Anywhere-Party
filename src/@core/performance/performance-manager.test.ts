@@ -262,8 +262,10 @@ describe('PerformanceManager', () => {
     });
 
     it('should record video performance metrics', () => {
+      // Fake timers replace performance.now with a fake clock, so advance the
+      // fake clock instead of mocking performance.now() directly.
       performanceManager.recordVideoDetectionStart();
-      mockPerformanceNow.mockReturnValue(1100); // 100ms later
+      vi.advanceTimersByTime(100); // 100ms later
       performanceManager.recordVideoDetectionEnd();
 
       performanceManager.recordRenderingLatency(16);
