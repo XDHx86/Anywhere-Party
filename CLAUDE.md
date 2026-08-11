@@ -172,8 +172,7 @@ After context loss, restore in this order:
 
 # Critical Notes
 
-- **Git is initialized** — branch `main`, remote `github.com/XDHx86/Anywhere-Party`. CI (`ci.yml`) runs lint, format, typecheck, build, test, coverage, mutation.
-- **CI typecheck/test are non-blocking** — 463 pre-existing MUI7/React19 type mismatches; ~19% unit-test failures are timing-sensitive / Node 24 jsdom incompatibility. CI runs Node 18.
+- **Git is initialized** — branch `main`, remote `github.com/XDHx86/Anywhere-Party`. CI has four workflows: `ci.yml` (blocking: lint, format, typecheck, build, test+coverage, server-test — all parallel), `ci-lint.yml` (actionlint, shellcheck, gitleaks secret scan, compose validate), `ci-nightly.yml` (mutation testing, dependency audit, Docker builds — nightly + main push), `docker-publish.yml` (GHCR push on version tags). CI runs Node 24 (Node 22 for server jobs, matching production Docker images). All Actions pinned to immutable SHA.
 - **webpack auto-creates placeholder assets** — missing assets produce warnings, not errors. Check build output carefully.
 - **Firefox uses MV2** — `manifest-firefox.json` uses `manifest_version: 2`. Chrome uses MV3.
 - **Two spec generations** — requirements 1–28 are core features; 29–46 are runtime fixes. Code comments reference both numbering schemes.

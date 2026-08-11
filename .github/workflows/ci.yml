@@ -1,153 +1,186 @@
-name: CI Pipeline
+# CI Pipeline — fast quality gates for pull requests and pushes to main/develop.
+#
+# Design notes:
+#   * All jobs run in PARALLEL — they share no state, so a serial `needs:` chain
+#     only added latency. Each job does its own checkout + `npm ci` (cached by
+#     setup-node). Dependency install is the only duplication, and it is cached.
+#   * Every check is BLOCKING. The old `continue-on-error: true` flags on
+#     typecheck/test silently swallowed failures; they were removed once the
+#     codebase was stabilized. A red job now means a red PR.
+#   * Expensive, slow checks (Stryker mutation testing, dependency audit, full
+#     Docker image builds) live in `.github/workflows/ci-nightly.yml` so they
+#     never block the fast PR feedback loop.
+#   * All actions are pinned to immutable commit SHAs (supply-chain hardening).
+#     Bump via Dependabot (`github-actions` ecosystem) and update the comment.
+#   * Docs-only changes skip the pipeline to avoid burning runner minutes.
+
+name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - ".claude/**"
+      - ".github/dependabot.yml"
+      - ".github/CODEOWNERS"
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - ".claude/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Standardized runtime for extension tooling. Matches local development and
+  # the current LTS line. The server service intentionally uses Node 22 in
+  # production (node:22-alpine base images) — see the server-test job.
+  NODE_VERSION: "24"
+  # Node LTS used by the production server images (server/Dockerfile*).
+  SERVER_NODE_VERSION: "22"
 
 jobs:
   lint:
-    name: Lint
+    name: Lint (ESLint + Prettier)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
+      - name: Checkout
+        # actions/checkout v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        # actions/setup-node v7.0.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
-          node-version: '24'
-          cache: 'npm'
-
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
       - name: Install dependencies
         run: npm ci
-
       - name: Run ESLint
         run: npm run lint
-
       - name: Check Prettier formatting
         run: npm run format:check
 
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest
-    needs: lint
+    timeout-minutes: 10
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
+      - name: Checkout
+        # actions/checkout v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        # actions/setup-node v7.0.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
-          node-version: '24'
-          cache: 'npm'
-
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
       - name: Install dependencies
         run: npm ci
-
       - name: Run TypeScript compiler
         run: npm run typecheck
-        continue-on-error: true
 
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: typecheck
+    timeout-minutes: 15
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
+      - name: Checkout
+        # actions/checkout v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        # actions/setup-node v7.0.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
-          node-version: '24'
-          cache: 'npm'
-
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
       - name: Install dependencies
         run: npm ci
-
-      - name: Build extension
+      - name: Build extension (Chrome + Firefox)
         run: npm run build
-
+      - name: Validate build artifacts
+        run: node scripts/validate-assets.js
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        # actions/upload-artifact v7.0.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: extension-build
           path: dist/
+          retention-days: 7
+          if-no-files-found: error
 
   test:
-    name: Test
+    name: Test + Coverage
     runs-on: ubuntu-latest
-    needs: build
+    timeout-minutes: 15
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
+      - name: Checkout
+        # actions/checkout v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        # actions/setup-node v7.0.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
-          node-version: '24'
-          cache: 'npm'
-
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
       - name: Install dependencies
         run: npm ci
-
-      - name: Run tests
-        run: npm run test
-        continue-on-error: true
-
-  coverage:
-    name: Coverage
-    runs-on: ubuntu-latest
-    needs: test
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
+      # One Vitest run serves as both the unit test gate and the coverage gate
+      # (thresholds are enforced in vitest.config.ts) — no redundant double run.
       - name: Run tests with coverage
         run: npm run test:coverage
-
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v3
+      - name: Upload coverage report
+        # actions/upload-artifact v7.0.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          file: ./coverage/lcov.info
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+          if-no-files-found: warn
+      # Codecov is not mandatory: it is optional infra, so a missing/unconfigured
+      # token must never fail the build. Uploads only on push to avoid PR noise.
+      - name: Upload coverage to Codecov
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        continue-on-error: true
+        # codecov/codecov-action v7.0.0
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f
+        with:
+          files: ./coverage/lcov.info
           flags: unittests
-          name: codecov-umbrella
+          fail_ci_if_error: false
 
-  mutation-test:
-    name: Mutation Testing
+  server-test:
+    name: Server Tests
     runs-on: ubuntu-latest
-    needs: coverage
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: server
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
+      - name: Checkout
+        # actions/checkout v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        # actions/setup-node v7.0.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
-          node-version: '24'
-          cache: 'npm'
-
+          # Server runs on node:22-alpine in production — test against the same
+          # runtime the container ships.
+          node-version: ${{ env.SERVER_NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: server/package-lock.json
       - name: Install dependencies
         run: npm ci
-
-      - name: Run mutation tests
-        run: npm run test:mutation
-        continue-on-error: true
-
-      - name: Upload mutation test results
-        uses: actions/upload-artifact@v4
-        with:
-          name: mutation-test-results
-          path: reports/mutation/
+      # Run only the feature-flags unit test (self-contained, no server needed).
+      # `test-relay.js` is an integration test requiring a running relay server
+      # — run it locally with `npm run server:dev` then `npm run server:test`.
+      - name: Run server tests
+        run: npm run test:feature-flags

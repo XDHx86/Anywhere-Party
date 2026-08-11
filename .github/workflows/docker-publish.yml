@@ -1,0 +1,103 @@
+# Docker Publish — build and push server images to GitHub Container Registry.
+#
+# Triggers on version tags (v*) and manual dispatch. Pushes to ghcr.io.
+# Uses Docker Buildx with layer caching for fast rebuilds.
+# Follows the image naming: ghcr.io/<owner>/<repo>-<service>:<tag>.
+
+name: "Docker Publish"
+
+on:
+  push:
+    tags:
+      - "v*.*.*"  # e.g. v1.0.0, v1.2.3-rc.1
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Image tag override (e.g. latest, rc-1)"
+        required: false
+        default: "latest"
+
+permissions:
+  contents: read
+  packages: write # push to ghcr.io
+
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  # images are namespaced under the repo owner (XDHx86)
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
+
+jobs:
+  build-and-push:
+    name: "Build + Push (${{ matrix.service }})"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - service: server
+            context: ./server
+            dockerfile: Dockerfile.prod
+            tag-suffix: ""
+          - service: feature-flags
+            context: ./server
+            dockerfile: Dockerfile.feature-flags.prod
+            tag-suffix: "-feature-flags"
+    steps:
+      - name: Checkout
+        # actions/checkout v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Set up QEMU (multi-arch support)
+        # docker/setup-qemu-action v3
+        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392
+        with:
+          platforms: linux/amd64,linux/arm64
+
+      - name: Set up Docker Buildx
+        # docker/setup-buildx-action v4.2.0
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c
+
+      - name: Log in to GitHub Container Registry
+        # docker/login-action v4.6.0
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract image metadata
+        id: meta
+        # docker/metadata-action v6.2.0
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302
+        with:
+          images: ${{ env.IMAGE_PREFIX }}${{ matrix.tag-suffix }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ inputs.tag }},enable=${{ inputs.tag != '' }}
+
+      - name: Build and push
+        # docker/build-push-action v7.3.0
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.context }}/${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+      - name: Print image digest
+        run: |
+          echo "✅ Pushed ${{ matrix.service }} image:"
+          echo "   Tags: ${{ steps.meta.outputs.tags }}"
+          echo "   Digest: ${{ steps.meta.outputs.digest }}"

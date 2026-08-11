@@ -1,0 +1,22 @@
+# Code Owners — defines default reviewers for all pull requests.
+# Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything (unless overridden below)
+* @XDHx86
+
+# CI/CD and infrastructure
+.github/ @XDHx86
+docker-compose*.yml @XDHx86
+server/Dockerfile* @XDHx86
+nginx/ @XDHx86
+monitoring/ @XDHx86
+scripts/ @XDHx86
+
+# Extension core
+src/@core/ @XDHx86
+
+# Extension UI
+src/@ui/ @XDHx86
+
+# Server
+server/ @XDHx86

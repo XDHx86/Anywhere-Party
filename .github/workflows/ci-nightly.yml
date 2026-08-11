@@ -1,0 +1,156 @@
+# Nightly / post-merge quality pipeline — expensive checks that must not block
+# the fast PR feedback loop in ci.yml.
+#
+# Runs:
+#   • Scheduled nightly at 03:17 UTC (avoid :00 / :30 congestion).
+#   • On every push to main (post-merge regression gate).
+#   • On-demand via workflow_dispatch (debug / scheduled reruns).
+#
+# All jobs run in parallel for wall-clock speed. A failure on main alerts the
+# maintainer; a nightly failure surfaces in the Actions tab next morning.
+
+name: "CI (Nightly)"
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 3 * * *" # nightly at 03:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "24"
+  SERVER_NODE_VERSION: "22"
+
+jobs:
+  # ── Mutation Testing (Stryker) ───────────────────────────────────────────────
+  mutation-test:
+    name: "Mutation Testing (Stryker)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        # actions/checkout v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Setup Node.js
+        # actions/setup-node v7.0.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Run Stryker mutation tests
+        run: npm run test:mutation
+      - name: Upload mutation report
+        if: always()
+        # actions/upload-artifact v7.0.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: mutation-test-results
+          path: |
+            reports/mutation/
+            .stryker-reports/
+          retention-days: 14
+          if-no-files-found: warn
+
+  # ── Dependency Vulnerability Audit ───────────────────────────────────────────
+  dependency-audit:
+    name: "Dependency Audit"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        # actions/checkout v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Setup Node.js
+        # actions/setup-node v7.0.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      # `npm audit` returns non-zero on any vulnerability — even informational.
+      # Use `--audit-level=moderate` to only fail on moderate+ severity.
+      - name: Run npm audit (root)
+        run: npm audit --audit-level=moderate
+      - name: Run npm audit (server)
+        working-directory: server
+        run: npm audit --audit-level=moderate
+
+  # ── Docker Image Build Validation ───────────────────────────────────────────
+  docker-build:
+    name: "Docker Build"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        # actions/checkout v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Set up Docker Buildx
+        # docker/setup-buildx-action v4.2.0
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c
+      - name: Build dev server image
+        run: docker build --pull --no-cache -f server/Dockerfile server/
+      - name: Build production server image
+        run: docker build --pull --no-cache -f server/Dockerfile.prod server/
+      - name: Build feature-flags dev image
+        run: docker build --pull --no-cache -f server/Dockerfile.feature-flags server/
+      - name: Build feature-flags prod image
+        run: docker build --pull --no-cache -f server/Dockerfile.feature-flags.prod server/
+      - name: Validate compose dev config
+        run: docker compose -f docker-compose.yml config -q
+      - name: Validate compose prod config
+        env:
+          POSTGRES_PASSWORD: "ci-placeholder"
+          JWT_SECRET: "ci-placeholder"
+          ENCRYPTION_KEY: "ci-placeholder-32-characters"
+          DATABASE_URL: "postgresql://test:test@localhost:5432/test"
+        run: docker compose -f docker-compose.prod.yml config -q
+
+  # ── Full Test Coverage Snapshot (nightly) ───────────────────────────────────
+  coverage:
+    name: "Full Coverage Report"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        # actions/checkout v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Setup Node.js
+        # actions/setup-node v7.0.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Generate full coverage report
+        run: npm run test:coverage
+      - name: Upload coverage report
+        if: always()
+        # actions/upload-artifact v7.0.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: nightly-coverage
+          path: coverage/
+          retention-days: 30
+          if-no-files-found: warn
+      # Codecov upload (nightly only) — non-blocking, optional infrastructure.
+      - name: Upload coverage to Codecov
+        if: always()
+        continue-on-error: true
+        # codecov/codecov-action v7.0.0
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f
+        with:
+          files: ./coverage/lcov.info
+          flags: nightly
+          fail_ci_if_error: false

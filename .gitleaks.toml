@@ -1,0 +1,28 @@
+# Gitleaks configuration — secret-scan allowlist for this repository.
+# https://github.com/gitleaks/gitleaks#configuration
+
+[allowlist]
+# Paths that are safe to exclude from scanning
+paths = [
+  "docs/",
+  ".claude/docs/",
+  "coverage/",
+  "reports/",
+  ".stryker-tmp/",
+  "server/database/seed.sql",
+  "package-lock.json",
+  "server/package-lock.json",
+  "node_modules/",
+]
+
+# Regex patterns to allowlist (matched against full leak match text)
+regexes = [
+  # Dev/test credentials that are intentionally committed (never real secrets)
+  """watchparty_dev""",
+  """dev-jwt-secret-key-change-in-production""",
+  """dev-encryption-key-32-chars-long""",
+  """dev-turn-password""",
+  """localhost""",
+  # Commitlint config and docs reference conventional commit patterns
+  """@commitlint/config-conventional""",
+]
