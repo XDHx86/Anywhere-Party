@@ -17,6 +17,7 @@ build/
 .env.production.local
 extension-config.local.json
 tmp/
+.stryker-incremental.json
 
 # IDE and editor files
 .vscode/

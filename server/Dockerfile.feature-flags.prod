@@ -1,9 +1,13 @@
-# Feature Flags Service — development
+# Feature Flags Service — production
 # Zero external dependencies: only uses Node builtins (http, url, crypto)
+# Adds dumb-init for proper signal handling when running as PID 1
 
 FROM node:22-alpine
 
+RUN apk add --no-cache dumb-init
+
 WORKDIR /app
+ENV NODE_ENV=production
 
 # Copy only the two runtime JS files
 COPY feature-flags-server.js feature-flags.js ./
@@ -21,4 +25,5 @@ EXPOSE 3002
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
     CMD node -e "const p=process.env.FEATURE_FLAGS_PORT||8081;require('net').connect(p,'localhost',()=>process.exit(0)).on('error',()=>process.exit(1))"
 
+ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "feature-flags-server.js"]

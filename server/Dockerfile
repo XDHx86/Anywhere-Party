@@ -1,38 +1,28 @@
 # Development Dockerfile for Watch Party Extension Server
-FROM node:18-alpine
+# Lightweight image for local development — no curl, no postgres clients
 
-# Set working directory
+FROM node:22-alpine
+
 WORKDIR /app
 
-# Install system dependencies
-RUN apk add --no-cache \
-    curl \
-    postgresql-client \
-    redis
-
-# Copy package files
-COPY package*.json ./
-
-# Install dependencies
-RUN npm ci --only=production
+# Install dependencies (with lockfile for reproducible builds)
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
 
 # Copy source code
 COPY . .
 
-# Create non-root user
+# Non-root user
 RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+    adduser -S nodejs -u 1001 && \
+    chown -R nodejs:nodejs /app
 
-# Change ownership of app directory
-RUN chown -R nodejs:nodejs /app
 USER nodejs
-
-# Expose port
 EXPOSE 3001
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:3001/health || exit 1
+# TCP liveness check — local-relay is a pure WebSocket server (no HTTP /health).
+# Reads PORT (default 8080) so the check always targets the actual listen port.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD node -e "const p=process.env.PORT||8080;require('net').connect(p,'localhost',()=>process.exit(0)).on('error',()=>process.exit(1))"
 
-# Start server
 CMD ["npm", "start"]

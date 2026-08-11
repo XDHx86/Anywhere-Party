@@ -131,7 +131,7 @@ scripts\setup.bat
 
 4. **Start local development server**
    ```bash
-   npm run dev:server
+   npm run server:dev
    ```
 
 5. **Build extension**

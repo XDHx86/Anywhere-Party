@@ -1,0 +1,36 @@
+# Docker build context exclusions for server/
+# Prevents secrets, node_modules, tests, and unnecessary files from entering build context
+
+# Dependencies — must be installed via npm ci in Dockerfile
+node_modules/
+
+# Secrets and environment — never bake into images
+.env
+.env.*
+!.env.example
+
+# Build artifacts and caches
+npm-debug.log*
+logs/
+cache/
+tmp/
+
+# Test files
+test-*.js
+
+# Documentation (not needed in container)
+README.md
+.dockerignore
+
+# Docker build files (not needed inside image)
+Dockerfile
+Dockerfile.prod
+Dockerfile.feature-flags
+Dockerfile.feature-flags.prod
+
+# Database schemas (only mounted via volume, not baked in)
+database/
+
+# Stryker / mutation testing
+stryker*
+reports/

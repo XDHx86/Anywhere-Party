@@ -257,12 +257,16 @@ Initialization Status:
         font-size: 12px;
       `;
 
-      diagnosticElement.innerHTML = `
-        <summary style="cursor: pointer; font-weight: bold; margin-bottom: 8px;">
-          🔍 Diagnostic Information
-        </summary>
-        <pre style="margin: 0; white-space: pre-wrap;">${report}</pre>
-      `;
+      const summary = document.createElement('summary');
+      summary.style.cssText = 'cursor: pointer; font-weight: bold; margin-bottom: 8px;';
+      summary.textContent = '🔍 Diagnostic Information';
+
+      const pre = document.createElement('pre');
+      pre.style.cssText = 'margin: 0; white-space: pre-wrap;';
+      pre.textContent = report;
+
+      diagnosticElement.appendChild(summary);
+      diagnosticElement.appendChild(pre);
 
       container.appendChild(diagnosticElement);
     }

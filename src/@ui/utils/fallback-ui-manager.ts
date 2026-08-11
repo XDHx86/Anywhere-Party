@@ -1364,6 +1364,11 @@ export class FallbackUIManager {
   }
 
   private showCriticalError(message: string): void {
+    // Escape user/error message to prevent XSS
+    const div = document.createElement('div');
+    div.textContent = message;
+    const safeMessage = div.innerHTML;
+
     document.body.innerHTML = `
       <div style="
         display: flex;
@@ -1376,8 +1381,8 @@ export class FallbackUIManager {
       ">
         <div>
           <h2 style="color: #f44336; margin-bottom: 16px;">Critical Error</h2>
-          <p style="margin-bottom: 16px;">${message}</p>
-          <button onclick="window.location.reload()" style="
+          <p style="margin-bottom: 16px;">${safeMessage}</p>
+          <button id="wp-reload-btn" style="
             padding: 10px 20px;
             background: #6200EE;
             color: white;
@@ -1388,6 +1393,9 @@ export class FallbackUIManager {
         </div>
       </div>
     `;
+    document
+      .getElementById('wp-reload-btn')
+      ?.addEventListener('click', () => window.location.reload());
   }
 }
 
