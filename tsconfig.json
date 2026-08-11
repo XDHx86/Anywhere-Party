@@ -11,7 +11,6 @@
     "declaration": true,
     "outDir": "./dist",
     "rootDir": "./src",
-    "baseUrl": ".",
     "jsx": "react-jsx",
     "allowSyntheticDefaultImports": true,
 
@@ -23,8 +22,8 @@
     "isolatedModules": true,
 
     "paths": {
-      "@core/*": ["src/@core/*"],
-      "@ui/*": ["src/@ui/*"]
+      "@core/*": ["./src/@core/*"],
+      "@ui/*": ["./src/@ui/*"]
     },
     "types": ["chrome", "webextension-polyfill", "vitest/globals", "node"]
   },
