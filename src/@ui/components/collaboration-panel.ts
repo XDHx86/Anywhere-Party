@@ -518,6 +518,41 @@ export class CollaborationPanel {
       this.searchBookmarks();
     });
 
+    // Delegated handler for dynamically-created action buttons
+    // Replaces inline onclick attributes (CSP-non-compliant in MV3 extension pages)
+    this.container.addEventListener('click', (e) => {
+      const target = (e.target as HTMLElement).closest('[data-action]');
+      if (!target) return;
+      const el = target as HTMLElement;
+      const action = el.dataset.action;
+      const value = el.dataset.value;
+      const detail = el.dataset.detail;
+      let parsedDetail: unknown = detail;
+      if (detail !== undefined) {
+        try {
+          parsedDetail = JSON.parse(detail);
+        } catch {
+          /* keep raw string */
+        }
+      }
+
+      const panel = this.container.querySelector('.collaboration-panel') ?? this.container;
+      switch (action) {
+        case 'vote-poll':
+          panel.dispatchEvent(new CustomEvent('vote-poll', { detail: value }));
+          break;
+        case 'seek-to':
+          panel.dispatchEvent(new CustomEvent('seek-to', { detail: Number(value) }));
+          break;
+        case 'join-whiteboard':
+          panel.dispatchEvent(new CustomEvent('join-whiteboard', { detail: value }));
+          break;
+        case 'download-export':
+          panel.dispatchEvent(new CustomEvent('download-export', { detail: parsedDetail }));
+          break;
+      }
+    });
+
     // Whiteboard
     this.container.querySelector('#create-whiteboard')?.addEventListener('click', () => {
       this.createWhiteboardSession();
@@ -531,6 +566,23 @@ export class CollaborationPanel {
     this.container.querySelector('#create-moment')?.addEventListener('click', () => {
       this.createShareableMoment();
     });
+  }
+
+  /** Escape HTML entities — use for any remote/user-controlled string interpolated into innerHTML. */
+  private escapeHtml(text: string): string {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  /** Escape a string for safe use inside an HTML attribute value. */
+  private escapeAttr(text: string): string {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/'/g, '&#39;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
   }
 
   private setupVideoTimeTracking(): void {
@@ -900,14 +952,14 @@ export class CollaborationPanel {
       const itemElement = document.createElement('div');
       itemElement.className = 'item-card';
       itemElement.innerHTML = `
-        <div class="item-title">${item.title}</div>
+        <div class="item-title">${this.escapeHtml(item.title)}</div>
         <div class="item-meta">
-          ${'question' in item ? 'Poll' : 'Quiz'} • 
-          Created by ${item.userName || 'Anonymous'} • 
+          ${'question' in item ? 'Poll' : 'Quiz'} •
+          Created by ${this.escapeHtml(item.userName || 'Anonymous')} •
           ${Math.round((item.expiresAt - Date.now()) / 1000)}s remaining
         </div>
         <div class="item-actions">
-          <button onclick="this.closest('.collaboration-panel').dispatchEvent(new CustomEvent('vote-poll', {detail: '${item.id}'}))">
+          <button data-action="vote-poll" data-value="${this.escapeAttr(item.id)}">
             ${'question' in item ? 'Vote' : 'Take Quiz'}
           </button>
         </div>
@@ -962,16 +1014,16 @@ export class CollaborationPanel {
               .padStart(2, '0')}`;
 
       itemElement.innerHTML = `
-        <div class="item-title">${item.type === 'bookmark' ? '🔖' : '✨'} ${item.title}</div>
+        <div class="item-title">${item.type === 'bookmark' ? '🔖' : '✨'} ${this.escapeHtml(item.title)}</div>
         <div class="item-meta">
-          ${item.type === 'bookmark' ? 'Bookmark' : 'Highlight'} • 
-          ${timestamp} • 
-          By ${item.userName || 'Anonymous'}
+          ${item.type === 'bookmark' ? 'Bookmark' : 'Highlight'} •
+          ${timestamp} •
+          By ${this.escapeHtml(item.userName || 'Anonymous')}
         </div>
-        ${item.description ? `<div style="font-size: 12px; color: #6c757d; margin: 4px 0;">${item.description}</div>` : ''}
-        ${item.tags.length > 0 ? `<div style="font-size: 11px; color: #007bff;">${item.tags.map((tag) => `#${tag}`).join(' ')}</div>` : ''}
+        ${item.description ? `<div style="font-size: 12px; color: #6c757d; margin: 4px 0;">${this.escapeHtml(item.description)}</div>` : ''}
+        ${item.tags.length > 0 ? `<div style="font-size: 11px; color: #007bff;">${item.tags.map((tag) => `#${this.escapeHtml(tag)}`).join(' ')}</div>` : ''}
         <div class="item-actions">
-          <button onclick="this.closest('.collaboration-panel').dispatchEvent(new CustomEvent('seek-to', {detail: ${item.type === 'bookmark' ? item.videoTimestamp : item.startTimestamp}}))">
+          <button data-action="seek-to" data-value="${item.type === 'bookmark' ? item.videoTimestamp : item.startTimestamp}">
             Go to Time
           </button>
         </div>
@@ -1001,12 +1053,12 @@ export class CollaborationPanel {
       itemElement.innerHTML = `
         <div class="item-title">🎨 Whiteboard Session</div>
         <div class="item-meta">
-          ${session.participants.length} participants • 
-          ${session.layers.length} layers • 
+          ${session.participants.length} participants •
+          ${session.layers.length} layers •
           Created ${new Date(session.createdAt).toLocaleString()}
         </div>
         <div class="item-actions">
-          <button onclick="this.closest('.collaboration-panel').dispatchEvent(new CustomEvent('join-whiteboard', {detail: '${session.id}'}))">
+          <button data-action="join-whiteboard" data-value="${this.escapeAttr(session.id)}">
             Join Session
           </button>
         </div>
@@ -1032,8 +1084,8 @@ export class CollaborationPanel {
       const toolElement = document.createElement('div');
       toolElement.className = 'tool-item';
       toolElement.innerHTML = `
-        <div class="tool-icon">${tool.icon}</div>
-        <div class="tool-name">${tool.name}</div>
+        <div class="tool-icon">${this.escapeHtml(tool.icon)}</div>
+        <div class="tool-name">${this.escapeHtml(tool.name)}</div>
       `;
       container.appendChild(toolElement);
     });
@@ -1053,19 +1105,19 @@ export class CollaborationPanel {
       const itemElement = document.createElement('div');
       itemElement.className = 'item-card';
       itemElement.innerHTML = `
-        <div class="item-title">${result.title}</div>
+        <div class="item-title">${this.escapeHtml(result.title)}</div>
         <div class="item-meta">
-          ${result.type} • 
+          ${this.escapeHtml(result.type)} •
           Exported ${new Date(result.exportedAt).toLocaleString()}
         </div>
         <div class="item-actions">
-          <button onclick="this.closest('.collaboration-panel').dispatchEvent(new CustomEvent('download-export', {detail: {id: '${result.id}', format: 'json'}}))">
+          <button data-action="download-export" data-detail='${this.escapeAttr(JSON.stringify({ id: result.id, format: 'json' }))}'>
             Download JSON
           </button>
           ${
             result.type === 'poll' || result.type === 'quiz'
               ? `
-            <button onclick="this.closest('.collaboration-panel').dispatchEvent(new CustomEvent('download-export', {detail: {id: '${result.id}', format: 'csv'}}))">
+            <button data-action="download-export" data-detail='${this.escapeAttr(JSON.stringify({ id: result.id, format: 'csv' }))}'>
               Download CSV
             </button>
           `
