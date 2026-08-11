@@ -58,6 +58,12 @@ class FeatureFlagsServer {
     }
 
     try {
+      // Health check — lightweight liveness probe for Docker/Compose
+      if (path === '/health' && method === 'GET') {
+        this.sendResponse(res, 200, { status: 'ok' });
+        return;
+      }
+
       // Route requests
       if (path === '/flags' && method === 'GET') {
         await this.handleGetFlags(req, res, query);

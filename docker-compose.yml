@@ -1,4 +1,7 @@
-version: '3.8'
+# Development Docker Compose — Watch Party Extension
+# Services are accessible only via the internal watchparty-network.
+# Host port bindings are removed where unnecessary (postgres, redis)
+# to avoid exposing services outside the container network.
 
 services:
   # PostgreSQL Database
@@ -10,8 +13,7 @@ services:
       POSTGRES_USER: watchparty
       POSTGRES_PASSWORD: watchparty_dev
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
-    ports:
-      - "5432:5432"
+    # No host port binding — only accessible via container network
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./server/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
@@ -28,8 +30,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: watchparty-redis
-    ports:
-      - "6379:6379"
+    # No host port binding — only accessible via container network
     volumes:
       - redis_data:/data
     networks:
@@ -41,7 +42,7 @@ services:
       timeout: 5s
       retries: 3
 
-  # Signaling Server
+  # Signaling Server (WebSocket relay)
   signaling-server:
     build:
       context: ./server
@@ -56,10 +57,6 @@ services:
       PORT: 3001
       LOG_LEVEL: debug
       TELEMETRY_ENABLED: false
-      # TURN Server Configuration (optional for development)
-      # TURN_SERVER_URL: turn:your-turn-server.com:3478
-      # TURN_USERNAME: your-turn-username
-      # TURN_CREDENTIAL: your-turn-password
     ports:
       - "3001:3001"
     volumes:
@@ -74,10 +71,11 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      test: ["CMD", "node", "-e", "require('net').connect(3001,'localhost',()=>process.exit(0)).on('error',()=>process.exit(1))"]
       interval: 30s
-      timeout: 10s
+      timeout: 5s
       retries: 3
+      start_period: 5s
 
   # Feature Flags Service
   feature-flags:
@@ -88,21 +86,26 @@ services:
     environment:
       NODE_ENV: development
       REDIS_URL: redis://redis:6379
-      PORT: 3002
+      FEATURE_FLAGS_PORT: 3002
       LOG_LEVEL: debug
     ports:
       - "3002:3002"
     volumes:
       - ./server:/app
-      - /app/node_modules
     networks:
       - watchparty-network
     depends_on:
       redis:
         condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('net').connect(3002,'localhost',()=>process.exit(0)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
 
-  # TURN Server (Coturn) - Optional for development
+  # TURN Server (Coturn) — optional for development
   coturn:
     image: coturn/coturn:4.6.2-alpine
     container_name: watchparty-turn
@@ -130,7 +133,7 @@ services:
     profiles:
       - turn-server
 
-  # Development Tools
+  # Development Tools (not started by default — use --profile dev-tools)
   adminer:
     image: adminer:4.8.1
     container_name: watchparty-adminer
