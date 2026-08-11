@@ -18,6 +18,15 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
+      thresholds: {
+        // Aggregate thresholds across all files. Fail CI when coverage drops
+        // below these. Keep a comfortable buffer below current numbers to
+        // tolerate small fluctuations while still catching regressions.
+        statements: 55,
+        branches: 45,
+        functions: 55,
+        lines: 55,
+      },
       exclude: [
         'node_modules/',
         'dist/',

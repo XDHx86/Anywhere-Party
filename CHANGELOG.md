@@ -7,7 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Dependabot configuration** — `.github/dependabot.yml` enables automated
+  dependency updates for the root npm package, the server npm package, and
+  GitHub Actions. Updates are monthly (Mondays), grouped into logical sets
+  (dev tooling, testing stack, TypeScript toolchain, React/MUI runtime, server
+  deps, action patches) to minimize PR noise. Dependabot PRs run the same CI
+  gates as normal PRs.
+
+- **`ci-lint.yml` workflow** — static analysis on every PR and push:
+  `actionlint` (validates all workflow YAML), `shellcheck` (lints shell
+  scripts), `gitleaks` (secret scan of the working tree, with an allowlist in
+  `.gitleaks.toml` for intentional dev/test credentials), and `docker compose
+  config -q` validation for the dev compose file.
+
+- **`ci-nightly.yml` workflow** — expensive checks moved out of the PR path:
+  Stryker mutation testing, `npm audit` (root + server, fails on moderate+),
+  full Docker image builds (all 4 Dockerfiles) + prod compose validation, and a
+  full coverage snapshot. Runs nightly at 03:17 UTC, on push to `main`, and via
+  `workflow_dispatch`.
+
+- **`docker-publish.yml` workflow** — builds and pushes the signaling-server and
+  feature-flags production images to GitHub Container Registry on `v*` version
+  tags (with `latest` on the default branch). Uses Buildx multi-arch
+  (linux/amd64 + linux/arm64) with GH Actions cache, and `packages: write`
+  least-privilege permissions.
+
+- **Coverage thresholds in CI** — `vitest.config.ts` now enforces aggregate
+  coverage thresholds (statements ≥ 55%, branches ≥ 45%, functions ≥ 55%,
+  lines ≥ 55%), so the `test` job fails on coverage regressions, not just on
+  failing tests.
+
+- **`test:mutation` alias** — `npm run test:mutation` is now an alias for
+  `npm run stryker`, fixing the long-standing mismatch where the documented
+  script name did not exist.
+
+- **Root `package-lock.json` committed** — `npm ci` (used by every CI job and
+  Dependabot) requires a lockfile; none existed at the repo root, so every CI
+  job failed at dependency install. The lockfile is now committed for
+  reproducible installs.
+
+- **`docs/ci-cd.md`** — documents the four workflows, required vs. optional vs.
+  nightly checks, Dependabot behavior, action-pinning policy, and local
+  equivalents for every CI check.
+
 ### Fixed
+
+- **CI ran `npm run test:mutation` which did not exist** — the mutation-test job
+  invoked a script that was never defined in `package.json` (the real script is
+  `stryker`). The missing `continue-on-error: true` silently masked the failure.
+  The job now uses the new `test:mutation` alias and runs in the nightly
+  workflow.
+
+- **CI silently ignored typecheck/test/mutation failures** — `continue-on-error:
+  true` on three jobs meant a red typecheck, failing tests, or a failing
+  mutation run reported green. The codebase is now stabilized (all 1300+ tests
+  and strict typecheck pass on Node 24), so every quality gate in `ci.yml` is
+  blocking.
+
+- **CI serialized independent jobs** — the six jobs were chained with `needs:`
+  despite sharing no state, so each waited on the previous for no reason. All
+  jobs now run in parallel with `npm ci` cached by `setup-node`.
+
+- **Missing hardening controls** — added least-privilege `GITHUB_TOKEN`
+  (`contents: read`), `concurrency` cancellation of obsolete runs, and
+  `timeout-minutes` ceilings on every job; all Actions pinned to immutable
+  commit SHAs (supply-chain hardening).
+
+- **`docs/` and stale CI references in README/CLAUDE.md** — corrected the
+  outdated claims that CI runs Node 18 and that typecheck/test are non-blocking
+  (CI runs Node 24; all checks block), and fixed non-existent scripts listed in
+  README (`dev`, `dev:server`, `test:e2e`).
 
 - **`Dockerfile.prod` CMD referenced nonexistent `server.js`** — the production
   Dockerfile's entrypoint pointed to a file that does not exist in the server

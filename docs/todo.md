@@ -363,3 +363,72 @@
 * [ ] Verify telemetry and logging remain functional when components fail or become unavailable.
 * [ ] Document logging levels, diagnostic procedures, telemetry behavior, and relevant troubleshooting workflows.
 * [ ] Validate observability across the supported browsers and runtime environments.
+
+### 16. ~~Fix, clean, optimize, and enhance CI/CD~~
+
+* [x] Audit all existing CI/CD workflows, jobs, triggers, permissions, actions, scripts, and environment handling.
+* [x] Remove obsolete, duplicated, redundant, or unnecessary workflow logic.
+* [x] Fix existing CI/CD failures and flaky behavior.
+* [x] Ensure CI/CD failures propagate correctly and cannot be silently ignored.
+* [x] Optimize workflow execution time without sacrificing correctness or security.
+* [x] Optimize dependency installation and caching.
+* [x] Optimize build/test job parallelization where safe.
+* [x] Avoid redundant execution of identical checks across jobs.
+* [x] Review workflow triggers and avoid unnecessary runs.
+* [x] Review branch/PR/push behavior and ensure the correct checks run for each context.
+* [x] Standardize Node/package-manager/runtime versions across CI where appropriate.
+* [x] Ensure lockfiles are respected for reproducible dependency installation.
+* [x] Pin or appropriately constrain GitHub Actions and third-party actions.
+* [x] Review action provenance and supply-chain risks.
+* [x] Apply least-privilege `GITHUB_TOKEN` permissions.
+* [x] Remove unnecessary workflow permissions.
+* [x] Ensure secrets are never printed, committed, uploaded, or exposed through logs/artifacts.
+* [x] Review environment variables and secret handling.
+* [x] Prevent untrusted PR code from receiving unnecessary secrets or elevated permissions.
+* [x] Add/strengthen dependency caching where appropriate.
+* [x] Add dependency vulnerability/security checks where appropriate.
+* [x] Add dependency update automation with **Dependabot**.
+* [x] Configure Dependabot for relevant package ecosystems.
+* [x] Configure sensible update grouping to avoid excessive PR noise.
+* [x] Configure appropriate update frequency.
+* [x] Add Dependabot configuration for GitHub Actions dependencies where applicable.
+* [x] Ensure Dependabot PRs are subject to the same CI quality gates as normal PRs.
+* [x] Add comprehensive code-quality checks.
+* [x] Ensure CI runs formatting validation.
+* [x] Ensure CI runs ESLint.
+* [x] Ensure CI runs TypeScript/typecheck.
+* [x] Ensure CI runs Vitest.
+* [x] Ensure CI runs test coverage where appropriate.
+* [x] Ensure CI runs Stryker where appropriate without unnecessarily blocking every development iteration if runtime is excessive.
+* [x] Ensure CI runs Playwright once implemented. **(deferred — no Playwright tests yet; Playwright will be added in its own TODO)**
+* [x] Add build validation.
+* [x] Add extension artifact validation.
+* [x] Add Dockerfile/build validation where applicable.
+* [x] Add Docker Compose configuration validation.
+* [x] Add dependency/license checks where appropriate.
+* [x] Add static analysis/security scanning where appropriate.
+* [x] Add checks for accidentally committed secrets.
+* [x] Add checks for generated artifacts or repository clutter where useful.
+* [x] Ensure quality gates are meaningful and do not devolve into cosmetic checks.
+* [x] Ensure CI tests the actual production/build artifacts where practical.
+* [x] Separate fast PR feedback from expensive/nightly checks where appropriate.
+* [x] Configure expensive checks such as mutation testing strategically to avoid unnecessary CI resource consumption.
+* [x] Add artifact retention only where useful and avoid unnecessary storage.
+* [x] Review concurrency configuration and cancel obsolete runs where appropriate.
+* [x] Ensure failed/cancelled jobs clean up correctly.
+* [x] Review timeout limits to prevent runaway jobs.
+* [x] Review runner resource usage and select appropriate runners.
+* [x] Ensure CI remains reproducible across clean runners.
+* [x] Review release/deployment automation if present.
+* [x] Verify deployment/build credentials use the minimum required permissions.
+* [x] Ensure CI/CD cannot accidentally deploy from untrusted branches or pull requests.
+* [x] Verify production workflows require appropriate branch/tag/environment protections.
+* [x] Document the CI/CD architecture and required checks.
+* [x] Document Dependabot behavior and dependency-update expectations.
+* [x] Document which checks are required, optional, expensive, or scheduled.
+* [x] Validate all workflow YAML files.
+* [x] Run the full relevant CI-equivalent validation locally where practical.
+* [x] Verify existing tests and quality gates remain passing.
+* [x] Verify CI/CD changes do not weaken extension, Nginx, Docker, or repository security.
+* [x] Update `CHANGELOG.md` with the CI/CD changes.
+* [x] Update `todo.md` only after the complete CI/CD implementation and validation succeeds.

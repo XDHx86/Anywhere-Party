@@ -1,0 +1,132 @@
+# CI Lint — static analysis for CI config, shell scripts, and secrets.
+#
+# Runs on every PR and push (unless docs-only). Provides fast feedback on
+# workflow YAML correctness, shell script quality, accidentally committed
+# secrets, and Docker Compose configuration validity.
+#
+# Heavy / slow Docker image builds and mutation testing live in ci-nightly.yml.
+
+name: "CI (Lint)"
+
+on:
+  push:
+    branches: [main, develop]
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - ".claude/**"
+  pull_request:
+    branches: [main, develop]
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - ".claude/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lint-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── GitHub Actions Workflow Linting (actionlint) ────────────────────────────
+  #
+  # Validates all workflow YAML files for syntax errors, expression typos,
+  # incorrect action references, and semantic issues (missing `uses:`,
+  # unreachable `if:` conditions, wrong `needs:` targets, etc.).
+  #
+  # Runs via the official rhysd/actionlint Docker image (pinned tag) — no
+  # third-party GitHub Action dependency. The image mounts the workspace
+  # read-only for scanning.
+  workflow-lint:
+    name: "Workflow Lint (actionlint)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        # actions/checkout v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Run actionlint
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/repo:ro" \
+            --workdir /repo \
+            rhysd/actionlint:1.7.12 \
+            -color
+
+  # ── Shell Script Linting (shellcheck) ───────────────────────────────────────
+  #
+  # Checks all Bash scripts for common bugs, portability issues, and security
+  # pitfalls (unquoted variables, unsafe use of `eval`, missing `set -e`, etc.).
+  shell-lint:
+    name: "Shell Lint (shellcheck)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        # actions/checkout v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends shellcheck
+      - name: Run shellcheck on all scripts
+        run: shellcheck -x -s bash scripts/*.sh scripts/*.bash 2>/dev/null || true
+        # Using `|| true` temporarily until all scripts pass shellcheck cleanly.
+        # The output above shows every warning — once all scripts pass, change
+        # this to `run: shellcheck -x -s bash scripts/*.sh scripts/*.bash`.
+        continue-on-error: true
+      - name: Run shellcheck (strict — fail on errors)
+        if: success() || failure()
+        run: |
+          # Find all .sh files in the repo (excluding node_modules and dist)
+          SHFILES=$(find . -name "*.sh" -not -path "*/node_modules/*" -not -path "*/dist/*" -not -path "*/.stryker-tmp/*" 2>/dev/null)
+          if [ -z "$SHFILES" ]; then
+            echo "No shell scripts found."
+            exit 0
+          fi
+          echo "Linting:"
+          echo "$SHFILES"
+          echo "$SHFILES" | xargs shellcheck -x -s bash --severity=warning
+
+  # ── Secret Scan (gitleaks) ──────────────────────────────────────────────────
+  #
+  # Scans the checked-out tree for accidentally committed secrets (API keys,
+  # tokens, passwords, PEM keys, etc.). Uses --no-git to scan files as they
+  # exist in the working tree — avoids false positives on historical commits
+  # that were later remediated.
+  #
+  # Known false positives are allowlisted in .gitleaks.toml (repo root).
+  secret-scan:
+    name: "Secret Scan (gitleaks)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        # actions/checkout v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - name: Run gitleaks
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/repo" \
+            zricethezav/gitleaks:v8.30.1 detect \
+              --source /repo \
+              --no-git \
+              --redact \
+              --verbose
+
+  # ── Docker Compose Configuration Validation ─────────────────────────────────
+  #
+  # Validates that the development compose file parses and resolves correctly.
+  # The production file is validated in ci-nightly.yml (requires env vars).
+  compose-validate:
+    name: "Compose Validate"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        # actions/checkout v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Validate development compose
+        run: docker compose -f docker-compose.yml config -q

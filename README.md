@@ -2,6 +2,17 @@
 
 A cross-browser extension that enables synchronized video viewing experiences with voice chat, real-time collaboration, and advanced features like subtitles, annotations, and polls. Built with modern Material Design 3 UI components for a beautiful, accessible, and consistent user experience.
 
+## CI Status
+
+[![CI](https://github.com/XDHx86/Anywhere-Party/actions/workflows/ci.yml/badge.svg)](https://github.com/XDHx86/Anywhere-Party/actions/workflows/ci.yml)
+[![CI (Lint)](https://github.com/XDHx86/Anywhere-Party/actions/workflows/ci-lint.yml/badge.svg)](https://github.com/XDHx86/Anywhere-Party/actions/workflows/ci-lint.yml)
+[![CI (Nightly)](https://github.com/XDHx86/Anywhere-Party/actions/workflows/ci-nightly.yml/badge.svg)](https://github.com/XDHx86/Anywhere-Party/actions/workflows/ci-nightly.yml)
+
+Continuous integration runs lint, typecheck, build, tests + coverage, and
+server tests on every PR; nightly it runs Stryker mutation testing, dependency
+audits, and Docker image builds. See [CI/CD Architecture](docs/ci-cd.md) for the
+full picture.
+
 ## Features
 
 ### Core Functionality
@@ -323,9 +334,10 @@ watch-party-extension/
 
 ```bash
 # Development
-npm run dev              # Start development build with watch
-npm run dev:server       # Start local WebSocket relay
-npm run dev:full         # Start full server stack with Docker
+npm run watch            # Start development build with watch (Chrome)
+npm run watch:firefox    # Start development build with watch (Firefox)
+npm run dev:full         # Start server + watch concurrently
+npm run dev:setup        # Install all dependencies (root + server)
 
 # Building
 npm run build            # Build for production (both browsers)
@@ -338,19 +350,22 @@ npm run build:dev:firefox # Build Firefox development version
 # Testing
 npm run test             # Run unit tests
 npm run test:watch       # Run tests in watch mode
-npm run test:e2e         # Run end-to-end tests
-npm run test:mutation    # Run mutation tests
+npm run test:coverage    # Run tests with V8 coverage report
+npm run test:mutation    # Run Stryker mutation tests
+npm run test:runtime-fixes # Validate runtime fix implementations
 
 # Linting and Formatting
-npm run lint             # Run ESLint
+npm run lint             # Run ESLint (max-warnings=0)
 npm run lint:fix         # Fix ESLint issues
 npm run format           # Format code with Prettier
+npm run format:check     # Check Prettier formatting (no writes)
 npm run typecheck        # Run TypeScript type checking
 
 # Server
 npm run server:start     # Start production server
 npm run server:dev       # Start development server
 npm run server:test      # Run server tests
+npm run server:test:all  # Run all server tests (relay + feature-flags)
 ```
 
 ### Testing

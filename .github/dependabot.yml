@@ -1,0 +1,127 @@
+# Dependabot auto-update configuration
+# Keeps dependencies current while bounding PR noise via grouped updates.
+# Docs: https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+
+updates:
+  # --- Root extension package (npm) ---
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+      time: "03:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    versioning-strategy: auto
+    labels:
+      - "dependencies"
+      - "npm"
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+      include: "scope"
+    groups:
+      # Development tooling that is safe to batch (linters, formatters, tooling)
+      dev-tooling:
+        applies-to: version-updates
+        patterns:
+          - "eslint"
+          - "eslint-*"
+          - "@typescript-eslint/*"
+          - "prettier"
+          - "eslint-config-prettier"
+          - "eslint-plugin-prettier"
+          - "husky"
+          - "lint-staged"
+          - "concurrently"
+          - "copy-webpack-plugin"
+          - "css-loader"
+          - "postcss"
+          - "postcss-loader"
+          - "style-loader"
+          - "ts-loader"
+          - "webpack"
+          - "webpack-cli"
+          - "autoprefixer"
+          - "tailwindcss"
+          - "@tailwindcss/postcss"
+      # Testing stack (vitest family) — batch minor/patch bumps together
+      testing:
+        applies-to: version-updates
+        patterns:
+          - "vitest"
+          - "@vitest/*"
+          - "@testing-library/*"
+          - "jsdom"
+          - "@stryker-mutator/*"
+      # TypeScript toolchain — bump typescript and its type packages together
+      typescript-toolchain:
+        applies-to: version-updates
+        patterns:
+          - "typescript"
+          - "@types/*"
+      # React + MUI runtime — batch the tightly-coupled UI framework
+      ui-runtime:
+        applies-to: version-updates
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@emotion/*"
+          - "@mui/*"
+          - "@tailwindcss/forms"
+
+  # --- Signaling server package (npm) ---
+  - package-ecosystem: "npm"
+    directory: "/server"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+      time: "03:30"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    versioning-strategy: auto
+    labels:
+      - "dependencies"
+      - "npm"
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+      include: "scope"
+    groups:
+      server-runtime:
+        applies-to: version-updates
+        patterns:
+          - "ws"
+          - "uuid"
+      server-dev-tooling:
+        applies-to: version-updates
+        patterns:
+          - "nodemon"
+          - "concurrently"
+
+  # --- GitHub Actions ---
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+      time: "04:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore(ci)"
+      include: "scope"
+    groups:
+      # Third-party actions that are routinely and safely updated together.
+      # NOTE: Dependabot proposes tag bumps (e.g. @v4 → @v5); commit pins only
+      # when a maintainer confirms the new release is trustworthy.
+      actions-patches:
+        applies-to: version-updates
+        update-types:
+          - "patch"
+          - "minor"
