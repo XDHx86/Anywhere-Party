@@ -80,6 +80,9 @@
     "react-dom": "^19.2.8",
     "webextension-polyfill": "^0.12.0"
   },
+  "overrides": {
+    "qs": "6.15.3"
+  },
   "lint-staged": {
     "src/**/*.{ts,tsx}": [
       "eslint --fix",
