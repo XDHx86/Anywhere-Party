@@ -9,6 +9,7 @@
 
 const WebSocket = require('ws');
 const { v4: uuidv4 } = require('uuid');
+const { MeteringService } = require('./metering-service');
 
 class InMemoryRoom {
   constructor(id, hostId) {
@@ -82,12 +83,33 @@ class InMemoryRoom {
 }
 
 class LocalWebSocketRelay {
-  constructor(port = 8080) {
+  constructor(port = 8080, options = {}) {
     this.port = port;
     this.rooms = new Map(); // roomId -> InMemoryRoom
     this.userSockets = new Map(); // socket -> { userId, roomId }
     this.server = null;
     this.cleanupInterval = null;
+    // Authoritative usage metering / rate limiting.
+    this.metering = new MeteringService(
+      options.meteringConfig || (process.env.METERING_CONFIG_PATH
+        ? this._loadMeteringConfigFile(process.env.METERING_CONFIG_PATH)
+        : null),
+      { stateFile: options.meteringStateFile || (process.env.METERING_STATE_FILE || null) }
+    );
+  }
+
+  /**
+   * Load metering config from a JSON file if present. Missing/corrupt files
+   * fall back to defaults (fail-open to defaults, server remains authoritative).
+   */
+  _loadMeteringConfigFile(filePath) {
+    try {
+      const raw = JSON.parse(require('fs').readFileSync(filePath, 'utf8'));
+      return raw && typeof raw === 'object' ? raw : null;
+    } catch (error) {
+      console.warn(`⚠️  Metering config file ${filePath} unreadable, using defaults: ${error.message}`);
+      return null;
+    }
   }
 
   start() {
@@ -153,6 +175,11 @@ class LocalWebSocketRelay {
       return;
     }
 
+    // ─── Authoritative metering enforcement ─────────────────────
+    if (!this._enforceMetering(socket, type, payload)) {
+      return; // rate-limited; error already sent
+    }
+
     switch (type) {
       case 'CREATE_ROOM':
         this.handleCreateRoom(socket, payload);
@@ -198,10 +225,89 @@ class LocalWebSocketRelay {
       case 'LAYER_VISIBILITY_CHANGED':
         this.handleAnnotationMessage(socket, type, payload);
         break;
+      // ─── Metering Messages ──────────────────────────────
+      case 'USAGE_REPORT':
+        this.handleUsageReport(socket, payload);
+        break;
       default:
         console.warn(`⚠️  Unknown message type: ${type}`);
         this.sendError(socket, 'UNKNOWN_MESSAGE_TYPE', `Unknown message type: ${type}`);
     }
+  }
+
+  /**
+   * Authoritative metering enforcement.
+   *
+   * The metering service is the sole source of truth for rate limits.
+   * Client-reported values are never trusted for enforcement.
+   *
+   * @returns {boolean} true if the message may proceed; false if rejected/warned.
+   */
+  _enforceMetering(socket, type, payload) {
+    const socketInfo = this.userSockets.get(socket);
+    const userId = (socketInfo && socketInfo.userId) || payload.userId;
+    if (!userId) return true; // Cannot meter without a user identity
+
+    // Map message types to metering dimensions
+    const dimensionMap = {
+      'CHAT_MESSAGE': 'chatMessages',
+      'REACTION': 'reactions',
+      'ANNOTATION_CREATED': 'annotationsCreated',
+      'CREATE_ROOM': 'roomsCreated',
+    };
+    const dimension = dimensionMap[type];
+    if (!dimension) return true; // Unmetered message type
+
+    const result = this.metering.checkAndRecord(userId, dimension, 1);
+
+    if (!result.allowed && result.action === 'reject') {
+      this.sendMessage(socket, {
+        type: 'METER_LIMIT_EXCEEDED',
+        protocolVersion: 1,
+        userId,
+        dimension,
+        usage: { ...result, authoritative: true },
+        reason: result.reason || `Rate limit exceeded for ${dimension}`,
+        timestamp: Date.now(),
+      });
+      return false;
+    }
+
+    if (!result.allowed && result.action === 'warn') {
+      // Soft limit: let the message through but send an advisory warning
+      this.sendMessage(socket, {
+        type: 'METER_LIMIT_EXCEEDED',
+        protocolVersion: 1,
+        userId,
+        dimension,
+        usage: { ...result, authoritative: true },
+        reason: result.reason || `Approaching limit for ${dimension}`,
+        timestamp: Date.now(),
+      });
+    }
+
+    return true;
+  }
+
+  /**
+   * Handle advisory usage reports from clients.
+   * These are informational only -- the server does not use them for
+   * enforcement decisions (authoritative counters are maintained above).
+   */
+  handleUsageReport(socket, { userId, reports = [] }) {
+    if (!userId || !Array.isArray(reports)) return;
+    // Logging only -- we intentionally do NOT update authoritative counters
+    if (reports.length > 0) {
+      console.log(`ℹ️  Usage report from ${userId}: ${reports.length} entries (advisory)`);
+    }
+    // Acknowledge receipt with authoritative state
+    this.sendMessage(socket, {
+      type: 'METERING_STATE',
+      protocolVersion: 1,
+      userId,
+      state: this.metering.getState(userId),
+      timestamp: Date.now(),
+    });
   }
 
   handleCreateRoom(socket, { userId, roomOptions = {} }) {
@@ -212,9 +318,26 @@ class LocalWebSocketRelay {
     const roomId = this.generateRoomId();
     const room = new InMemoryRoom(roomId, userId);
     room.addParticipant(userId, socket, 'host');
-    
+
     this.rooms.set(roomId, room);
-    this.userSockets.set(socket, { userId, roomId });
+
+    // Acquire connection slot for authoritative connection metering
+    const connResult = this.metering.acquireConnection(userId, `ws:${userId}:${roomId}`);
+    if (!connResult.allowed) {
+      this.userSockets.delete(socket);
+      this.rooms.delete(roomId);
+      return this.sendMessage(socket, {
+        type: 'METER_LIMIT_EXCEEDED',
+        protocolVersion: 1,
+        userId,
+        dimension: 'connections',
+        usage: { dimension: 'connections', current: connResult.current, limit: connResult.limit, windowMs: 0, windowStart: 0, action: 'reject', enabled: true, authoritative: true },
+        reason: connResult.reason || 'Concurrent connection limit reached',
+        timestamp: Date.now(),
+      });
+    }
+
+    this.userSockets.set(socket, { userId, roomId, connectionToken: connResult.token });
 
     console.log(`🏠 Room ${roomId} created by ${userId}`);
 
@@ -225,6 +348,15 @@ class LocalWebSocketRelay {
       participants: room.getParticipantList(),
       currentState: room.currentState,
       timestamp: Date.now()
+    });
+
+    // Send authoritative metering state so client can display usage
+    this.sendMessage(socket, {
+      type: 'METERING_STATE',
+      protocolVersion: 1,
+      userId,
+      state: this.metering.getState(userId),
+      timestamp: Date.now(),
     });
   }
 
@@ -241,8 +373,22 @@ class LocalWebSocketRelay {
     // Remove user from any existing room first
     this.handleLeaveRoom(socket, { userId });
 
+    // Acquire connection slot for authoritative connection metering
+    const connResult = this.metering.acquireConnection(userId, `ws:${userId}:${roomId}`);
+    if (!connResult.allowed) {
+      return this.sendMessage(socket, {
+        type: 'METER_LIMIT_EXCEEDED',
+        protocolVersion: 1,
+        userId,
+        dimension: 'connections',
+        usage: { dimension: 'connections', current: connResult.current, limit: connResult.limit, windowMs: 0, windowStart: 0, action: 'reject', enabled: true, authoritative: true },
+        reason: connResult.reason || 'Concurrent connection limit reached',
+        timestamp: Date.now(),
+      });
+    }
+
     room.addParticipant(userId, socket);
-    this.userSockets.set(socket, { userId, roomId });
+    this.userSockets.set(socket, { userId, roomId, connectionToken: connResult.token });
 
     console.log(`👤 ${userId} joined room ${roomId}`);
 
@@ -254,6 +400,15 @@ class LocalWebSocketRelay {
       participants: room.getParticipantList(),
       currentState: room.currentState,
       timestamp: Date.now()
+    });
+
+    // Send authoritative metering state so client can display usage
+    this.sendMessage(socket, {
+      type: 'METERING_STATE',
+      protocolVersion: 1,
+      userId,
+      state: this.metering.getState(userId),
+      timestamp: Date.now(),
     });
 
     // Notify other participants
@@ -269,12 +424,16 @@ class LocalWebSocketRelay {
     const socketInfo = this.userSockets.get(socket);
     if (!socketInfo) return;
 
-    const { roomId } = socketInfo;
+    const { roomId, connectionToken } = socketInfo;
     const room = this.rooms.get(roomId);
     if (!room) return;
 
     room.removeParticipant(userId);
     this.userSockets.delete(socket);
+
+    if (connectionToken) {
+      this.metering.releaseConnection(userId, connectionToken);
+    }
 
     console.log(`👋 ${userId} left room ${roomId}`);
 
@@ -516,8 +675,11 @@ class LocalWebSocketRelay {
   handleDisconnection(socket) {
     const socketInfo = this.userSockets.get(socket);
     if (socketInfo) {
-      const { userId } = socketInfo;
+      const { userId, connectionToken } = socketInfo;
       console.log(`🔌 ${userId} disconnected`);
+      if (connectionToken) {
+        this.metering.releaseConnection(userId, connectionToken);
+      }
       this.handleLeaveRoom(socket, { userId });
     }
   }

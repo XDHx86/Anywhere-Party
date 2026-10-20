@@ -796,14 +796,94 @@ WebSocket errors are sent with the `error` event type:
 }
 ```
 
-## Rate Limiting
+### Metering Events
 
-The API implements rate limiting to prevent abuse:
+The relay server enforces usage metering over the WebSocket connection. Three
+additional event types are exchanged (all carry `protocolVersion: 1`):
 
-- **Room Creation**: 5 rooms per hour per IP
-- **Join Requests**: 20 joins per minute per IP
-- **Chat Messages**: 60 messages per minute per user
-- **WebSocket Messages**: 100 messages per minute per connection
+- `USAGE_REPORT` (client → server) — **advisory** usage report. The server
+  never trusts these values for enforcement or accounting; it only logs them
+  and replies with authoritative state.
+
+  ```typescript
+  {
+    type: 'USAGE_REPORT',
+    protocolVersion: 1,
+    userId: string,
+    reports: Array<{ dimension: string; delta: number; timestamp: number }>
+  }
+  ```
+
+- `METERING_STATE` (server → client) — authoritative usage snapshot the server
+  computed from the events it actually observed. Sent after room creation/join
+  and in reply to usage reports.
+
+  ```typescript
+  {
+    type: 'METERING_STATE',
+    protocolVersion: 1,
+    userId: string,
+    state: {
+      usage: Record<string, MeterUsage>,
+      timestamp: number,
+      source: 'server' | 'client' | 'default'
+    }
+  }
+  ```
+
+- `METER_LIMIT_EXCEEDED` (server → client) — sent when a metered event is
+  rejected (`action: 'reject'`) or near the limit (`action: 'warn'`).
+
+  ```typescript
+  {
+    type: 'METER_LIMIT_EXCEEDED',
+    protocolVersion: 1,
+    userId: string,
+    dimension: string,
+    usage: MeterUsage,          // authoritative: true
+    reason: string
+  }
+  ```
+
+**Trust boundary:** the server is the authoritative source for metering
+enforcement and accounting. Client-reported usage values are never used to
+make allow/reject decisions. A client that omits or falsifies `USAGE_REPORT`
+messages cannot bypass limits, because the server counts the events (chat,
+reaction, annotation, room creation) it receives directly.
+
+## Rate Limiting / Metering
+
+The API implements usage metering to prevent abuse. Limits are configured
+centrally and are typed/validated:
+
+- **Extension side** — the `METERING` section of `extension-config.json`
+  (defaults below) is validated by `ConfigValidator` and loaded via
+  `ConfigManager`.
+- **Server side** — `server/metering-service.js` is the authoritative enforcer;
+  the local relay (`server/local-relay.js`) calls it before processing metered
+  message types. Optional state persistence via `METERING_STATE_FILE` survives
+  restarts (corrupt/missing files fall back to defaults without crashing).
+
+Default dimensions:
+
+| Dimension            | Limit | Window     | Action |
+| -------------------- | ----- | ---------- | ------ |
+| `chatMessages`       | 30    | 60 seconds | warn   |
+| `reactions`          | 20    | 60 seconds | warn   |
+| `annotationsCreated` | 15    | 60 seconds | warn   |
+| `roomsCreated`       | 5     | 60 minutes | reject |
+| `connections`        | 5     | concurrent | reject |
+
+`MeteringDimensionConfig` shape:
+
+```typescript
+interface MeteringDimensionConfig {
+  enabled: boolean;
+  limit: number;          // max events in the window
+  windowMs: number;       // sliding window length (0 = concurrent gauge)
+  action: 'reject' | 'warn';
+}
+```
 
 Rate limit headers are included in HTTP responses:
 - `X-RateLimit-Limit`: Maximum requests allowed

@@ -54,6 +54,7 @@ export class ConfigManagerImpl implements ConfigManager {
         runtimeConfig.DEFAULT_SUBTITLE_LANGS ||
         localDevConfig.DEFAULT_SUBTITLE_LANGS ||
         defaultConfig.DEFAULT_SUBTITLE_LANGS,
+      METERING: runtimeConfig.METERING || localDevConfig.METERING || defaultConfig.METERING,
     };
 
     return this.cachedConfig;
@@ -269,6 +270,19 @@ export class ConfigManagerImpl implements ConfigManager {
       PERFORMANCE_LOG_LEVEL: 'basic',
       AUTO_QUALITY_ADJUSTMENT: true,
       MEMORY_CLEANUP_INTERVAL_MS: 60000,
+      // Metering & Rate-Limiting
+      METERING: {
+        enabled: true,
+        syncIntervalMs: 60000,
+        reportUsage: true,
+        dimensions: {
+          chatMessages: { enabled: true, limit: 30, windowMs: 60000, action: 'warn' },
+          reactions: { enabled: true, limit: 20, windowMs: 60000, action: 'warn' },
+          annotationsCreated: { enabled: true, limit: 15, windowMs: 60000, action: 'warn' },
+          roomsCreated: { enabled: true, limit: 5, windowMs: 3600000, action: 'reject' },
+          connections: { enabled: true, limit: 5, windowMs: 0, action: 'reject' },
+        },
+      },
     };
   }
 

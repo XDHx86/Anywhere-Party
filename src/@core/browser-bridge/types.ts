@@ -2,6 +2,8 @@
  * Unified browser extension API types
  */
 
+import type { MeteringConfig } from '../metering/types';
+
 export interface StorageArea {
   get(keys?: string | string[] | Record<string, unknown> | null): Promise<Record<string, unknown>>;
   set(items: Record<string, unknown>): Promise<void>;
@@ -127,6 +129,8 @@ export interface ExtensionConfig {
   RECORDING_CONSENT_REQUIRED: boolean;
   RECORDING_RETENTION_DAYS: number;
   ANONYMIZE_USER_DATA: boolean;
+  // Metering & Rate-Limiting
+  METERING: MeteringConfig;
   // Performance Optimization Settings
   PERFORMANCE_MONITORING_ENABLED: boolean;
   DRIFT_ANALYSIS_ENABLED: boolean;

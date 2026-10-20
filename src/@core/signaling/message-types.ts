@@ -343,6 +343,56 @@ export interface PlaylistAdvanceMessage extends BaseMessage {
   };
 }
 
+// ─── Metering Messages ────────────────────────────────────
+
+export interface UsageReportMessage extends BaseMessage {
+  type: 'USAGE_REPORT';
+  protocolVersion: 1;
+  userId: string;
+  reports: Array<{ dimension: string; delta: number; timestamp: number }>;
+}
+
+export interface MeteringStateMessage extends BaseMessage {
+  type: 'METERING_STATE';
+  protocolVersion: 1;
+  userId: string;
+  state: {
+    usage: Record<
+      string,
+      {
+        dimension: string;
+        current: number;
+        limit: number;
+        windowMs: number;
+        windowStart: number;
+        action: 'reject' | 'warn';
+        enabled: boolean;
+        authoritative: boolean;
+      }
+    >;
+    timestamp: number;
+    source: 'server' | 'client' | 'default';
+  };
+}
+
+export interface MeterLimitExceededMessage extends BaseMessage {
+  type: 'METER_LIMIT_EXCEEDED';
+  protocolVersion: 1;
+  userId: string;
+  dimension: string;
+  usage: {
+    dimension: string;
+    current: number;
+    limit: number;
+    windowMs: number;
+    windowStart: number;
+    action: 'reject' | 'warn';
+    enabled: boolean;
+    authoritative: boolean;
+  };
+  reason: string;
+}
+
 // ─── Scheduling Messages ──────────────────────────────────
 
 export interface ScheduleSessionMessage extends BaseMessage {
@@ -401,7 +451,8 @@ export type ClientMessage =
   | ScheduleSessionMessage
   | CancelSessionMessage
   | PublicKeyBroadcastMessage
-  | EncryptedChatMessage;
+  | EncryptedChatMessage
+  | UsageReportMessage;
 
 export type ServerMessage =
   | WelcomeMessage
@@ -428,7 +479,9 @@ export type ServerMessage =
   | PlaylistStateMessage
   | PlaylistSkipResultMessage
   | PlaylistAdvanceMessage
-  | ScheduledSessionsMessage;
+  | ScheduledSessionsMessage
+  | MeteringStateMessage
+  | MeterLimitExceededMessage;
 
 export type SignalingMessage = ClientMessage | ServerMessage;
 
@@ -570,6 +623,7 @@ export function isClientMessage(message: unknown): message is ClientMessage {
     'CANCEL_SESSION',
     'PUBLIC_KEY_BROADCAST',
     'ENCRYPTED_CHAT_MESSAGE',
+    'USAGE_REPORT',
   ].includes(message.type);
 }
 
@@ -609,6 +663,8 @@ export function isServerMessage(message: unknown): message is ServerMessage {
     'PLAYLIST_SKIP_RESULT',
     'PLAYLIST_ADVANCE',
     'SCHEDULED_SESSIONS',
+    'METERING_STATE',
+    'METER_LIMIT_EXCEEDED',
   ].includes(message.type);
 }
 
@@ -724,6 +780,29 @@ export function validateMessage(message: unknown): { valid: boolean; error?: str
     case 'CANCEL_SESSION':
       if (!message.userId || !message.sessionId) {
         return { valid: false, error: 'CANCEL_SESSION requires userId and sessionId' };
+      }
+      break;
+
+    case 'USAGE_REPORT':
+      if (!message.userId || !Array.isArray(message.reports)) {
+        return { valid: false, error: 'USAGE_REPORT requires userId and reports array' };
+      }
+      if (message.reports.length > 100) {
+        return { valid: false, error: 'USAGE_REPORT reports array too large' };
+      }
+      for (const report of message.reports) {
+        if (
+          !report ||
+          typeof report.dimension !== 'string' ||
+          typeof report.delta !== 'number' ||
+          !Number.isFinite(report.delta) ||
+          report.delta < 0
+        ) {
+          return {
+            valid: false,
+            error: 'USAGE_REPORT reports must have string dimension and non-negative finite delta',
+          };
+        }
       }
       break;
   }
@@ -868,4 +947,36 @@ export function createCancelSessionMessage(
   sessionId: string
 ): CancelSessionMessage {
   return { type: 'CANCEL_SESSION', userId, sessionId, timestamp: Date.now() };
+}
+
+// ─── Metering Factory Functions ──────────────────────────
+export function createUsageReportMessage(
+  userId: string,
+  reports: UsageReportMessage['reports']
+): UsageReportMessage {
+  return { type: 'USAGE_REPORT', protocolVersion: 1, userId, reports, timestamp: Date.now() };
+}
+
+export function createMeteringStateMessage(
+  userId: string,
+  state: MeteringStateMessage['state']
+): MeteringStateMessage {
+  return { type: 'METERING_STATE', protocolVersion: 1, userId, state, timestamp: Date.now() };
+}
+
+export function createMeterLimitExceededMessage(
+  userId: string,
+  dimension: string,
+  usage: MeterLimitExceededMessage['usage'],
+  reason: string
+): MeterLimitExceededMessage {
+  return {
+    type: 'METER_LIMIT_EXCEEDED',
+    protocolVersion: 1,
+    userId,
+    dimension,
+    usage,
+    reason,
+    timestamp: Date.now(),
+  };
 }

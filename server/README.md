@@ -278,13 +278,37 @@ To use this server with the Watch Party Extension:
 3. Start the local relay server
 4. The extension will connect to the local server instead of a remote signaling server
 
+## Metering / Rate Limiting
+
+The relay enforces usage metering through `server/metering-service.js`, which is
+the **authoritative** source for enforcement and accounting. It counts the
+events it actually observes (chat messages, reactions, annotations, room
+creation, concurrent connections) and rejects or warns per configured limits.
+Client-reported usage is advisory only and can never bypass enforcement.
+
+- Defaults live in `server/metering-service.js` (`DEFAULT_DIMENSIONS`) and in
+  the extension's `METERING` config section.
+- Override per-process via `METERING_CONFIG_PATH` (JSON file) or
+  `METERING_STATE_FILE` (JSON state persistence, survives restarts).
+- When a `reject` limit is hit the client receives a `METER_LIMIT_EXCEEDED`
+  message; when a `warn` limit is hit the message is relayed with an advisory
+  warning.
+
+Run the metering tests with:
+
+```bash
+npm run test:metering
+```
+
 ## Limitations
 
 This is a development server with the following limitations:
 
-- **In-memory only**: No persistence across server restarts
+- **In-memory only**: No persistence across server restarts (except optional
+  metering state via `METERING_STATE_FILE`)
 - **Single instance**: No clustering or load balancing
-- **Basic security**: No authentication or rate limiting
+- **Basic security**: No authentication; rate limiting is provided by the
+  metering service
 - **Simple protocol**: Minimal message validation
 
 For production use, implement the full signaling server with PostgreSQL and Redis as described in the design document.

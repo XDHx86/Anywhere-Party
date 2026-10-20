@@ -54,6 +54,19 @@ export const AnnotationSystem: React.FC<AnnotationSystemProps> = ({
 
   const layerRef = useRef<CollaborativeAnnotationLayer | null>(null);
 
+  // Stable refs for callbacks to avoid effect re-fires
+  const onSyncMessageRef = useRef(onSyncMessage);
+  const onAnnotationCreatedRef = useRef(onAnnotationCreated);
+  const onAnnotationDeletedRef = useRef(onAnnotationDeleted);
+  const onCrossOriginBlockedRef = useRef(onCrossOriginBlocked);
+
+  useEffect(() => {
+    onSyncMessageRef.current = onSyncMessage;
+    onAnnotationCreatedRef.current = onAnnotationCreated;
+    onAnnotationDeletedRef.current = onAnnotationDeleted;
+    onCrossOriginBlockedRef.current = onCrossOriginBlocked;
+  });
+
   // Initialize annotation layer
   useEffect(() => {
     if (!videoElement || !roomId || !userId) return;
@@ -68,23 +81,19 @@ export const AnnotationSystem: React.FC<AnnotationSystemProps> = ({
       syncIntervalMs: 100, // 10fps sync
       maxSyncRetries: 3,
       onAnnotationCreated: (annotation: Annotation) => {
-        onAnnotationCreated?.(annotation);
+        onAnnotationCreatedRef.current?.(annotation);
         updateUndoRedoState();
       },
       onAnnotationDeleted: (annotationId: string) => {
-        onAnnotationDeleted?.(annotationId);
+        onAnnotationDeletedRef.current?.(annotationId);
         updateUndoRedoState();
       },
       onSyncMessage: (message: AnnotationMessage) => {
-        if (onSyncMessage) {
-          onSyncMessage(message);
-        }
+        onSyncMessageRef.current?.(message);
       },
       onCrossOriginBlocked: () => {
         setIsCrossOriginBlocked(true);
-        if (onCrossOriginBlocked) {
-          onCrossOriginBlocked();
-        }
+        onCrossOriginBlockedRef.current?.();
       },
     };
 
@@ -109,8 +118,8 @@ export const AnnotationSystem: React.FC<AnnotationSystemProps> = ({
     setSyncStats(layer.getSyncStats());
 
     // Notify parent when cross-origin is detected
-    if (blocked && onCrossOriginBlocked) {
-      onCrossOriginBlocked();
+    if (blocked) {
+      onCrossOriginBlockedRef.current?.();
     }
 
     // Start sync stats monitoring
@@ -124,17 +133,9 @@ export const AnnotationSystem: React.FC<AnnotationSystemProps> = ({
       clearInterval(statsInterval);
       layer.removeOverlay();
       layerRef.current = null;
+      setAnnotationLayer(null);
     };
-  }, [
-    videoElement,
-    roomId,
-    userId,
-    userName,
-    onSyncMessage,
-    onAnnotationCreated,
-    onAnnotationDeleted,
-    onCrossOriginBlocked,
-  ]);
+  }, [videoElement, roomId, userId, userName]);
 
   // Update undo/redo state
   const updateUndoRedoState = useCallback(() => {
@@ -152,76 +153,67 @@ export const AnnotationSystem: React.FC<AnnotationSystemProps> = ({
   }, []);
 
   // Handle tool changes
-  const handleToolChange = useCallback(
-    (tool: Partial<DrawingTool>) => {
-      if (annotationLayer) {
-        annotationLayer.setTool(tool);
-      }
-    },
-    [annotationLayer]
-  );
+  const handleToolChange = useCallback((tool: Partial<DrawingTool>) => {
+    if (layerRef.current) {
+      layerRef.current.setTool(tool);
+    }
+  }, []);
 
   // Handle layer changes
-  const handleLayerChange = useCallback(
-    (layerId: string) => {
-      if (annotationLayer) {
-        annotationLayer.setCurrentLayer(layerId);
-      }
-    },
-    [annotationLayer]
-  );
+  const handleLayerChange = useCallback((layerId: string) => {
+    if (layerRef.current) {
+      layerRef.current.setCurrentLayer(layerId);
+    }
+  }, []);
 
   // Handle layer visibility toggle
-  const handleLayerVisibilityToggle = useCallback(
-    (layerId: string, visible: boolean) => {
-      if (annotationLayer) {
-        annotationLayer.setLayerVisibility(layerId, visible);
-      }
-    },
-    [annotationLayer]
-  );
+  const handleLayerVisibilityToggle = useCallback((layerId: string, visible: boolean) => {
+    if (layerRef.current) {
+      layerRef.current.setLayerVisibility(layerId, visible);
+    }
+  }, []);
 
   // Handle undo
   const handleUndo = useCallback(() => {
-    if (annotationLayer) {
-      const success = annotationLayer.undo();
+    if (layerRef.current) {
+      const success = layerRef.current.undo();
       if (success) {
         updateUndoRedoState();
       }
     }
-  }, [annotationLayer, updateUndoRedoState]);
+  }, [updateUndoRedoState]);
 
   // Handle redo
   const handleRedo = useCallback(() => {
-    if (annotationLayer) {
-      const success = annotationLayer.redo();
+    if (layerRef.current) {
+      const success = layerRef.current.redo();
       if (success) {
         updateUndoRedoState();
       }
     }
-  }, [annotationLayer, updateUndoRedoState]);
+  }, [updateUndoRedoState]);
 
   // Handle clear all
   const handleClear = useCallback(() => {
-    if (annotationLayer && window.confirm('Are you sure you want to clear all annotations?')) {
-      annotationLayer.clearAllAnnotations();
+    if (layerRef.current && window.confirm('Are you sure you want to clear all annotations?')) {
+      layerRef.current.clearAllAnnotations();
       updateUndoRedoState();
     }
-  }, [annotationLayer, updateUndoRedoState]);
+  }, [updateUndoRedoState]);
 
   // Handle create layer
   const handleCreateLayer = useCallback(
     (name: string) => {
-      if (annotationLayer) {
+      if (layerRef.current) {
         const layerId = `layer_${Date.now()}`;
-        const success = annotationLayer.createLayer(layerId, name);
+        const success = layerRef.current.createLayer(layerId, name);
         if (success) {
-          annotationLayer.setCurrentLayer(layerId);
+          layerRef.current.setCurrentLayer(layerId);
           updateUndoRedoState();
         }
       }
     },
-    [annotationLayer, updateUndoRedoState]
+    [updateUndoRedoState]
   );
 
   // Handle delete layer

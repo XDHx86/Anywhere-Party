@@ -355,6 +355,15 @@ export class RoomStateManager {
 
     await this.persistRoomState(updatedState.roomId, updatedState);
   }
+
+  /**
+   * Destroy the room state manager - clears all state and callbacks
+   */
+  async destroy(): Promise<void> {
+    await this.browserBridge.storage.local.remove('watchPartyRoomState');
+    this.currentState = null;
+    this.stateChangeCallbacks = [];
+  }
 }
 
 // Singleton instance
@@ -366,5 +375,16 @@ export const getRoomStateManager = (): RoomStateManager => {
   }
   return roomStateManagerInstance;
 };
+
+/**
+ * Reset the singleton instance for testing purposes.
+ * This allows tests to create fresh instances without state leakage.
+ */
+export function resetRoomStateManagerInstance(): void {
+  if (roomStateManagerInstance) {
+    roomStateManagerInstance.destroy();
+    roomStateManagerInstance = null;
+  }
+}
 
 export default RoomStateManager;

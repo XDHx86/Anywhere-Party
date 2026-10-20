@@ -302,31 +302,31 @@
 
 ### 9. **Add metered configuration/code**
 
-* [ ] Audit the existing configuration and communication architecture.
-* [ ] Determine the correct boundary for metering.
-* [ ] Determine exactly what is being metered and why.
-* [ ] Implement centralized metered configuration.
-* [ ] Keep metering configuration typed and validated.
-* [ ] Avoid scattering metering logic across unrelated modules.
-* [ ] Integrate metering with the existing extension/server communication flow.
-* [ ] Define trust boundaries and authoritative sources for metering state.
-* [ ] Never treat client-controlled metering values as authoritative where they affect enforcement or accounting.
-* [ ] Handle missing configuration.
-* [ ] Handle invalid configuration.
-* [ ] Handle metering limits and boundary conditions.
-* [ ] Handle malformed/unavailable metering state.
-* [ ] Handle relevant restart and persistence scenarios.
-* [ ] Handle relevant concurrent-request scenarios.
-* [ ] Prevent trivial client-side bypasses of metering logic where enforcement is required.
-* [ ] Ensure configuration propagates correctly through the required environment.
-* [ ] Verify environment-specific configuration does not leak into source code.
-* [ ] Verify no credentials, tokens, or secrets are accidentally committed.
-* [ ] Avoid logging sensitive metering data unnecessarily.
-* [ ] Add appropriate tests for metering behavior.
-* [ ] Add tests for invalid, manipulated, and boundary values.
-* [ ] Preserve existing Nginx hardening.
-* [ ] Preserve existing extension security hardening.
-* [ ] Verify metering works through the actual extension → Nginx → local-server path where applicable.
+* [x] Audit the existing configuration and communication architecture.
+* [x] Determine the correct boundary for metering.
+* [x] Determine exactly what is being metered and why.
+* [x] Implement centralized metered configuration.
+* [x] Keep metering configuration typed and validated.
+* [x] Avoid scattering metering logic across unrelated modules.
+* [x] Integrate metering with the existing extension/server communication flow.
+* [x] Define trust boundaries and authoritative sources for metering state.
+* [x] Never treat client-controlled metering values as authoritative where they affect enforcement or accounting.
+* [x] Handle missing configuration.
+* [x] Handle invalid configuration.
+* [x] Handle metering limits and boundary conditions.
+* [x] Handle malformed/unavailable metering state.
+* [x] Handle relevant restart and persistence scenarios.
+* [x] Handle relevant concurrent-request scenarios.
+* [x] Prevent trivial client-side bypasses of metering logic where enforcement is required.
+* [x] Ensure configuration propagates correctly through the required environment.
+* [x] Verify environment-specific configuration does not leak into source code.
+* [x] Verify no credentials, tokens, or secrets are accidentally committed.
+* [x] Avoid logging sensitive metering data unnecessarily.
+* [x] Add appropriate tests for metering behavior.
+* [x] Add tests for invalid, manipulated, and boundary values.
+* [x] Preserve existing Nginx hardening.
+* [x] Preserve existing extension security hardening.
+* [x] Verify metering works through the actual extension → Nginx → local-server path where applicable.
 
 ### 13. **Update all documentation**
 

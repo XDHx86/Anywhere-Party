@@ -381,5 +381,29 @@ describe('KeyboardNavigation', () => {
       const focusableElements = keyboardNavigation.getFocusableElements();
       expect(focusableElements.length).toBe(0);
     });
+
+    it('should not fire keydown handler after destroy', () => {
+      const handleKeyDownSpy = vi.spyOn(keyboardNavigation as any, 'handleKeyDown');
+
+      keyboardNavigation.destroy();
+
+      // Dispatch a keydown event on the container after destroy
+      container.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }));
+
+      // Handler should NOT have been called after destroy
+      expect(handleKeyDownSpy).not.toHaveBeenCalled();
+    });
+
+    it('should not fire focusin handler after destroy', () => {
+      const handleFocusInSpy = vi.spyOn(keyboardNavigation as any, 'handleFocusIn');
+
+      keyboardNavigation.destroy();
+
+      // Dispatch a focusin event on the container after destroy
+      container.dispatchEvent(new FocusEvent('focusin'));
+
+      // Handler should NOT have been called after destroy
+      expect(handleFocusInSpy).not.toHaveBeenCalled();
+    });
   });
 });

@@ -84,14 +84,20 @@ describe('ChatManager', () => {
       expect(chatManager.validateReactionType('invalid')).toBe(false);
     });
 
-    test('should auto-remove reactions after display duration', async () => {
+    test('should auto-remove reactions after display duration', () => {
+      vi.useFakeTimers();
+      const now = 1_000_000;
+      vi.setSystemTime(now);
+
       const manager = new ChatManager({ reactionDisplayDuration: 100 });
 
       manager.addReaction('user1', 'heart', 60);
       expect(manager.getActiveReactions()).toHaveLength(1);
 
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      vi.setSystemTime(now + 150);
       expect(manager.getActiveReactions()).toHaveLength(0);
+
+      vi.useRealTimers();
     });
 
     test('should get reactions for time range', () => {

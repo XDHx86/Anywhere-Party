@@ -266,6 +266,14 @@ export class PlaylistManager {
       }
     });
   }
+
+  /**
+   * Destroy the playlist manager - clears all state and callbacks
+   */
+  async destroy(): Promise<void> {
+    await this.clearPlaylist();
+    this.stateChangeCallbacks = [];
+  }
 }
 
 // Singleton
@@ -276,6 +284,17 @@ export function getPlaylistManager(config?: Partial<PlaylistManagerConfig>): Pla
     instance = new PlaylistManager(config);
   }
   return instance;
+}
+
+/**
+ * Reset the singleton instance for testing purposes.
+ * This allows tests to create fresh instances without state leakage.
+ */
+export function resetPlaylistManagerInstance(): void {
+  if (instance) {
+    instance.destroy();
+    instance = null;
+  }
 }
 
 export default PlaylistManager;

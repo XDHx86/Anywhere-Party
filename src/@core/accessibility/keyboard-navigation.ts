@@ -23,6 +23,10 @@ export class KeyboardNavigation {
   private currentIndex = -1;
   private options: NavigationOptions;
   private observer: MutationObserver | null = null;
+  // Bound once so destroy() can remove the exact listener registered by
+  // attachEventListeners() (a fresh .bind() would not match).
+  private readonly handleKeyDownBound = this.handleKeyDown.bind(this);
+  private readonly handleFocusInBound = this.handleFocusIn.bind(this);
 
   constructor(container: HTMLElement, options: Partial<NavigationOptions> = {}) {
     this.container = container;
@@ -133,8 +137,8 @@ export class KeyboardNavigation {
    * Attach event listeners
    */
   private attachEventListeners(): void {
-    this.container.addEventListener('keydown', this.handleKeyDown.bind(this));
-    this.container.addEventListener('focusin', this.handleFocusIn.bind(this));
+    this.container.addEventListener('keydown', this.handleKeyDownBound);
+    this.container.addEventListener('focusin', this.handleFocusInBound);
   }
 
   /**
@@ -502,8 +506,8 @@ export class KeyboardNavigation {
       this.observer = null;
     }
 
-    this.container.removeEventListener('keydown', this.handleKeyDown.bind(this));
-    this.container.removeEventListener('focusin', this.handleFocusIn.bind(this));
+    this.container.removeEventListener('keydown', this.handleKeyDownBound);
+    this.container.removeEventListener('focusin', this.handleFocusInBound);
 
     this.focusableElements = [];
     this.currentIndex = -1;

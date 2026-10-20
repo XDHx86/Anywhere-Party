@@ -77,6 +77,14 @@ export class ParticipantManager {
     console.log('ParticipantManager: reset');
   }
 
+  /**
+   * Destroy the participant manager, cleaning up all resources.
+   * Alias for reset() for consistent lifecycle API.
+   */
+  destroy(): void {
+    this.reset();
+  }
+
   // ─── Participant CRUD ────────────────────────────────────
 
   /**
@@ -283,6 +291,17 @@ export function getParticipantManager(
     instance = new ParticipantManager(config);
   }
   return instance;
+}
+
+/**
+ * Reset the singleton instance for testing purposes.
+ * This allows tests to create fresh instances without state leakage.
+ */
+export function resetParticipantManagerInstance(): void {
+  if (instance) {
+    instance.destroy();
+    instance = null;
+  }
 }
 
 export default ParticipantManager;

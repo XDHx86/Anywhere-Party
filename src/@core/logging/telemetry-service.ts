@@ -371,15 +371,37 @@ export class TelemetryService {
   }
 
   // Cleanup on shutdown
+  /**
+   * Synchronously destroys the telemetry service.
+   * Clears the flush timer and initiates a best-effort flush of remaining events.
+   * Note: The flush is fire-and-forget; callers requiring completion should use
+   * `destroyAsync()` instead.
+   */
   destroy(): void {
     if (this.flushTimer) {
       clearInterval(this.flushTimer);
       this.flushTimer = null;
     }
 
-    // Flush any remaining events
+    // Flush any remaining events (best-effort, fire-and-forget)
     if (this.eventBuffer.length > 0) {
-      this.flush();
+      void this.flush();
+    }
+  }
+
+  /**
+   * Asynchronously destroys the telemetry service, awaiting the final flush.
+   * Use this when you need to ensure all buffered events are sent/stored before
+   * the service is considered fully disposed.
+   */
+  async destroyAsync(): Promise<void> {
+    if (this.flushTimer) {
+      clearInterval(this.flushTimer);
+      this.flushTimer = null;
+    }
+
+    if (this.eventBuffer.length > 0) {
+      await this.flush();
     }
   }
 }

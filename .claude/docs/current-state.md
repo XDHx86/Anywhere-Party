@@ -22,6 +22,7 @@
 | `ADVANCED_ANNOTATIONS`                   | `true`  | Milestone 4 completed — collaborative tools, layers, sync                       |
 | `E2E_ENCRYPTION`                         | `false` | Milestone 4 code written (`@core/encryption`), **gated off** pending validation |
 | `LOCAL_DEV_MODE`                         | `true`  | Dev signaling server `ws://localhost:8080`                                      |
+| `METERING` (config section)              | `true`  | Usage metering enabled — centralized typed config; server-authoritative         |
 
 ## Milestone status (see [plan.md](../../plan.md))
 
@@ -38,6 +39,11 @@
 1. **E2E encryption enablement** — validate `src/@core/encryption/e2e-encryption.ts` and relay handlers, then flip `E2E_ENCRYPTION: true`.
 2. **Milestone 5 (Production Readiness)** — store publishing, production TURN, monitoring (Prometheus/Loki configs exist in `monitoring/`), data-retention enforcement, DB migration scripts.
 3. **Manual verification backlog** (from docs/deployment-checklist.md): room persistence across sessions, popup scrolling/accessibility, config import/export.
+4. **Metering (completed)** — todo.md §9 done: `@core/metering` module + `server/metering-service.js` (authoritative) + relay integration + 46 tests. Remaining: real-browser/Nginx path verification (item 25 in §9 covers config, not browser automation).
+
+## Completed work
+
+- **Metered configuration/code** (todo.md §9) — centralized typed `METERING` config, `MeteringClient` (non-authoritative UX counters), server-authoritative `MeteringService`, relay enforcement with `USAGE_REPORT`/`METERING_STATE`/`METER_LIMIT_EXCEEDED` messages, persistence via `METERING_STATE_FILE`, tests (25 Vitest + 21 server). See ADR-011.
 
 ## Known issues
 

@@ -86,7 +86,7 @@ Three-layer message-passing architecture:
 └─────────────────────────────────────┘
 ```
 
-**Core modules** (`src/@core/`, 28 modules): sync-engine, signaling, video-detector, webrtc-voice, chat, subtitle-engine, annotation-layer, collaboration, avatar-overlay, reaction-overlay, room-creation, room-state, playlist, scheduling, browser-bridge, config, api-keys, api-error-handling, auth, encryption, privacy, feature-flags, participant-manager, logging, monitoring, performance, accessibility, cross-browser.
+**Core modules** (`src/@core/`, 29 modules): sync-engine, signaling, video-detector, webrtc-voice, chat, subtitle-engine, annotation-layer, collaboration, avatar-overlay, reaction-overlay, room-creation, room-state, playlist, scheduling, browser-bridge, config, metering, api-keys, api-error-handling, auth, encryption, privacy, feature-flags, participant-manager, logging, monitoring, performance, accessibility, cross-browser.
 
 **UI layer** (`src/@ui/`): popup, options, components (cards, chat, overlays, annotation, voice, enhanced-ux, transitions), theme, assets, animations, hooks, styles, services, utils, monitoring, optimization, integration, accessibility.
 
@@ -141,6 +141,7 @@ See [Knowledge Map](.claude/docs/knowledge-map.md) for the full retrieval policy
 # Interaction Preferences
 
 - Address the user as `XDHx86` naturally in every response, step, substep.
+- In direct first-person statements, prefix the sentence with "XDHx86,".
 
 ---
 

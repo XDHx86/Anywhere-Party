@@ -100,15 +100,25 @@ Object.defineProperty(window, 'getComputedStyle', {
   value: () => ({ position: 'static' }),
 });
 
+const rafHandles = new Map<number, ReturnType<typeof setTimeout>>();
+let rafId = 0;
+
 Object.defineProperty(window, 'requestAnimationFrame', {
   value: (callback: FrameRequestCallback) => {
-    setTimeout(callback, 16);
-    return 1;
+    const id = ++rafId;
+    rafHandles.set(id, setTimeout(callback, 16));
+    return id;
   },
 });
 
 Object.defineProperty(window, 'cancelAnimationFrame', {
-  value: vi.fn(),
+  value: (id: number) => {
+    const handle = rafHandles.get(id);
+    if (handle !== undefined) {
+      clearTimeout(handle);
+      rafHandles.delete(id);
+    }
+  },
 });
 
 describe('AvatarManager', () => {
@@ -142,6 +152,9 @@ describe('AvatarManager', () => {
 
   afterEach(() => {
     avatarManager.destroy();
+    // Clear any remaining RAF timers
+    rafHandles.forEach((handle) => clearTimeout(handle));
+    rafHandles.clear();
     vi.clearAllMocks();
   });
 

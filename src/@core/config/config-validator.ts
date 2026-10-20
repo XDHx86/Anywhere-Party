@@ -4,6 +4,7 @@
  */
 
 import { ExtensionConfig, TurnServer } from '../browser-bridge/types';
+import { normalizeMeteringConfig, validateMeteringConfig } from '../metering/metering-config';
 
 export interface ValidationResult {
   isValid: boolean;
@@ -170,6 +171,10 @@ export class ConfigValidator {
       this.validateBoolean('ANONYMIZE_USER_DATA', config.ANONYMIZE_USER_DATA, errors);
     }
 
+    if (config.METERING !== undefined) {
+      this.validateMetering(config.METERING, errors);
+    }
+
     return {
       isValid: errors.length === 0,
       errors,
@@ -278,6 +283,19 @@ export class ConfigValidator {
       PERFORMANCE_LOG_LEVEL: 'basic',
       AUTO_QUALITY_ADJUSTMENT: true,
       MEMORY_CLEANUP_INTERVAL_MS: 60000,
+      // Metering & Rate-Limiting
+      METERING: {
+        enabled: true,
+        syncIntervalMs: 60000,
+        reportUsage: true,
+        dimensions: {
+          chatMessages: { enabled: true, limit: 30, windowMs: 60000, action: 'warn' },
+          reactions: { enabled: true, limit: 20, windowMs: 60000, action: 'warn' },
+          annotationsCreated: { enabled: true, limit: 15, windowMs: 60000, action: 'warn' },
+          roomsCreated: { enabled: true, limit: 5, windowMs: 3600000, action: 'reject' },
+          connections: { enabled: true, limit: 5, windowMs: 0, action: 'reject' },
+        },
+      },
     };
 
     // Merge valid values from config with defaults
@@ -799,6 +817,42 @@ export class ConfigValidator {
         });
       }
     });
+  }
+
+  private static validateMetering(value: unknown, errors: ValidationError[]): void {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+      errors.push({
+        field: 'METERING',
+        message: 'Metering config must be an object',
+        value,
+      });
+      return;
+    }
+
+    // Validate the RAW value first so invalid present fields are reported
+    // (e.g. a string syncIntervalMs) rather than silently replaced by defaults.
+    const rawValidation = validateMeteringConfig(value as never);
+
+    // Also validate the normalised form to catch structural gaps that raw
+    // partial validation intentionally skips (missing dimensions are filled
+    // with defaults and validated as a complete config).
+    const normalised = normalizeMeteringConfig(value as never);
+    const normalisedValidation = validateMeteringConfig(normalised);
+
+    // Surface the canonical metering validator errors under the METERING prefix.
+    // Deduplicate by field so errors caught on the raw value aren't repeated
+    // when the normalised (default-filled) form is validated again.
+    const seen = new Set<string>();
+    const combined = [...rawValidation.errors, ...normalisedValidation.errors];
+    for (const err of combined) {
+      if (seen.has(err.field)) continue;
+      seen.add(err.field);
+      errors.push({
+        field: `METERING.${err.field}`,
+        message: err.message,
+        value: err.value,
+      });
+    }
   }
 
   private static validateBoolean(field: string, value: boolean, errors: ValidationError[]): void {

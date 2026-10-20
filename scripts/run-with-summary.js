@@ -54,11 +54,63 @@ function stripAnsi(str) {
 function parseOutput(tool, txt) {
   const cleanTxt = stripAnsi(txt); // Clean text before routing
   
+  if (/npm/.test(tool) || /webpack/.test(tool)) return pNpm(cleanTxt);
   if (/tsc/.test(tool)) return pTsc(cleanTxt);
   if (/eslint/.test(tool)) return pEs(cleanTxt);
   if (/vitest/.test(tool)) return pVi(cleanTxt);
   if (/stryker/.test(tool)) return pStr(cleanTxt);
   return "";
+}
+
+function pNpm(t) {
+  const warnings = (t.match(/WARNING in/g) || []).length;
+  const errors = (t.match(/ERROR in/g) || []).length;
+
+  if (!warnings && !errors) return "";
+
+  const assets = new Set();
+  const entrypoints = new Set();
+
+  let state = 0; // 0: normal, 1: parsing assets, 2: parsing entrypoints
+  for (const line of t.split("\n")) {
+    const trimmed = line.trim();
+    
+    // Reset state on empty lines, new warnings, or new commands
+    if (!trimmed || trimmed.startsWith("WARNING in") || trimmed.startsWith(">")) {
+      state = 0;
+      continue;
+    }
+
+    if (trimmed.startsWith("Assets:")) {
+      state = 1;
+      continue;
+    } else if (trimmed.startsWith("Entrypoints:")) {
+      state = 2;
+      continue;
+    }
+
+    if (state === 1) {
+      assets.add(trimmed);
+    } else if (state === 2) {
+      // Entrypoints usually have their size listed on the same line.
+      // Nested chunks/files underneath do not, so we filter by size identifiers.
+      if (/\((?:bytes|KiB|MiB|GiB)\)/.test(trimmed)) {
+        entrypoints.add(trimmed);
+      }
+    }
+  }
+
+  let s = `Errors   : ${errors}\nWarnings : ${warnings}`;
+  
+  if (assets.size) {
+    s += `\n\nOversized Assets:\n` + [...assets].map((a) => `  ${a}`).join("\n");
+  }
+  
+  if (entrypoints.size) {
+    s += `\n\nOversized Entrypoints:\n` + [...entrypoints].map((e) => `  ${e}`).join("\n");
+  }
+  
+  return s;
 }
 
 function pTsc(t) {
@@ -83,7 +135,6 @@ function pEs(t) {
 }
 
 function pVi(t) {
-  // Grab ONLY the line starting with "Tests " from the end of Vitest output
   const testSummaryMatch = t.match(/Tests\s+(.+?)\n/i);
   if (!testSummaryMatch) return "";
   
@@ -98,7 +149,6 @@ function pVi(t) {
   
   if (!p && !f && !s && !to) return "";
   
-  // Pad the strings to make them align cleanly in the output
   return `Passed  : ${p}\nFailed  : ${f}\nSkipped : ${s}\nTodo    : ${to}`;
 }
 

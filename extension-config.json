@@ -1,10 +1,7 @@
 {
   "SIGNALING_SERVER": "ws://localhost:8080",
   "SIGNALING_WS_PATH": "",
-  "STUN_SERVERS": [
-    "stun:stun.l.google.com:19302",
-    "stun:stun1.l.google.com:19302"
-  ],
+  "STUN_SERVERS": ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"],
   "TURN_SERVERS": [
     {
       "urls": "turn:turn.example.com:3478",
@@ -44,5 +41,17 @@
   "AUTO_DELETE_EXPIRED_DATA": true,
   "RECORDING_CONSENT_REQUIRED": true,
   "RECORDING_RETENTION_DAYS": 30,
-  "ANONYMIZE_USER_DATA": true
+  "ANONYMIZE_USER_DATA": true,
+  "METERING": {
+    "enabled": true,
+    "syncIntervalMs": 60000,
+    "reportUsage": true,
+    "dimensions": {
+      "chatMessages": { "enabled": true, "limit": 30, "windowMs": 60000, "action": "warn" },
+      "reactions": { "enabled": true, "limit": 20, "windowMs": 60000, "action": "warn" },
+      "annotationsCreated": { "enabled": true, "limit": 15, "windowMs": 60000, "action": "warn" },
+      "roomsCreated": { "enabled": true, "limit": 5, "windowMs": 3600000, "action": "reject" },
+      "connections": { "enabled": true, "limit": 5, "windowMs": 0, "action": "reject" }
+    }
+  }
 }

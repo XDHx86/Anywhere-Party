@@ -223,13 +223,13 @@ describe('SignalingClient Connectivity', () => {
   });
 
   afterEach(async () => {
-    // Clear all timers first
-    vi.clearAllTimers();
-
-    // Disconnect client gracefully
+    // Disconnect client gracefully first (may schedule timers)
     if (client) {
       client.disconnect();
     }
+
+    // Then clear all timers
+    vi.clearAllTimers();
 
     // Clean up global browser mock
     delete (global as any).browser;
@@ -237,8 +237,8 @@ describe('SignalingClient Connectivity', () => {
     // Restore original WebSocket
     global.WebSocket = originalWebSocket;
 
-    // Wait a bit for cleanup
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    // Drain microtask queue for any residual promises
+    await Promise.resolve();
   });
 
   describe('Requirement 18.1: WebSocket connections on Chrome and Firefox', () => {
@@ -600,20 +600,21 @@ describe('SignalingClient Connectivity', () => {
 
     it('should maintain heartbeat during connection', async () => {
       vi.useFakeTimers();
+      try {
+        global.WebSocket = MockWebSocket as any;
 
-      global.WebSocket = MockWebSocket as any;
+        await connectWithFakeTimers(client);
 
-      await connectWithFakeTimers(client);
+        // Advance well past the heartbeat timeout (3 × interval = 3000 ms).
+        // The heartbeat acknowledgments from MockWebSocket reset the failure
+        // counter, so the connection should stay alive.
+        vi.advanceTimersByTime(5000);
 
-      // Advance well past the heartbeat timeout (3 × interval = 3000 ms).
-      // The heartbeat acknowledgments from MockWebSocket reset the failure
-      // counter, so the connection should stay alive.
-      vi.advanceTimersByTime(5000);
-
-      // Should have sent heartbeat
-      expect(client.getConnectionState()).toBe(ConnectionState.CONNECTED);
-
-      vi.useRealTimers();
+        // Should have sent heartbeat
+        expect(client.getConnectionState()).toBe(ConnectionState.CONNECTED);
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 });

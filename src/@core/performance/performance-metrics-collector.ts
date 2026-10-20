@@ -69,6 +69,7 @@ class PerformanceMetricsCollector {
   private networkObserver: PerformanceObserver | null = null;
   private memoryObserver: PerformanceObserver | null = null;
   private frameRateMonitor: number | null = null;
+  private systemMetricsInterval: ReturnType<typeof setInterval> | null = null;
   private sessionId: string;
   private startTime: number;
 
@@ -193,7 +194,7 @@ class PerformanceMetricsCollector {
     };
 
     // Collect system metrics every 5 seconds
-    setInterval(collectSystemMetrics, 5000);
+    this.systemMetricsInterval = setInterval(collectSystemMetrics, 5000);
 
     // Initial collection
     collectSystemMetrics();
@@ -568,6 +569,11 @@ class PerformanceMetricsCollector {
       cancelAnimationFrame(this.frameRateMonitor);
     }
 
+    if (this.systemMetricsInterval) {
+      clearInterval(this.systemMetricsInterval);
+      this.systemMetricsInterval = null;
+    }
+
     this.clearMetrics();
   }
 }
@@ -586,6 +592,17 @@ export function getPerformanceMetricsCollector(): PerformanceMetricsCollector {
 export function createPerformanceMetricsCollector(sessionId?: string): PerformanceMetricsCollector {
   const id = sessionId || `perf-session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   return new PerformanceMetricsCollector(id);
+}
+
+/**
+ * Reset the singleton instance for testing purposes.
+ * This allows tests to create fresh instances without state leakage.
+ */
+export function resetPerformanceMetricsCollector(): void {
+  if (performanceCollector) {
+    performanceCollector.destroy();
+    performanceCollector = null;
+  }
 }
 
 export { PerformanceMetricsCollector };

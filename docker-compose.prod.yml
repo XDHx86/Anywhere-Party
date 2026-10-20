@@ -69,6 +69,12 @@ services:
       TURN_CREDENTIAL: ${TURN_CREDENTIAL}
       OPENSUBTITLES_API_KEY: ${OPENSUBTITLES_API_KEY}
       FEATURE_FLAGS_ENDPOINT: http://feature-flags:3002/flags
+      # Authoritative metering (usage rate limiting). Config and state paths are
+      # optional; when METERING_STATE_FILE is set, counters survive restarts.
+      METERING_CONFIG_PATH: ${METERING_CONFIG_PATH:-}
+      METERING_STATE_FILE: ${METERING_STATE_FILE:-/data/metering-state.json}
+    volumes:
+      - metering_data:/data
     expose:
       - "3001"
     networks:
@@ -218,4 +224,6 @@ volumes:
   grafana_data:
     driver: local
   loki_data:
+    driver: local
+  metering_data:
     driver: local

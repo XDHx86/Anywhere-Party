@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Metered configuration/code** — centralized, typed, validated usage metering.
+  New `src/@core/metering/` module (types, default config + validator, client)
+  drives extension UX; `server/metering-service.js` is the authoritative
+  enforcer, integrated into the local relay. New signaling messages
+  (`USAGE_REPORT`, `METERING_STATE`, `METER_LIMIT_EXCEEDED`, `protocolVersion: 1`)
+  and a `METERING` section in `extension-config.json`. Server enforcement counts
+  observed events (chat, reaction, annotation, room creation, connections);
+  client-reported values are advisory only and never trusted for enforcement.
+
 - **Dependabot configuration** — `.github/dependabot.yml` enables automated
   dependency updates for the root npm package, the server npm package, and
   GitHub Actions. Updates are monthly (Mondays), grouped into logical sets

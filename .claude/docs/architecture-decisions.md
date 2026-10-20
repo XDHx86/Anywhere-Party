@@ -73,3 +73,10 @@
 **Context:** Chrome requires MV3; Firefox manifest was MV2.
 **Decision:** Separate `manifest-chrome.json` (MV3) and `manifest-firefox.json` (MV2), built independently by webpack into `dist/chrome` and `dist/firefox`.
 **Consequences:** Firefox features limited to MV2 capabilities. Track Firefox MV3 roadmap for a future migration.
+
+## ADR-011: Metering with server-authoritative enforcement
+
+**Status:** Adopted
+**Context:** Need usage metering / rate limiting to prevent abuse of the shared signaling relay without giving clients the power to bypass it.
+**Decision:** A centralized, typed, validated metering configuration (`src/@core/metering/`) drives both extension UX display and server enforcement. The **server** (`server/metering-service.js`) is the authoritative source for enforcement and accounting — it counts the events it actually observes (chat, reaction, annotation, room creation, connections) and makes all allow/reject decisions. Client-side counters (`MeteringClient`) are labelled `authoritative: false` and exist only for UX; `USAGE_REPORT` messages are advisory and never trusted for enforcement. Optional state persistence via `METERING_STATE_FILE` survives restarts; corrupt/missing config and state degrade to defaults without crashing.
+**Consequences:** Enforcement cannot be bypassed by a client that omits or falsifies usage reports. Metering logic lives in one module instead of being scattered across unrelated code. New metered dimensions require adding a dimension to the config schema + relay handler map + message types.

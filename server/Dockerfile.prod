@@ -17,7 +17,8 @@ RUN npm ci --omit=dev && npm cache clean --force
 # Copy only the runtime entrypoint. local-relay.js is a self-contained
 # in-memory relay (requires only ws and uuid). room-manager.js, database/,
 # and cache/ are not used by this service and reference pg/ioredis/bcrypt.
-COPY local-relay.js ./
+# metering-service.js is required for authoritative rate limiting.
+COPY local-relay.js metering-service.js ./
 
 # Non-root user
 RUN addgroup -g 1001 -S nodejs && \
